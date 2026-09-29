@@ -1,0 +1,86 @@
+{
+  "source": "IFWI_clean",
+  "packaged_on": "2026-09-29",
+  "files": {
+    ".gitattributes": {
+      "bytes": 104,
+      "sha256": "130e73a90876060d5d7d09fdd2b12237bd3d2ab7e11cd0d0b222ef43d7c94c30"
+    },
+    ".gitignore": {
+      "bytes": 219,
+      "sha256": "3e5ab0a3639bd2c9d6f5d18c0ffa6aea314efa9a6df1f05d725ad11db55fb787"
+    },
+    "data/overthrust2d.npz": {
+      "bytes": 302290,
+      "sha256": "af6ac07dbaf680cc04e8eeb97cf7818577d0661ee8338064a6deac593b30c8b2"
+    },
+    "data/vel_marmousi_376x1151.csv": {
+      "bytes": 2163880,
+      "sha256": "9b79c401fb161d0edb58a668b572cac7de29f18e1d141f08caee9b55377cfb4d"
+    },
+    "data/vel_marmousi_smooth400_376x1151.csv": {
+      "bytes": 2942740,
+      "sha256": "8220a2666941d0025c3757a23aa7d0e713f71f9f2d17bc47a0258a37b644fbaf"
+    },
+    "docs/environment.md": {
+      "bytes": 579,
+      "sha256": "fb51a3b0e6e692e5ead01acdf65aca20019c0f5ddc52d5e92d8b0ba1d112c1a0"
+    },
+    "docs/original_notes.md": {
+      "bytes": 9670,
+      "sha256": "f14e8161da1a2bc26348df1b30851e35d1a82ee1ffcae3858d9f5c651026e9e3"
+    },
+    "docs/packaging.md": {
+      "bytes": 2412,
+      "sha256": "d52912df113097fa9a7e63fde156d9c7db4acadb675c689ec392b4b71bb15f94"
+    },
+    "fwi.py": {
+      "bytes": 15295,
+      "sha256": "c780e25909d0c39b070296285b4711d299f09f2a5e4801d5ce305a614869f5d7"
+    },
+    "generator.py": {
+      "bytes": 6536,
+      "sha256": "c37e49c631a2f654808455b92a8125604d7dbf46b6dac7c63a17d736ef79f69c"
+    },
+    "ifwi_modules.py": {
+      "bytes": 23733,
+      "sha256": "900adab18822769946a64109fa77314d71d396403e70179b815094cd952bb043"
+    },
+    "main.py": {
+      "bytes": 34053,
+      "sha256": "8a85448f3af2c24b79b5b9617fdd8f614cf6defb7efad2b2ebbb4a39015bdbf4"
+    },
+    "plot_functions.py": {
+      "bytes": 3390,
+      "sha256": "53d70c622cc2e4fef19aded39835c73e4feca06ddaa6e6d40ff043bdc337737b"
+    },
+    "pretrain_marmousi.py": {
+      "bytes": 6073,
+      "sha256": "c1e947c4d28d815faec9b21534783383e8d7f249bad73fbfc95077f37b458a17"
+    },
+    "README.md": {
+      "bytes": 6504,
+      "sha256": "e47dd3b2b9b97579e0d89e9685d8fd17cdc53666a8b12cb11669b393c7973aff"
+    },
+    "requirements.txt": {
+      "bytes": 151,
+      "sha256": "1b44c46678bb69e408abfd7a6be13f1d385dc1b43375c797e43c997272bbdf1f"
+    },
+    "rnn_fd.py": {
+      "bytes": 23299,
+      "sha256": "eeeebd821462fadb52bb9b12a06932f2c9f764e3e7482b316e12a94d26ec9fd0"
+    },
+    "source_manifest.json": {
+      "bytes": 576,
+      "sha256": "df4733f7dc71b9fddfe0a0e5955196138d1a5b8024b0baf95de2da684c7899ca"
+    },
+    "THIRD_PARTY_NOTICES.md": {
+      "bytes": 1424,
+      "sha256": "798b2eb0d72e0208f9e7ec0ca19ad89397a64e386f5937a0ed634eddab39fe21"
+    },
+    "weights/ifwi_pretrain_marmousi.pth": {
+      "bytes": 204661,
+      "sha256": "77d358fcb02faffad307cfdaf8b10ae0bfce39f6c96399c94a4714fea853d1e8"
+    }
+  }
+}

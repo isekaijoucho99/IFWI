@@ -1,0 +1,4 @@
+# Preserve exact bytes for all files covered by the SHA256 manifests.
+* -text
+*.npz binary
+*.pth binary

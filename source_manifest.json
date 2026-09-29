@@ -1,0 +1,8 @@
+{
+  "ifwi_modules.py": "900adab18822769946a64109fa77314d71d396403e70179b815094cd952bb043",
+  "rnn_fd.py": "eeeebd821462fadb52bb9b12a06932f2c9f764e3e7482b316e12a94d26ec9fd0",
+  "generator.py": "c37e49c631a2f654808455b92a8125604d7dbf46b6dac7c63a17d736ef79f69c",
+  "plot_functions.py": "53d70c622cc2e4fef19aded39835c73e4feca06ddaa6e6d40ff043bdc337737b",
+  "data/vel_marmousi_376x1151.csv": "9b79c401fb161d0edb58a668b572cac7de29f18e1d141f08caee9b55377cfb4d",
+  "data/vel_marmousi_smooth400_376x1151.csv": "8220a2666941d0025c3757a23aa7d0e713f71f9f2d17bc47a0258a37b644fbaf"
+}
