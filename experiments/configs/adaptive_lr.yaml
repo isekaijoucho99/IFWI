@@ -1,0 +1,58 @@
+# Adaptive Learning Rate Configuration
+# Depth-adaptive learning rates with scheduling
+
+experiment_name: "adaptive_lr"
+description: "IFWI with depth-adaptive learning rate"
+
+# Model configuration
+model:
+  network_type: "vanilla"
+  neuron: [2, 256, 256, 256, 256, 1]
+  omega_0: 30
+  activation: "sine"
+  dropout: false
+  prob: 0.2
+
+# Loss configuration
+loss:
+  type: "standard_mse"
+  use_depth_weight: false
+  use_prior: false
+  use_multiscale: false
+
+# Optimizer configuration - KEY IMPROVEMENT
+optimizer:
+  optimizer_type: "depth_adaptive"
+  learning_rate: 1.0e-4
+  lr_deep: 5.0e-4  # 5x higher for deep layers
+  deep_threshold: 0.5
+  base_optimizer: "Adam"
+
+  use_scheduler: true
+  scheduler_params:
+    warmup_epochs: 200
+    max_epochs: 4000
+    eta_min: 1.0e-6
+
+  use_grad_modifier: false
+
+# Training configuration
+training:
+  max_iterations: 4000
+  log_interval: 100
+  alpha: 0
+
+# Data configuration
+data:
+  model_file: "vel_marmousi_376x1151.csv"
+  downsample: 4
+  noise_level: 0.0
+  dz: 15
+  dt: 0.0019
+  nt: 1000
+
+# Evaluation
+evaluation:
+  depth_threshold: 0.5
+  corner_size: 0.25
+  save_plots: true

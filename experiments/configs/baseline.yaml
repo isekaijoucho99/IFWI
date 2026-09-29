@@ -1,0 +1,49 @@
+# Baseline IFWI Configuration
+# Standard configuration without improvements
+
+experiment_name: "baseline"
+description: "Baseline IFWI without any improvements"
+
+# Model configuration
+model:
+  network_type: "vanilla"  # Use original IRN
+  neuron: [2, 256, 256, 256, 256, 1]
+  omega_0: 30
+  activation: "sine"
+  dropout: false
+  prob: 0.2
+
+# Loss configuration
+loss:
+  type: "standard_mse"
+  use_depth_weight: false
+  use_prior: false
+  use_multiscale: false
+
+# Optimizer configuration
+optimizer:
+  optimizer_type: "adam"
+  learning_rate: 1.0e-4
+  use_scheduler: false
+  use_grad_modifier: false
+
+# Training configuration
+training:
+  max_iterations: 4000
+  log_interval: 100
+  alpha: 0  # Regularization weight
+
+# Data configuration
+data:
+  model_file: "vel_marmousi_376x1151.csv"
+  downsample: 4
+  noise_level: 0.0
+  dz: 15
+  dt: 0.0019
+  nt: 1000
+
+# Evaluation
+evaluation:
+  depth_threshold: 0.5
+  corner_size: 0.25
+  save_plots: true

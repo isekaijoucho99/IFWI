@@ -1,0 +1,66 @@
+# Depth-Weighted Loss Configuration
+# Focus on improving deep layer gradients
+
+experiment_name: "depth_weighted_loss"
+description: "IFWI with depth-weighted loss function"
+
+# Model configuration (same as baseline)
+model:
+  network_type: "vanilla"
+  neuron: [2, 256, 256, 256, 256, 1]
+  omega_0: 30
+  activation: "sine"
+  dropout: false
+  prob: 0.2
+
+# Loss configuration - KEY IMPROVEMENT
+loss:
+  type: "combined"
+  use_depth_weight: true
+  use_prior: true
+  use_multiscale: false
+
+  depth_weight_params:
+    weight_type: "piecewise"  # 'exponential', 'linear', or 'piecewise'
+    scale: 0.3
+    deep_start: 0.5
+    deep_weight: 2.0
+    bottom_weight: 5.0
+
+  prior_params:
+    deep_start: 0.5
+
+  lambda_prior: 0.1
+
+# Optimizer configuration
+optimizer:
+  optimizer_type: "adam"
+  learning_rate: 1.0e-4
+  use_scheduler: false
+  use_grad_modifier: true  # Enable gradient modification
+
+  nz: 94
+  grad_mod_type: "depth_weight"
+  grad_weight_scale: 0.3
+  grad_deep_boost: 2.0
+
+# Training configuration
+training:
+  max_iterations: 4000
+  log_interval: 100
+  alpha: 0
+
+# Data configuration
+data:
+  model_file: "vel_marmousi_376x1151.csv"
+  downsample: 4
+  noise_level: 0.0
+  dz: 15
+  dt: 0.0019
+  nt: 1000
+
+# Evaluation
+evaluation:
+  depth_threshold: 0.5
+  corner_size: 0.25
+  save_plots: true

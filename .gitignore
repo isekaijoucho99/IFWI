@@ -1,23 +1,50 @@
+# Python
 __pycache__/
 *.py[cod]
-.pytest_cache/
-.ipynb_checkpoints/
-.venv/
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+
+# Virtual environments
 venv/
-.env
-.env.*
+env/
+ENV/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb
+
+# Results and outputs
+results/
 outputs/
-runs/
-logs/
-wandb/
 *.log
-*.tmp
-*.zip
+
+# Checkpoints and models
 *.pth
 *.pt
 *.ckpt
-!weights/ifwi_pretrain_marmousi.pth
-.idea/
-.vscode/
+
+# Data (optional - comment out if you want to track data files)
+# data/*.npy
+# data/*.npz
+
+# OS
 .DS_Store
 Thumbs.db
+
+# Temporary files
+*.tmp
+tmp/
+temp/
+
+# Local archive
+/archive/
