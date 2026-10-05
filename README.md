@@ -164,12 +164,13 @@ python experiment.py --epochs 4001 --resume results/single_experiments/baseline_
 
 ## scripts 辅助工具
 
-`scripts/` 是批量实验的可选辅助工具，单次实验直接运行 `experiment.py` 即可。Python 工具使用 `--suite` 指定已有批次目录；Windows PowerShell 工具使用 `-SuiteDirectory`，需先有对应实验目录。
+`scripts/` 是实验恢复与绘图的可选辅助工具，单次实验直接运行 `experiment.py` 即可。矩阵恢复与汇总工具使用 `--suite` 指定已有批次目录；宽版模型绘图使用 `--input-dir` / `--output-dir`。Windows PowerShell 工具使用 `-SuiteDirectory`，需先有对应实验目录。
 
 | 文件 | 用途 |
 |---|---|
 | `resume_parameter_sweep.py` | 核验冻结源码与配置，跳过已完成项，从 checkpoint 继续中断的参数矩阵；`--dry-run` 只查看恢复计划 |
 | `plot_parameter_sweep_losses.py` | 读取 loss CSV，导出每组与总览的 PNG/PDF 及完整数值到 `loss_curves/`；`--watch` 持续更新 |
+| `plot_best_model_comparisons.py` | 读取已有选定模型归档，导出四组等比例宽版模型对照图，不训练 |
 | `summarize_ablations.py` | 核验方法消融产物，生成模型对照图、指标表与 `report/`；`--partial` 可预览已完成项 |
 | `summarize_spatiotemporal.py` | 汇总完整时空实验及其阶段指标、注意力诊断，输出 `report_st/`；缺少必需产物时拒绝报告 |
 | `watch_parameter_sweep.ps1` | 显示已有批次状态与新增日志，只监视进度 |
@@ -178,6 +179,20 @@ python experiment.py --epochs 4001 --resume results/single_experiments/baseline_
 | `start_loss_export_detached.ps1` | 在后台持续导出 loss 曲线，不启动训练 |
 
 三个 `start_*` 是手动启动的 Windows 任务，没有周期触发。需要 Python 的启动器可用 `-PythonExecutable` 指定环境，默认查找当前 `python`；它们不改变训练参数或协议。
+
+### 宽版最佳模型对照图
+
+绘图入口只依赖仓库运行环境，使用已有归档中的 `selection.json`、`selected_metrics.csv` 和完整 `source_data/`。GitHub 不附带 `results/` 中的图片、速度模型或私有实验归档；下面的目录名仅为本地示例，其他机器需换成自己的同结构归档。
+
+```bash
+python scripts/plot_best_model_comparisons.py --input-dir results/parameter_sweep_best_highlight_20261004 --output-dir results/parameter_sweep_best_wide
+```
+
+输入沿用 `minimum_full_rmse_among_retained_final_and_loss_best` 的已存模型选点：在保留的末步与 loss-best 中按全模型 RMSE 选择。工具直接复用归档的选择和指标，不重新选模型或训练。
+
+四组分别比较炮数、深度、宽度和 omega。速度与误差面板按空间坐标等比例显示，横向 4.305 km / 深度 1.395 km，约 3.09:1；保留原模型数值与共享色标。标题、坐标与指标为英文，当前比较的变量用橙色加粗，每组显示 baseline 的参数及数值指标。
+
+完整输出包括四组 PNG/PDF/SVG、`all_comparisons.pdf`、`selected_metrics.csv`、`selection.json`、`qa.json`、`index.html` 和 `all_images.zip`。`--preview` 只绘制炮数组供检查；已有输出需显式添加 `--overwrite` 才会复写。
 
 ## 保留的 legacy 入口
 

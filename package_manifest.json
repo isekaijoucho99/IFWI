@@ -3,12 +3,12 @@
   "source": "Git source release with original main files retained",
   "packaged_on": "2026-10-05",
   "repository": "https://github.com/isekaijoucho99/IFWI",
-  "branch": "feature/experiment-cli-release-20261005",
+  "branch": "main",
   "comparison_base": {
     "branch": "main",
-    "commit": "c5ce59af3c9988dc730a29de2e541c23d1572cd2"
+    "commit": "05ea5f329cf77434bab49d7478bc6495612764ea"
   },
-  "scope": "Public runtime source, configurations, required benchmark data, distributed pretrained weight and user documentation. Excludes this manifest itself, local environments, research assets, experiment outputs, tests, developer dependencies, internal plans, historical working notes and optional dedicated analysis scripts.",
+  "scope": "Public runtime source, configurations, required benchmark data, distributed pretrained weight and user documentation. Excludes this manifest itself, local environments, research assets, experiment outputs, tests, developer dependencies, internal plans, historical working notes and local-only dedicated analysis scripts.",
   "files": {
     ".gitattributes": {
       "bytes": 104,
@@ -19,8 +19,8 @@
       "sha256": "7c749f460de7483c0eecc78b856632c20a3c8ca2405f7ee5a00d2ecb4b2d9d82"
     },
     "README.md": {
-      "bytes": 14372,
-      "sha256": "98d4086f683d5ebe0e7281c9e5d1b16ca380e53374e0b708102b00448c8310e2"
+      "bytes": 15892,
+      "sha256": "c8adb313bcb6ff558e988c5925ea2b24521770c5956a553d806b48123af24e01"
     },
     "README_IMPROVEMENTS.md": {
       "bytes": 3888,
@@ -245,6 +245,10 @@
     "rnn_fd.py": {
       "bytes": 23299,
       "sha256": "eeeebd821462fadb52bb9b12a06932f2c9f764e3e7482b316e12a94d26ec9fd0"
+    },
+    "scripts/plot_best_model_comparisons.py": {
+      "bytes": 16924,
+      "sha256": "a7f71e41a6ca9917ab8232251d6e6202a0d39c8adcb9c08050153c00b49b232a"
     },
     "scripts/plot_parameter_sweep_losses.py": {
       "bytes": 12493,
