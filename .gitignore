@@ -65,6 +65,14 @@ temp/
 /docs/spatiotemporal-probe-20260930.md
 /scripts/audit_spatiotemporal.py
 /scripts/benchmark_shot_batch.py
+/scripts/capture_stage_checkpoints.py
+/scripts/inspect_observed_spectrum.py
+
+# Local validation suite; not required to run experiments
+/tests/
+/test_framework.py
+/pytest.ini
+/requirements-dev.txt
 
 # Private configuration, caches and generated release packages
 .env

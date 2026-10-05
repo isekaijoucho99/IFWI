@@ -10,12 +10,10 @@
 
 ```bash
 python -m pip install -r experiments/requirements.txt
-python -m pip install -r requirements-dev.txt
-python -m pytest -q tests
 python experiments/run_experiment.py --config experiments/configs/feature_baseline.yaml --device cuda:0 --iterations 3 --log-interval 3 --output-dir results/feature_smoke
 ```
 
-CPU 测试使用真实小网格正演、反向传播、更新和状态恢复。完整网格短跑仍需要正演与反演的显存；无 GPU 可指定 `--device cpu`。
+公开前已在本地通过 148 项 CPU 小网格测试，覆盖正演、反向传播、更新和恢复等行为；测试程序仅保留本地，不代表已验证反演精度提升。完整网格短跑仍需要正演与反演的显存；无 GPU 可指定 `--device cpu`。
 
 ## 对照配置
 

@@ -1,6 +1,8 @@
 # IFWI 实验使用说明
 
-所有命令从仓库根目录执行，使用已安装兼容 torch / torchvision 和 `requirements.txt` 的 Python 环境。`experiments/requirements.txt` 引用同一套基础依赖，也可用 `python -m pip install -r experiments/requirements.txt` 安装；测试使用 `python -m pip install -r requirements-dev.txt` 后运行 `python -m pytest -q tests`。
+所有命令从仓库根目录执行，使用已安装兼容 torch / torchvision 和 `requirements.txt` 的 Python 环境。`experiments/requirements.txt` 引用同一套基础依赖，也可用 `python -m pip install -r experiments/requirements.txt` 安装。
+
+公开前已在本地通过 148 项 CPU 小网格测试，测试程序仅保留本地。验证正演、梯度、更新和恢复行为不等于证明完整规模的反演精度；范围见 [发布检查](../docs/release-check-20261005.md)。
 
 ## 选择入口
 

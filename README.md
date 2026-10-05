@@ -10,6 +10,7 @@
 - [默认 baseline](#默认-baseline)
 - [输出与续训](#输出与续训)
 - [批量参数与方法对照](#批量参数与方法对照)
+- [scripts 辅助工具](#scripts-辅助工具)
 - [保留的 legacy 入口](#保留的-legacy-入口)
 - [来源与限制](#来源与限制)
 
@@ -35,21 +36,17 @@ IFWI_GitHub/
 │   ├── improved_modules/         # 独立方法消融模块
 │   └── README.md                 # 批量运行与方法说明
 ├── scripts/                      # 恢复、结果汇总和进度工具
-├── tests/                        # CPU 回归测试
 ├── data/                         # 两份 Marmousi CSV、Overthrust NPZ
 ├── weights/                      # 原仓库分发的预训练权重
 ├── docs/                         # 来源、环境与公开打包说明
 ├── requirements.txt              # 运行依赖
-├── requirements-dev.txt          # 测试依赖
-├── pytest.ini                    # 测试发现范围
-├── test_framework.py             # unittest 测试入口
 ├── README_IMPROVEMENTS.md         # 独立方法框架概览
 ├── source_manifest.json          # 原作者文件校验值
 ├── package_manifest.json         # 交付文件清单与 SHA256
 └── THIRD_PARTY_NOTICES.md         # 第三方署名与来源
 ```
 
-目录树展示公开源码的主要文件。虚拟环境、`results/`、`outputs/`、本地研究资产、浏览器缓存及内部开发计划保留在本地，并由 `.gitignore` 排除。`data/` 是运行所需的基准数据；`weights/` 只有原仓库已有的预训练权重，不包含反演 checkpoint 序列。
+目录树展示公开源码的主要文件。本地测试代码、虚拟环境、`results/`、`outputs/`、研究资产、浏览器缓存及内部开发计划保留在本地，并由 `.gitignore` 排除。`data/` 是运行所需的基准数据；`weights/` 只有原仓库已有的预训练权重，不包含反演 checkpoint 序列。
 
 ## 安装与检查
 
@@ -63,14 +60,9 @@ python experiment.py --list-presets
 python experiment.py --dry-run
 ```
 
-第一条是通用安装示例，不固定 CUDA 构建。已有可用的 torch / torchvision 时可跳过。`experiments/requirements.txt` 引用同一套基础依赖；测试安装与运行：
+第一条是通用安装示例，不固定 CUDA 构建。已有可用的 torch / torchvision 时可跳过。`experiments/requirements.txt` 引用同一套基础依赖。本地虚拟环境与 CUDA 版本不随仓库分发。
 
-```bash
-python -m pip install -r requirements-dev.txt
-python -m pytest -q tests
-```
-
-测试使用小网格验证真实正演、梯度、更新、参数校验、checkpoint 恢复与结果汇总；不运行完整训练。也可用 `python test_framework.py` 运行 unittest 测试入口。本地虚拟环境与 CUDA 版本不随仓库分发。
+公开前已在本地通过 148 项 CPU 小网格测试，覆盖真实正演、梯度、更新、参数校验、checkpoint 恢复与结果汇总。测试程序仅保留本地，公开仓库不包含测试入口；这些检查不保证完整规模的反演精度。验证范围见 [发布检查](docs/release-check-20261005.md)。
 
 ## 单次参数实验
 
@@ -169,6 +161,23 @@ python experiment.py --epochs 4001 --resume results/single_experiments/baseline_
 | 注意力、损失、梯度预条件等方法对照 | `feature_baseline.yaml` | 4×256 / 42 / 4000 |
 
 两套入口的训练循环、best 选择与 checkpoint 格式不同，请在各自协议内比较。方法配置、批量运行、指标与恢复说明见 [experiments/README.md](experiments/README.md) 和 [方法框架概览](README_IMPROVEMENTS.md)。新增方法是待验证的实验假设，仓库不承诺固定精度提升。
+
+## scripts 辅助工具
+
+`scripts/` 是批量实验的可选辅助工具，单次实验直接运行 `experiment.py` 即可。Python 工具使用 `--suite` 指定已有批次目录；Windows PowerShell 工具使用 `-SuiteDirectory`，需先有对应实验目录。
+
+| 文件 | 用途 |
+|---|---|
+| `resume_parameter_sweep.py` | 核验冻结源码与配置，跳过已完成项，从 checkpoint 继续中断的参数矩阵；`--dry-run` 只查看恢复计划 |
+| `plot_parameter_sweep_losses.py` | 读取 loss CSV，导出每组与总览的 PNG/PDF 及完整数值到 `loss_curves/`；`--watch` 持续更新 |
+| `summarize_ablations.py` | 核验方法消融产物，生成模型对照图、指标表与 `report/`；`--partial` 可预览已完成项 |
+| `summarize_spatiotemporal.py` | 汇总完整时空实验及其阶段指标、注意力诊断，输出 `report_st/`；缺少必需产物时拒绝报告 |
+| `watch_parameter_sweep.ps1` | 显示已有批次状态与新增日志，只监视进度 |
+| `start_parameter_sweep_detached.ps1` | 通过 Windows 独立任务在后台启动已有矩阵的恢复；可用 `-OpenMonitor` 同时打开监视器 |
+| `start_progress_monitor_detached.ps1` | 在独立 Windows 窗口启动进度监视器 |
+| `start_loss_export_detached.ps1` | 在后台持续导出 loss 曲线，不启动训练 |
+
+三个 `start_*` 是手动启动的 Windows 任务，没有周期触发。需要 Python 的启动器可用 `-PythonExecutable` 指定环境，默认查找当前 `python`；它们不改变训练参数或协议。
 
 ## 保留的 legacy 入口
 
