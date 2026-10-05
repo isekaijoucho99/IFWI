@@ -1,0 +1,46 @@
+experiment_name: depth_weighted_loss
+description: Spatial velocity gradient preconditioner only; MSE unchanged
+model:
+  network_type: vanilla
+  neuron:
+  - 2
+  - 256
+  - 256
+  - 256
+  - 256
+  - 1
+  omega_0: 30
+  activation: sine
+  dropout: false
+  prob: 0.2
+  outermost_linear: true
+  bias: true
+loss:
+  type: standard_mse
+  use_prior: false
+optimizer:
+  optimizer_type: adam
+  learning_rate: 0.0001
+  use_scheduler: false
+training:
+  max_iterations: 4000
+  log_interval: 100
+  alpha: 0
+  clip_grad: null
+data:
+  model_file: vel_marmousi_376x1151.csv
+  downsample: 4
+  noise_level: 0.0
+  dz: 15
+  dt: 0.0019
+  nt: 1000
+evaluation:
+  depth_threshold: 0.5
+  corner_size: 0.25
+  save_plots: true
+gradient_preconditioner:
+  enabled: true
+  weight_type: piecewise
+  deep_start: 0.5
+  deep_weight: 2.0
+  bottom_weight: 5.0

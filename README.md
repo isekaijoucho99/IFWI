@@ -1,128 +1,206 @@
 # IFWI — Implicit Full Waveform Inversion
 
-基于隐式神经表示（SIREN）与有限差分波动方程的二维地震全波形反演实验代码，包含 Marmousi、Overthrust、含噪观测、不确定性估计，以及传统 FWI 对照入口。
-
-本仓库是本地 `IFWI_clean` 的源码快照（打包日期：2026-09-29），对应近期使用的实验版本。七个 Python 文件均逐字节保留，未因打包修改算法。它不是 `IFWI_paper` 的论文参数版本，也不代表论文全部实验的精确复现。
+基于 SIREN 隐式神经表示与有限差分波动方程的二维地震全波形反演代码。主要入口 `experiment.py` 用于随机初始化的 Marmousi 参数实验；另保留预训练、含噪观测、Dropout 不确定性、Overthrust 和传统 FWI 入口，以及独立的方法消融框架。
 
 ## 目录
 
+- [项目结构](#项目结构)
+- [安装与检查](#安装与检查)
+- [单次参数实验](#单次参数实验)
+- [默认 baseline](#默认-baseline)
+- [输出与续训](#输出与续训)
+- [批量参数与方法对照](#批量参数与方法对照)
+- [scripts 辅助工具](#scripts-辅助工具)
+- [保留的 legacy 入口](#保留的-legacy-入口)
+- [来源与限制](#来源与限制)
+
+## 项目结构
+
 ```text
 IFWI_GitHub/
-├── main.py                     # IFWI 统一入口、续训、队列与加速验证
-├── fwi.py                      # 独立传统 FWI 对照入口
-├── pretrain_marmousi.py         # 平滑模型预训练
-├── ifwi_modules.py             # 原作者隐式网络和训练模块
-├── rnn_fd.py                    # 原作者有限差分正演
-├── generator.py                # 子波与时间分段
-├── plot_functions.py            # 绘图辅助
-├── data/                       # 两份 Marmousi CSV、Overthrust NPZ
-├── weights/                    # 小体积 Marmousi 预训练权重
-├── docs/                       # 原始记录、环境、打包与验证说明
-├── requirements.txt
-├── source_manifest.json        # 原作者模块和 CSV 的历史校验值
-├── package_manifest.json       # 本次完整文件清单与 SHA256
-└── THIRD_PARTY_NOTICES.md
+├── experiment.py                 # 单次实验：baseline、预设、参数组合
+├── main.py                       # 原 IFWI 多实验入口
+├── fwi.py                        # 传统 FWI 对照入口
+├── pretrain_marmousi.py           # 平滑模型预训练
+├── ifwi_modules.py               # 原隐式网络与训练核心
+├── rnn_fd.py                     # 原有限差分正演
+├── generator.py                  # 子波与时间分段
+├── plot_functions.py             # 绘图辅助
+├── experiments/
+│   ├── configs/                  # 基线、参数和方法配置
+│   ├── baseline_protocol.py      # 原版参数与源码身份
+│   ├── baseline_experiment.py    # 调用原版训练流程
+│   ├── baseline_reference/       # 原日志与绘图参考代码
+│   ├── run_parameter_sweep.py    # 注册的单变量矩阵
+│   ├── run_experiment.py         # 配置入口
+│   ├── improved_modules/         # 独立方法消融模块
+│   └── README.md                 # 批量运行与方法说明
+├── scripts/                      # 恢复、结果汇总和进度工具
+├── data/                         # 两份 Marmousi CSV、Overthrust NPZ
+├── weights/                      # 原仓库分发的预训练权重
+├── docs/                         # 来源、环境与公开打包说明
+├── requirements.txt              # 运行依赖
+├── README_IMPROVEMENTS.md         # 独立方法框架概览
+├── source_manifest.json          # 原作者文件校验值
+├── package_manifest.json         # 交付文件清单与 SHA256
+└── THIRD_PARTY_NOTICES.md         # 第三方署名与来源
 ```
 
-训练输出默认写入 `outputs/`，已在 `.gitignore` 中排除。压缩包不含旧训练结果、检查点序列、日志、缓存、其他版本或绑定本机路径的 PowerShell 调度脚本。`data/` 中保留的是运行必需的基准模型；`weights/` 中保留约 200 KB 的预训练权重，并非历史反演检查点。
+目录树展示公开源码的主要文件。本地测试代码、虚拟环境、`results/`、`outputs/`、研究资产、浏览器缓存及内部开发计划保留在本地，并由 `.gitignore` 排除。`data/` 是运行所需的基准数据；`weights/` 只有原仓库已有的预训练权重，不包含反演 checkpoint 序列。
 
-## 环境安装
+## 安装与检查
 
-本机验证环境为 Python 3.10.18。PyTorch / torchvision 使用已有 CUDA 12.8 nightly 构建，具体版本见 [环境记录](docs/environment.md)。若已有可用环境，直接激活即可。
-
-新环境示例（CPU 安装方式；完整训练建议使用 GPU）：
+在仓库根目录使用 Python 3.10 环境。先安装与设备、驱动匹配且彼此兼容的 **torch / torchvision**，再安装仓库依赖；GPU 构建请使用对应的 PyTorch 安装命令。
 
 ```bash
-conda create -n ifwi python=3.10
-conda activate ifwi
 python -m pip install torch torchvision
 python -m pip install -r requirements.txt
+python experiment.py --help
+python experiment.py --list-presets
+python experiment.py --dry-run
 ```
 
-GPU 环境请安装与设备和驱动匹配、彼此兼容的 PyTorch / torchvision。`requirements.txt` 固定本机验证过的其他直接依赖；上面的通用 PyTorch 安装命令并非原 nightly 环境的精确复刻。本次没有验证新建环境。
+第一条是通用安装示例，不固定 CUDA 构建。已有可用的 torch / torchvision 时可跳过。`experiments/requirements.txt` 引用同一套基础依赖。本地虚拟环境与 CUDA 版本不随仓库分发。
 
-在仓库根目录先检查入口：
+公开前已在本地通过 148 项 CPU 小网格测试，覆盖真实正演、梯度、更新、参数校验、checkpoint 恢复与结果汇总。测试程序仅保留本地，公开仓库不包含测试入口；这些检查不保证完整规模的反演精度。验证范围见 [发布检查](docs/release-check-20261005.md)。
+
+## 单次参数实验
+
+以下命令彼此独立，每条只运行一次实验。无参数时启动 baseline 训练，无需修改 YAML：
 
 ```bash
-python main.py --help
-python fwi.py --help
-python pretrain_marmousi.py --help
+python experiment.py
+python experiment.py -shots 25
+python experiment.py -depth 6
+python experiment.py -width 192
+python experiment.py -omega 15.5
+python experiment.py -shots 25 -depth 6 -width 256 -omega 20
+python experiment.py --preset width_512
+python experiment.py --preset shots_25 -width 192 -omega 20
+python experiment.py -shots 37 --dry-run
+python experiment.py -width 192 --epochs 3
 ```
 
-`main.py` 没有 `--check` 参数。不要把其他版本的命令与本版本混用。
+`-shots` / `--shots`、`-depth` / `--depth`、`-width` / `--width`、`-omega` / `--omega` 等价，允许同时修改多个参数。配置顺序是 baseline → `--preset` → 显式参数覆盖。研究某个参数的独立影响时保持其他设置一致；同时改变多个参数适合探索组合，结果不能直接归因于其中一项。
 
-## 运行 IFWI
+| 预设 | 相对 baseline 的变化 |
+|---|---|
+| `baseline` | 无 |
+| `shots_25`、`shots_49` | 炮数 25、49 |
+| `depth_6`、`depth_8` | 隐藏层数 6、8 |
+| `width_256`、`width_512` | 每个隐藏层宽度 256、512 |
+| `omega_10`、`omega_20`、`omega_50` | omega 10、20、50 |
 
-下列命令会开始训练，按需单独运行。`--epochs` 表示最终总更新数。示例显式指定 `cuda:0`；无 GPU 可改为 `cpu`，完整规模运行会很慢。
+这十个预设也允许继续覆盖。自定义炮数须为 2..241 的整数，深度与宽度须为正整数，omega 须为正有限数。
+
+## 默认 baseline
+
+`experiment.py` 调用原 `IFWI2D.train()`、`save_state()` 和 `predict()`，沿用原日志与编号 checkpoint 流程。原作者核心模块和参考入口的哈希会在训练前核验。
+
+| 参数 | 默认值 / 行为 |
+|---|---|
+| 初始化 / 随机种子 | 随机初始化，seed=3 |
+| 网络 | SIREN，输入 2 维、4 个隐藏层且每层 128、输出 1 维；线性输出层、含 bias |
+| omega | 30，同时用于正弦激活与原网络权重初始化 |
+| 速度归一化 | mean=3、std=1，单位 km/s；导出速度单位 m/s |
+| 优化器 | Adam，lr=1e-4，betas=(0.9, 0.999)，eps=1e-8，weight_decay=0 |
+| 训练预算 | 4001 次更新，原 epoch 标签为 0..4000 |
+| 记录 / 保存间隔 | 100；完成更新 1、101、…、4001 时保存，共 41 份 checkpoint |
+| best 选择 | 在记录点比较更新前 loss，保存该次更新后的权重 |
+| loss | 原波形 MSE；alpha=0，TV 统计仍计算但不进入目标 |
+| 梯度裁剪 | 保留原调用；参数生成器耗尽使原裁剪无实际效果 |
+| 输入 | 所有炮、完整时间记录；不分炮累积梯度 |
+| 数据 | `data/vel_marmousi_376x1151.csv`，默认 CSV header 读取、4 倍下采样，94×288，float32 |
+| 空间 / 时间采样 | dx=dz=15 m，dt=0.0019 s，nt=1000 |
+| 子波 | 8 Hz Ricker |
+| 正演 | 有限差分阶数 2，PML 15，自由表面 |
+| 震源 | 13 炮，源深网格索引 1；x 索引 20、40、…、260 |
+| 接收器 | 每炮 288 个，接收深网格索引 2，覆盖全部 x 网格点 |
+| 附加功能 | 无噪声、Dropout、预训练、先验、注意力、LR 调度或加速后端 |
+| 设备 | 自动选择 `cuda:0`，不可用时选择 `cpu`；可用 `--device` 覆盖 |
+| 输出 | `results/single_experiments/` 下的唯一运行目录；可用 `--output-dir` 修改父目录 |
+
+自定义炮数保持 x 索引 20..260 的孔径，用均匀取点后取整生成位置；不一定包含原 13 个炮点。实际源与接收器位置保存于 `acquisition.json`。增加炮数、深度或宽度会提高计算和显存需求，25/49 炮的完整输入显存需求尚未实测。
+
+`--epochs` 表示最终总更新数。`--log-interval` 同时控制 best 选择与 checkpoint 保存，最后一步也会保存；不是仅改变终端打印。偏离 4001 次更新或间隔 100 时，`run_metadata.json` 标记 `preliminary=true`。短跑只检查运行情况，不能代替完整预算的精度对照。
+
+## 输出与续训
+
+逐轮进度显示在终端并写入 `progress.log`，默认生成 `result.png`。每次运行建立新目录，不覆盖已有结果。
+
+| 文件 | 内容 |
+|---|---|
+| `config.json`、`baseline_config.json` | 实际配置与原入口格式的配置 |
+| `original_source_hashes.json`、`run_metadata.json` | 原代码身份、训练协议与 preliminary 标记 |
+| `loss.csv` | 完成更新数及原 total loss、data loss、regularization statistic；loss 为更新前值 |
+| `checkpoints/MarmousiI_random-checkpoint-N.pth` | 原编号 checkpoint，N 为已完成更新数 |
+| `initial_velocity.npy`、`last_velocity.npy`、`best_velocity.npy` | 初始、末步、原 loss-best 速度 |
+| `true_velocity.npy`、`observed.npy`、`acquisition.json` | 真值、合成观测与采集几何 |
+| `metrics.json`、`final_metrics.json` | best 模型误差与固定末步空间指标；末步未额外计算波形 MSE |
+| `training_summary.json`、`status.json` | 更新数、best 时刻、耗时、显存与运行状态 |
+
+`v_true.npy` / `v_pred.npy` 分别是供汇总工具使用的真值 / best 别名。原 best 的更新前 loss 与更新后权重对应关系保留，不能将记录的 loss 当成保存模型的重新评估值。
+
+续训需使用实际生成的编号 PTH，并保留同目录的 `config.json`。例如将下面的 `baseline_RUN` 换成自己的运行目录：
 
 ```bash
-# 从随包平滑模型权重初始化
-python -u main.py --experiment pretrain --device cuda:0 --epochs 4000 --plots
-
-# 随机初始化
-python -u main.py --experiment random --device cuda:0 --epochs 4000 --plots
-
-# 含噪观测：噪声标准差为观测标准差的 2 倍（也可设为 4）
-python -u main.py --experiment noisy --noise 2 --device cuda:0 --epochs 4000 --plots
-
-# Dropout 不确定性；显式采用 1000 次 MC 采样
-python -u main.py --experiment uncertainty --dropout 0.2 --samples 1000 --device cuda:0 --epochs 4000 --plots
-
-# Overthrust
-python -u main.py --experiment overthrust --device cuda:0 --epochs 4000 --plots
+python experiment.py --epochs 4001 --resume results/single_experiments/baseline_RUN/checkpoints/MarmousiI_random-checkpoint-101.pth
 ```
 
-默认不启用有效梯度裁剪或加速。需要时显式添加 `--clip-grad 0.25`；`--accelerate` 仅支持 random/pretrain 无噪声、无 Dropout 模式。不要把这些可选设置当成所有历史实验的统一配置。
+最终预算须大于 checkpoint 已完成更新数。自定义实验需重复其 `-shots/-depth/-width/-omega` 设置；恢复会检查配置。续训写新目录，跨设备或依赖版本不承诺逐位一致。源码仓库不包含历史反演结果或 checkpoint 序列。
 
-重新生成预训练权重：
+## 批量参数与方法对照
+
+注册的十组单变量参数矩阵可用 `experiments/run_parameter_sweep.py` 运行；使用现成 baseline 是可选的，路径由用户提供，详见 [实验使用说明](experiments/README.md)。
+
+方法消融采用另一套控制组：
+
+| 用途 | 控制配置 | 网络 / seed / 总更新数 |
+|---|---|---|
+| 原训练协议的参数实验 | `experiment.py`、`baseline.yaml`、`legacy_random_baseline.yaml` | 4×128 / 3 / 4001 |
+| 注意力、损失、梯度预条件等方法对照 | `feature_baseline.yaml` | 4×256 / 42 / 4000 |
+
+两套入口的训练循环、best 选择与 checkpoint 格式不同，请在各自协议内比较。方法配置、批量运行、指标与恢复说明见 [experiments/README.md](experiments/README.md) 和 [方法框架概览](README_IMPROVEMENTS.md)。新增方法是待验证的实验假设，仓库不承诺固定精度提升。
+
+## scripts 辅助工具
+
+`scripts/` 是批量实验的可选辅助工具，单次实验直接运行 `experiment.py` 即可。Python 工具使用 `--suite` 指定已有批次目录；Windows PowerShell 工具使用 `-SuiteDirectory`，需先有对应实验目录。
+
+| 文件 | 用途 |
+|---|---|
+| `resume_parameter_sweep.py` | 核验冻结源码与配置，跳过已完成项，从 checkpoint 继续中断的参数矩阵；`--dry-run` 只查看恢复计划 |
+| `plot_parameter_sweep_losses.py` | 读取 loss CSV，导出每组与总览的 PNG/PDF 及完整数值到 `loss_curves/`；`--watch` 持续更新 |
+| `summarize_ablations.py` | 核验方法消融产物，生成模型对照图、指标表与 `report/`；`--partial` 可预览已完成项 |
+| `summarize_spatiotemporal.py` | 汇总完整时空实验及其阶段指标、注意力诊断，输出 `report_st/`；缺少必需产物时拒绝报告 |
+| `watch_parameter_sweep.ps1` | 显示已有批次状态与新增日志，只监视进度 |
+| `start_parameter_sweep_detached.ps1` | 通过 Windows 独立任务在后台启动已有矩阵的恢复；可用 `-OpenMonitor` 同时打开监视器 |
+| `start_progress_monitor_detached.ps1` | 在独立 Windows 窗口启动进度监视器 |
+| `start_loss_export_detached.ps1` | 在后台持续导出 loss 曲线，不启动训练 |
+
+三个 `start_*` 是手动启动的 Windows 任务，没有周期触发。需要 Python 的启动器可用 `-PythonExecutable` 指定环境，默认查找当前 `python`；它们不改变训练参数或协议。
+
+## 保留的 legacy 入口
+
+`main.py` 提供固定网络的多实验入口，`fwi.py` 提供独立传统 FWI 对照，`pretrain_marmousi.py` 生成平滑模型预训练权重。下面每条命令会单独开始训练：
 
 ```bash
-python -u pretrain_marmousi.py --device cuda:0 --epochs 5000 --output-dir outputs/pretrain_new
-python -u main.py --experiment pretrain --device cuda:0 --epochs 4000 --pretrained outputs/pretrain_new/ifwi_pretrain_marmousi.pth
+python main.py --experiment random --epochs 4001 --plots
+python main.py --experiment pretrain --epochs 4001 --plots
+python main.py --experiment noisy --noise 2 --epochs 4001 --plots
+python main.py --experiment uncertainty --dropout 0.2 --samples 1000 --epochs 4001 --plots
+python main.py --experiment overthrust --epochs 4001 --plots
+python fwi.py --experiment fwi_smooth --epochs 4000 --plots
+python fwi.py --experiment fwi_noisy --noise 2 --epochs 4000 --plots
+python pretrain_marmousi.py --epochs 5000 --output-dir outputs/pretrain_new
+python main.py --experiment pretrain --epochs 4001 --pretrained outputs/pretrain_new/ifwi_pretrain_marmousi.pth
 ```
 
-## 传统 FWI 对照
+这些入口可用 `--device` 选择设备，用 `--help` 查看其余参数。`main.py` 默认不绘图；`--clip-grad` 可显式启用有效裁剪，`--accelerate` 限无噪声、无 Dropout 的 random/pretrain。其输出默认位于 `outputs/`。随仓库提供的 `weights/ifwi_pretrain_marmousi.pth` 是小型平滑模型预训练权重。
 
-```bash
-python -u fwi.py --experiment fwi_smooth --device cuda:0 --epochs 4000 --plots
-python -u fwi.py --experiment fwi_random --device cuda:0 --epochs 4000 --plots
-python -u fwi.py --experiment fwi_noisy --noise 2 --device cuda:0 --epochs 4000 --plots
-```
+**Legacy 限制：** `main.py` 和 `fwi.py` 的 `fwi_random` 模式仍读取源码中指定的仓库外历史随机 baseline 初始模型及真值，CLI 没有路径覆盖参数。仅克隆本仓库不能直接运行该模式；上面的 `fwi_smooth` / `fwi_noisy` 使用仓库内数据。
 
-## 输出与断点续训
+## 来源与限制
 
-每次运行生成独立目录，记录配置、状态、逐轮 loss、速度模型和 checkpoint；`--plots` 生成结果图。已有非空输出目录拒绝覆盖。
+原作者模块为 `ifwi_modules.py`、`rnn_fd.py`、`generator.py`、`plot_functions.py`，文件头署名与参考信息保留。补充入口及 `experiments/` 不应全部署名为原论文作者的发布实现；具体来源与引用见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。来源材料没有可确认的上游 LICENSE，本仓库不擅自授予新许可。
 
-IFWI 续训示例，将示例路径换成实际保存的文件：
-
-```bash
-python -u main.py --experiment random --device cuda:0 --epochs 4000 --resume "outputs/random_TIMESTAMP/checkpoints/MarmousiI_random-checkpoint-1001.pth"
-```
-
-请保留 checkpoint 配套的 `config.json`，并使用与原运行一致的实验、噪声、后端和裁剪设置。续训另建输出目录；Dropout 续训不保证逐位一致。随包不含历史 checkpoint，因此不能直接恢复本机过去的训练。
-
-## 已知限制
-
-- 本版本 Marmousi 震源深度为 15 m、接收深度为 30 m，沿用原 Notebook；与论文描述及 `IFWI_paper` 版本有差异。
-- `regularization` 保留原 auto-TV 逻辑问题，不能作为有效 TV 正则化对照。
-- 原 IFWI 最佳模型选择比较更新前 loss、保存更新后权重；原 IFWI 波场非有限值处理也保留。传统 FWI 入口另有有限值检查和速度边界。
-- 4000 次反演和 5000 次预训练是示例预算，不保证论文精度。GPU、依赖版本和随机性可能影响结果。
-
-更多实现差异与历史验证记录见 [原始说明](docs/original_notes.md)。该文件保留原文，其历史“六个 Python 文件”和验证结论不作为本次包结构或本次验证结果；以本 README 和 [本次打包记录](docs/packaging.md) 为准。
-
-## 来源与许可
-
-原作者及参考文献信息见 [第三方来源说明](THIRD_PARTY_NOTICES.md)。现有目录没有可确认的上游 LICENSE，本包保留原文件作者标注，不擅自添加 MIT/Apache 等许可。
-
-## 上传 GitHub
-
-解压后把 `IFWI_GitHub` 文件夹中的内容作为仓库根目录。也可进入该文件夹执行：
-
-```bash
-git init
-git add .
-git commit -m "Package IFWI experiment source"
-git branch -M main
-```
-
-然后关联自己的远程仓库并推送。本次只生成本地源码包，没有创建远程仓库或上传文件。
+本版本 Marmousi 震源深度 15 m、接收深度 30 m；采样与其他论文版本可能不同。legacy `regularization` 的原 auto-TV 逻辑及原 IFWI 非有限波场处理保留；它们不能作为有效 TV 正则化或数值稳定性的证据。结果受训练预算、硬件、依赖与随机性影响，本仓库不代表论文全部实验的精确复现。`docs/` 中保留的原始来源和环境说明按其记录日期理解；内部开发计划和本地历史实验工作记录不属于公开源码交付。

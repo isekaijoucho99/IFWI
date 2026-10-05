@@ -1,0 +1,2 @@
+# Install a compatible torch / torchvision pair first; see the root README.
+-r ../requirements.txt
