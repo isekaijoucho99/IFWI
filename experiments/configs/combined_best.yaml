@@ -1,77 +1,52 @@
-# Combined Best Configuration
-# Combines all effective improvements
-
-experiment_name: "combined_best"
-description: "IFWI with all improvements: attention + depth-weighted loss + adaptive LR"
-
-# Model configuration - Attention network
+experiment_name: combined_best
+description: 'Candidate combination (not established best): attention + preconditioner
+  + layerwise LR; no prior'
 model:
-  network_type: "attention"
-  neuron: [2, 256, 256, 256, 256, 1]
+  network_type: attention
+  neuron:
+  - 2
+  - 256
+  - 256
+  - 256
+  - 256
+  - 1
   omega_0: 30
-  activation: "sine"
+  activation: sine
   dropout: false
   prob: 0.2
+  outermost_linear: true
+  bias: true
   use_attention: true
   attention_hidden: 64
   deep_bias: 2.0
-
-# Loss configuration - Depth-weighted + prior
 loss:
-  type: "combined"
-  use_depth_weight: true
-  use_prior: true
-  use_multiscale: false
-
-  depth_weight_params:
-    weight_type: "piecewise"
-    scale: 0.3
-    deep_start: 0.5
-    deep_weight: 2.0
-    bottom_weight: 5.0
-
-  prior_params:
-    deep_start: 0.5
-
-  lambda_prior: 0.1
-
-# Optimizer configuration - Depth-adaptive + scheduler
+  type: standard_mse
+  use_prior: false
 optimizer:
-  optimizer_type: "depth_adaptive"
-  learning_rate: 1.0e-4
-  lr_deep: 5.0e-4
+  optimizer_type: layerwise_lr
+  learning_rate: 0.0001
+  use_scheduler: false
+  lr_deep: 0.0005
   deep_threshold: 0.5
-  base_optimizer: "Adam"
-
-  use_scheduler: true
-  scheduler_params:
-    warmup_epochs: 200
-    max_epochs: 4000
-    eta_min: 1.0e-6
-
-  use_grad_modifier: true
-  nz: 94
-  grad_mod_type: "depth_weight"
-  grad_weight_scale: 0.3
-  grad_deep_boost: 2.0
-
-# Training configuration
 training:
   max_iterations: 4000
   log_interval: 100
   alpha: 0
-
-# Data configuration
+  clip_grad: null
 data:
-  model_file: "vel_marmousi_376x1151.csv"
+  model_file: vel_marmousi_376x1151.csv
   downsample: 4
   noise_level: 0.0
   dz: 15
   dt: 0.0019
   nt: 1000
-
-# Evaluation
 evaluation:
   depth_threshold: 0.5
   corner_size: 0.25
   save_plots: true
+gradient_preconditioner:
+  enabled: true
+  weight_type: piecewise
+  deep_start: 0.5
+  deep_weight: 2.0
+  bottom_weight: 5.0

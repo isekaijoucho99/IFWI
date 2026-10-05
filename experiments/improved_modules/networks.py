@@ -1,12 +1,9 @@
 """
-Improved Neural Network Architectures for IFWI
-----------------------------------------------
-Focus on deep layer representation with attention mechanisms.
+Experimental IFWI networks, including coordinate-local depth attention.
 
-Includes:
-1. Depth-aware attention network
-2. Multi-scale feature extraction
-3. Physics-informed layers
+Legacy output attention is retained for reproducibility. Residual output
+attention and feature FiLM start at identity for controlled comparisons.
+SpatialAttention and MultiScaleIRN are legacy, separately exposed helpers.
 """
 
 import torch
@@ -19,7 +16,7 @@ class DepthAttention(nn.Module):
     Depth-aware attention module.
     Gives higher attention weights to deep layer features.
     """
-    def __init__(self, hidden_dim=64, deep_bias=2.0):
+    def __init__(self, hidden_dim=64, deep_bias=2.0, depth_min=0., depth_max=1.4):
         """
         Args:
             hidden_dim: dimension for attention network
@@ -27,6 +24,9 @@ class DepthAttention(nn.Module):
         """
         super().__init__()
         self.deep_bias = deep_bias
+        if not np.isfinite(depth_max-depth_min) or depth_max<=depth_min:
+            raise ValueError("Invalid depth range")
+        self.depth_min, self.depth_max = depth_min, depth_max
 
         # Attention network: depth -> attention weight
         self.attention_net = nn.Sequential(
@@ -47,7 +47,7 @@ class DepthAttention(nn.Module):
             attention_weight: [batch, ..., 1], range [1, 1+deep_bias]
         """
         # Normalize depth to [0, 1]
-        z_normalized = z_coord / (z_coord.max() + 1e-8)
+        z_normalized = (z_coord-self.depth_min)/(self.depth_max-self.depth_min)
 
         # Compute attention weight
         attn = self.attention_net(z_normalized)
@@ -56,6 +56,68 @@ class DepthAttention(nn.Module):
         attn_scaled = 1.0 + self.deep_bias * attn
 
         return attn_scaled
+
+
+class _IdentityDepthConditioner(nn.Module):
+    """Coordinate-local MLP with an initially zero final affine layer."""
+    def __init__(self, out_features, hidden_dim, depth_min, depth_max, strength):
+        super().__init__()
+        if not isinstance(hidden_dim, int) or hidden_dim < 2:
+            raise ValueError('attention_hidden must be an integer >= 2')
+        if not np.isfinite(depth_max-depth_min) or depth_max <= depth_min:
+            raise ValueError('Invalid depth range')
+        if not np.isfinite(strength) or not 0 < strength < 1:
+            raise ValueError('attention_strength must be finite and in (0, 1)')
+        self.depth_min, self.depth_max = depth_min, depth_max
+        self.strength = float(strength)
+        self.attention_net = nn.Sequential(
+            nn.Linear(1, hidden_dim), nn.Tanh(),
+            nn.Linear(hidden_dim, hidden_dim // 2), nn.Tanh(),
+            nn.Linear(hidden_dim // 2, out_features))
+        nn.init.zeros_(self.attention_net[-1].weight)
+        nn.init.zeros_(self.attention_net[-1].bias)
+
+    def logits(self, z_coord):
+        # Fixed physical bounds preserve predictions when coordinates are cropped.
+        depth = (z_coord-self.depth_min)/(self.depth_max-self.depth_min)
+        return self.attention_net(depth)
+
+
+class DepthResidualAttention(_IdentityDepthConditioner):
+    """Positive bounded output gain, initialized to exactly one.
+
+    This multiplies the IRN output before physical velocity denormalization.
+    It does not promise a positive physical velocity.
+    """
+    def __init__(self, hidden_dim=64, depth_min=0., depth_max=1.4, strength=.5):
+        super().__init__(1, hidden_dim, depth_min, depth_max, strength)
+
+    def forward(self, z_coord):
+        return 1. + self.strength * torch.tanh(self.logits(z_coord))
+
+
+class DepthFeatureFiLM(_IdentityDepthConditioner):
+    """Depth-conditioned gain and shift for the last hidden feature vector.
+
+    Both paths are bounded and start at identity. Parameter count grows with
+    feature width; no pairwise spatial attention matrix is constructed.
+    """
+    def __init__(self, features, hidden_dim=64, depth_min=0., depth_max=1.4,
+                 strength=.5, shift_strength=.1):
+        if not np.isfinite(shift_strength) or shift_strength <= 0:
+            raise ValueError('attention_shift_strength must be finite and positive')
+        super().__init__(2*features, hidden_dim, depth_min, depth_max, strength)
+        self.shift_strength = float(shift_strength)
+
+    def modulation(self, z_coord):
+        gain_logits, shift_logits = self.logits(z_coord).chunk(2, dim=-1)
+        gain = 1. + self.strength * torch.tanh(gain_logits)
+        shift = self.shift_strength * torch.tanh(shift_logits)
+        return gain, shift
+
+    def forward(self, features, z_coord):
+        gain, shift = self.modulation(z_coord)
+        return gain * features + shift
 
 
 class AttentionIRN(nn.Module):
@@ -73,7 +135,9 @@ class AttentionIRN(nn.Module):
                  activation='sine',
                  use_attention=True,
                  attention_hidden=64,
-                 deep_bias=2.0):
+                 deep_bias=2.0, depth_min=0., depth_max=1.4,
+                 attention_type='legacy_output', attention_strength=.5,
+                 attention_shift_strength=.1):
         """
         Args:
             neuron: list defining network architecture
@@ -86,6 +150,9 @@ class AttentionIRN(nn.Module):
             use_attention: enable depth attention
             attention_hidden: hidden dim for attention network
             deep_bias: attention bias for deep layers
+            attention_type: legacy_output, depth_residual, or feature_film
+            attention_strength: bounded gain departure from one for new variants
+            attention_shift_strength: bounded feature shift for feature_film
         """
         super().__init__()
         self.omega_0 = omega_0
@@ -93,6 +160,11 @@ class AttentionIRN(nn.Module):
         self.d_flag = dropout
         self.outermost_linear = outermost_linear
         self.use_attention = use_attention
+        if attention_type not in ('legacy_output', 'depth_residual', 'feature_film'):
+            raise ValueError('Unknown attention_type: '+str(attention_type))
+        if attention_type == 'feature_film' and len(neuron) < 3:
+            raise ValueError('feature_film requires at least one hidden layer')
+        self.attention_type = attention_type
 
         # Main network layers
         self.linear = nn.ModuleList()
@@ -116,7 +188,15 @@ class AttentionIRN(nn.Module):
 
         # Depth attention module
         if self.use_attention:
-            self.depth_attention = DepthAttention(attention_hidden, deep_bias)
+            if attention_type == 'legacy_output':
+                self.depth_attention = DepthAttention(attention_hidden, deep_bias, depth_min, depth_max)
+            elif attention_type == 'depth_residual':
+                self.depth_attention = DepthResidualAttention(
+                    attention_hidden, depth_min, depth_max, attention_strength)
+            else:
+                self.depth_attention = DepthFeatureFiLM(
+                    neuron[-2], attention_hidden, depth_min, depth_max,
+                    attention_strength, attention_shift_strength)
 
     def init_weights(self):
         """SIREN initialization"""
@@ -134,7 +214,7 @@ class AttentionIRN(nn.Module):
             coords: [batch, nz, nx, 2] with (x, z) coordinates
 
         Returns:
-            feature: [batch, nz, nx, 1] velocity prediction
+            feature: [batch, nz, nx, 1] normalized velocity-network output
             coords: input coordinates (with gradient tracking)
         """
         coords = coords.clone().detach().requires_grad_(True)
@@ -149,13 +229,16 @@ class AttentionIRN(nn.Module):
             if self.d_flag:
                 feature = self.dropout_layers[ilayer](feature)
 
+            if (self.use_attention and self.attention_type == 'feature_film'
+                    and ilayer + 2 == len(self.linear)):
+                feature = self.depth_attention(feature, z_coord)
             feature = layer(feature)
 
             if not self.outermost_linear or ilayer + 2 < len(self.linear):
                 feature = self.activation(self.omega_0 * feature)
 
         # Apply depth attention
-        if self.use_attention:
+        if self.use_attention and self.attention_type != 'feature_film':
             attention_weight = self.depth_attention(z_coord)
             feature = feature * attention_weight
 
@@ -288,9 +371,16 @@ def create_improved_network(config, device='cpu'):
             prob=config.get('prob', 0.2),
             dropout=config.get('dropout', False),
             activation=config.get('activation', 'sine'),
-            use_attention=True,
+            use_attention=config.get('use_attention',True),
+            outermost_linear=config.get('outermost_linear',True),
+            bias=config.get('bias',True),
+            depth_min=config.get('depth_min',0.),
+            depth_max=config.get('depth_max',1.4),
             attention_hidden=config.get('attention_hidden', 64),
-            deep_bias=config.get('deep_bias', 2.0)
+            deep_bias=config.get('deep_bias', 2.0),
+            attention_type=config.get('attention_type', 'legacy_output'),
+            attention_strength=config.get('attention_strength', .5),
+            attention_shift_strength=config.get('attention_shift_strength', .1)
         )
 
     elif net_type == 'multiscale':
@@ -309,7 +399,9 @@ def create_improved_network(config, device='cpu'):
             omega_0=config.get('omega_0', 30),
             prob=config.get('prob', 0.2),
             dropout=config.get('dropout', False),
-            activation=config.get('activation', 'sine')
+            activation=config.get('activation', 'sine'),
+            outermost_linear=config.get('outermost_linear',True),
+            bias=config.get('bias',True)
         )
 
     return network.to(device)

@@ -1,54 +1,45 @@
-# Attention Mechanism Configuration
-# Use depth-aware attention network
-
-experiment_name: "attention"
-description: "IFWI with depth-aware attention mechanism"
-
-# Model configuration - KEY IMPROVEMENT
+experiment_name: attention
+description: Fixed-coordinate depth attention only
 model:
-  network_type: "attention"  # Use AttentionIRN
-  neuron: [2, 256, 256, 256, 256, 1]
+  network_type: attention
+  neuron:
+  - 2
+  - 256
+  - 256
+  - 256
+  - 256
+  - 1
   omega_0: 30
-  activation: "sine"
+  activation: sine
   dropout: false
   prob: 0.2
-
-  # Attention-specific parameters
+  outermost_linear: true
+  bias: true
   use_attention: true
   attention_hidden: 64
   deep_bias: 2.0
-
-# Loss configuration
 loss:
-  type: "standard_mse"
-  use_depth_weight: false
+  type: standard_mse
   use_prior: false
-  use_multiscale: false
-
-# Optimizer configuration
 optimizer:
-  optimizer_type: "adam"
-  learning_rate: 1.0e-4
+  optimizer_type: adam
+  learning_rate: 0.0001
   use_scheduler: false
-  use_grad_modifier: false
-
-# Training configuration
 training:
   max_iterations: 4000
   log_interval: 100
   alpha: 0
-
-# Data configuration
+  clip_grad: null
 data:
-  model_file: "vel_marmousi_376x1151.csv"
+  model_file: vel_marmousi_376x1151.csv
   downsample: 4
   noise_level: 0.0
   dz: 15
   dt: 0.0019
   nt: 1000
-
-# Evaluation
 evaluation:
   depth_threshold: 0.5
   corner_size: 0.25
   save_plots: true
+gradient_preconditioner:
+  enabled: false

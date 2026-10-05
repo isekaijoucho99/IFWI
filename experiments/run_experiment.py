@@ -1,174 +1,137 @@
-"""
-Main Experiment Runner for Improved IFWI
-----------------------------------------
-Unified entry point for running experiments with different configurations.
-
-Usage:
-    python run_experiment.py --config configs/baseline.yaml
-    python run_experiment.py --config configs/attention.yaml --device cuda:0
-    python run_experiment.py --config configs/combined_best.yaml --resume results/exp_001/checkpoint.pth
-"""
-
-import os
-import sys
+"""Checked IFWI experiments. Explicit configs; full-record propagation; no hidden clipping."""
 import argparse
-import yaml
+import copy
 import json
+import random
+import sys
 import time
 from pathlib import Path
+import uuid
 import numpy as np
 import pandas as pd
 import torch
-
-# Add parent directory to path to import IFWI modules
-sys.path.insert(0, str(Path(__file__).parent.parent))
-
-from ifwi_modules import IFWI2D, IRN
+import yaml
+sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
+from ifwi_modules import IFWI2D
 from rnn_fd import rnn2D
 from generator import wGenerator
-
-# Import improved modules
-from improved_modules.losses import CombinedLoss, DepthWeightedLoss
-from improved_modules.networks import create_improved_network, AttentionIRN
-from improved_modules.optimizers import create_improved_optimizer
-from improved_modules.evaluate_deep import evaluate_deep_layers, visualize_deep_improvement
-
+from improved_modules.losses import CombinedLoss, make_depth_weights, attach_velocity_preconditioner
+from improved_modules.networks import create_improved_network
+from improved_modules.spatiotemporal import SpatiotemporalController
+from improved_modules.evaluate_deep import evaluate_deep_layers
+from experiment_runtime import train_loop, write_json, source_hashes, velocity, evaluate_loss
+from parameter_sweep import source_positions, backward_shot_batches
 
 class ImprovedIFWI(IFWI2D):
-    """
-    Extended IFWI2D with support for improved modules.
-    """
+    """Checked full-record IFWI; author solver and network modules stay unchanged."""
     def __init__(self, *args, improved_config=None, **kwargs):
-        # Store config before calling parent init
-        self.improved_config = improved_config or {}
-
-        # Initialize parent
+        import copy
+        self.improved_config = copy.deepcopy(improved_config or {})
         super().__init__(*args, **kwargs)
+        config = self.improved_config
+        mc = config.get('model', {})
+        if mc.get('network_type', 'vanilla') != 'vanilla':
+            mc.update(neuron=kwargs['neuron'], omega_0=kwargs.get('omega_0',30),
+                      outermost_linear=kwargs.get('outermost_linear',True),
+                      depth_min=0., depth_max=(kwargs['nz']-1)*kwargs['dz']/1000)
+            original_linear = self.vel_net.linear.state_dict()
+            self.vel_net = create_improved_network(mc, device=self.device)
+            self.vel_net.linear.load_state_dict(original_linear)
+        self.clip = config.get('training',{}).get('clip_grad')
+        if self.clip is not None and (not np.isfinite(self.clip) or self.clip<=0):
+            raise ValueError('clip_grad must be null or finite and positive')
+        self.loss_fn = CombinedLoss(kwargs['nz'],kwargs['nx'],config.get('loss',{}))
+        self.last_gradient_norm = None
+        self.sample_dt = kwargs["dt"]
+        pc=config.get('gradient_preconditioner',{})
+        self.depth_weights=make_depth_weights(kwargs['nz'],pc,self.device,self.dtype) if pc.get('enabled') else None
+        st = config.get('spatiotemporal', {})
+        self.attention = SpatiotemporalController(st, self.sample_dt) if st.get('enabled', False) else None
+        self.selection_metric = 'data_mse' if self.attention is not None else 'total_loss'
+        self.objective_step = 0
+        if self.attention is not None and self.depth_weights is not None:
+            raise ValueError('Do not combine legacy depth weights with the spatiotemporal probe')
+        if self.attention is not None and self.loss_fn.data_objective != 'mse':
+            raise ValueError('Spatiotemporal probe requires the MSE data objective')
+        self.shot_batch_size = config.get('training', {}).get('shot_batch_size')
+        if self.shot_batch_size is not None:
+            if isinstance(self.shot_batch_size, bool) or not isinstance(self.shot_batch_size, int) or self.shot_batch_size < 1:
+                raise ValueError('shot_batch_size must be a positive integer')
+            if self.attention is not None or self.depth_weights is not None or config.get('loss', {}).get('use_prior') or self.loss_fn.data_objective != 'mse' or config.get('training', {}).get('alpha', 0):
+                raise ValueError('Shot accumulation currently supports plain MSE without priors or hooks')
 
-        # Replace velocity network if using improved version
-        if improved_config and improved_config.get('model', {}).get('network_type') != 'vanilla':
-            model_config = improved_config['model']
-            model_config['neuron'] = kwargs.get('neuron', [2, 256, 256, 256, 256, 1])
-            model_config['omega_0'] = kwargs.get('omega_0', 30)
-            model_config['activation'] = kwargs.get('activation', 'sine')
-            model_config['dropout'] = kwargs.get('dropout', False)
-            model_config['prob'] = kwargs.get('prob', 0.2)
+    def set_training_step(self, completed_updates):
+        self.objective_step = completed_updates
+        if self.attention is not None:
+            self.attention.set_step(completed_updates)
 
-            self.vel_net = create_improved_network(model_config, device=kwargs['device'])
+    @staticmethod
+    def finite(tensor, label):
+        if not torch.isfinite(tensor).all():
+            raise FloatingPointError('Non-finite '+label)
+        return tensor
 
-        # Create improved loss function
-        loss_config = improved_config.get('loss', {})
-        if loss_config.get('type') in ['combined', 'depth_weighted']:
-            self.loss_fn = CombinedLoss(
-                nz=kwargs['nz'],
-                nx=kwargs['nx'],
-                config=loss_config
-            )
-        else:
-            self.loss_fn = None
+    def objective(self, wavelet, shots, trade_off=0, precondition=False):
+        # Full record only: preserve raw solver outputs and reject nonfinite values.
+        normalized,coords = self.vel_net(self.coords)
+        v = (normalized.squeeze(-1)*self.std+self.mean)*1000
+        self.finite(v,'velocity')
+        v_wave = v.clone()
+        handle=attach_velocity_preconditioner(v_wave,self.depth_weights) if precondition and self.depth_weights is not None else None
+        if precondition and self.attention is not None:
+            handle = v_wave.register_hook(self.attention.spatial_gradient)
+        try:
+            outputs = self.rnn(v_wave,wavelet)
+            for value in outputs:
+                if torch.is_tensor(value): self.finite(value,'raw solver output')
+            self.finite(shots,'observations')
+            loss,parts = self.loss_fn(outputs[2],shots,v,dt=self.sample_dt)
+            if self.attention is not None:
+                selected = self.attention.data_loss(outputs[2], shots)
+                loss = selected + self.loss_fn.lambda_prior * parts['prior_loss']
+                parts.update(data_loss=selected, total_loss=loss)
+            if trade_off:
+                tv=(self.gradient(normalized,coords).square()+1e-6).sqrt().mean()
+                loss=loss+trade_off*tv
+            self.finite(loss,'loss')
+            return v,loss,parts,handle
+        except BaseException:
+            if handle is not None: handle.remove()
+            raise
 
-        # Initialize gradient modifier
-        self.grad_modifier = None
-
-    def train_one_epoch(self, optimizer, vmodel=None, wavelet=None, shots=None, trade_off=0, option=0):
-        """
-        Override to use improved loss and gradient modification.
-        """
-        if self.netOpt == 'IRN':
-            optimizer.zero_grad()
-            vpred, _, _, _, _ = self.forward_process(None, None, None, None, option)
-            loss = ((vpred - vmodel)**2).mean()
-            loss.backward()
-            optimizer.step()
-            return vpred.detach(), [loss.item(), loss.item(), 0]
-
-        # Standard IFWI training with improvements
-        shots = shots.to(self.device)
-        prev_state = torch.zeros([shots.shape[0], shots.shape[1], self.nz_pad, self.nx_pad],
-                                 dtype=self.dtype).to(self.device)
-        curr_state = torch.zeros([shots.shape[0], shots.shape[1], self.nz_pad, self.nx_pad],
-                                 dtype=self.dtype).to(self.device)
-
-        loss_total = 0
-        loss_segAll = 0
-        loss_regAll = 0
-
-        from generator import gen_Segment2d
-
-        for iseg, (segWavelet, segData) in enumerate(gen_Segment2d(wavelet, shots,
-                                                                    segment_size=self.segment_size,
-                                                                    option=option)):
-            optimizer.zero_grad()
-            vpred, vgrad, shot_segPred, prev_state, curr_state = self.forward_process(
-                vmodel, segWavelet, prev_state, curr_state, option
-            )
-
-            from ifwi_modules import repackage_hidden
-            prev_state = repackage_hidden(prev_state)
-            curr_state = repackage_hidden(curr_state)
-
-            # Use improved loss if available
-            if self.loss_fn is not None:
-                loss, loss_dict = self.loss_fn(
-                    shot_segPred, segData, vpred,
-                    prior_info={'deep_velocity_range': (1500, 5500)},
-                    dt=0.0019
-                )
-                loss_Seg = loss_dict['data_loss']
-                loss_Reg = loss_dict['prior_loss']
+    def train_one_epoch(self, optimizer, vmodel=None, wavelet=None, shots=None,
+                        trade_off=0, option=0):
+        if self.netOpt!='IFWI' or option!=0 or len(wavelet)!=self.segment_size:
+            raise ValueError('Experiment runner supports full-record IFWI only')
+        self.vel_net.train()
+        self.params = [p for group in optimizer.param_groups for p in group['params']]
+        current = [p for p in self.vel_net.parameters() if p.requires_grad]
+        if len(self.params)!=len(set(map(id,self.params))) or set(map(id,current))!=set(map(id,self.params)):
+            raise ValueError('Optimizer must cover current network exactly once')
+        optimizer.zero_grad(set_to_none=True)
+        handle = None
+        try:
+            if self.shot_batch_size is not None:
+                if trade_off:
+                    raise ValueError('Shot accumulation requires trade_off=0')
+                v,loss,parts,handle = backward_shot_batches(self,wavelet,shots.to(self.device))
             else:
-                # Standard loss
-                loss_Seg = ((shot_segPred - segData)**2).sum() / (
-                    shots.shape[0] * shots.shape[1] * shots.shape[-2] * shots.shape[-1]
-                )
-                if self.reg_op == "TV":
-                    loss_Reg = (vgrad**2 + 1e-6).sqrt().mean()
-                else:
-                    loss_Reg = 0
-                loss = loss_Seg + trade_off * loss_Reg
-
-            loss.backward()
-
-            # Apply gradient modification if available
-            if self.grad_modifier is not None:
-                for param in self.params:
-                    if param.grad is not None:
-                        param.grad.data = self.grad_modifier(param.grad.data)
-
-            torch.nn.utils.clip_grad_norm_(self.params, self.clip)
+                v,loss,parts,handle = self.objective(wavelet,shots.to(self.device),trade_off,True)
+                loss.backward()
+            grads=[p.grad for p in self.params if p.grad is not None]
+            if not grads: raise FloatingPointError('No parameter gradients')
+            for grad in grads: self.finite(grad,'parameter gradient')
+            norm=torch.linalg.vector_norm(torch.stack([g.detach().norm() for g in grads]))
+            self.finite(norm,'gradient norm')
+            self.last_gradient_norm=float(norm)
+            if self.clip is not None:
+                torch.nn.utils.clip_grad_norm_(self.params,self.clip,error_if_nonfinite=True)
             optimizer.step()
-
-            loss_total += loss.detach().cpu().item()
-            loss_segAll += loss_Seg.detach().cpu().item()
-            loss_regAll += (loss_Reg.detach().cpu().item() if torch.is_tensor(loss_Reg)
-                           else loss_Reg)
-
-        return vpred.detach(), [loss_total, loss_segAll, loss_regAll / (iseg + 1)]
-
-
-def load_config(config_path):
-    """Load YAML configuration file."""
-    with open(config_path, 'r') as f:
-        config = yaml.safe_load(f)
-    return config
-
-
-def setup_experiment(config, args):
-    """Setup experiment directories and logging."""
-    # Create output directory
-    exp_name = config['experiment_name']
-    timestamp = time.strftime('%Y%m%d_%H%M%S')
-    output_dir = Path(args.output_dir) / f"{exp_name}_{timestamp}"
-    output_dir.mkdir(parents=True, exist_ok=True)
-
-    # Save config
-    with open(output_dir / 'config.yaml', 'w') as f:
-        yaml.dump(config, f)
-
-    print(f"Experiment: {exp_name}")
-    print(f"Output directory: {output_dir}")
-
-    return output_dir
+            for p in self.params: self.finite(p,'updated parameter')
+            return v.detach(),[float(loss.detach()),float(parts['data_loss'].detach()),
+                               float(parts['prior_loss'].detach()),float(parts['data_mse'].detach())]
+        finally:
+            if handle is not None: handle.remove()
 
 
 def prepare_data(config, device):
@@ -187,7 +150,7 @@ def prepare_data(config, device):
     nv, nz, nx = vp.shape
 
     # Setup acquisition geometry
-    xs = torch.arange(20, nx-10, 20, dtype=torch.long).repeat(nv, 1)
+    xs = torch.from_numpy(source_positions(nx, data_config)).repeat(nv, 1)
     ns = xs.shape[1]
     xr = torch.arange(nx, dtype=torch.long).repeat(nv, ns, 1)
     zs = torch.full((nv, ns), 1, dtype=torch.long)  # source_depth_index
@@ -211,6 +174,9 @@ def prepare_data(config, device):
     with torch.no_grad():
         _, _, shots, _ = forward(vmodel=vp, segment_wavelet=wavelet)
 
+    for value in (vp,shots,wavelet):
+        if not torch.isfinite(value).all(): raise FloatingPointError("Nonfinite generated data")
+
     # Add noise if specified
     noise_level = data_config.get('noise_level', 0.0)
     if noise_level > 0:
@@ -227,224 +193,144 @@ def prepare_data(config, device):
     }
 
 
-def train_model(model, data, config, output_dir, args):
-    """Main training loop."""
-    training_config = config['training']
-
-    # Setup optimizer
-    optimizer_config = config['optimizer']
-    optimizer_config['nz'] = data['geometry']['nz']
-
-    if optimizer_config['optimizer_type'] == 'depth_adaptive':
-        optimizer, scheduler, grad_modifier = create_improved_optimizer(
-            model.vel_net, optimizer_config
-        )
-    else:
-        optimizer, scheduler, grad_modifier = create_improved_optimizer(
-            model.vel_net.parameters(), optimizer_config
-        )
-
-    # Attach gradient modifier to model
-    model.grad_modifier = grad_modifier
-
-    # Training history
-    history = []
-    best_loss = float('inf')
-    best_model = None
-
-    max_iter = training_config['max_iterations']
-    log_interval = training_config['log_interval']
-
-    print(f"\nStarting training for {max_iter} iterations...")
-    start_time = time.time()
-
-    for epoch in range(max_iter):
-        # Train one epoch
-        _, losses = model.train_one_epoch(
-            optimizer,
-            vmodel=None,
-            wavelet=data['wavelet'],
-            shots=data['shots'],
-            trade_off=training_config.get('alpha', 0),
-            option=0
-        )
-
-        history.append(losses)
-
-        # Update learning rate if scheduler exists
-        if scheduler is not None:
-            scheduler.step(epoch)
-
-        # Log progress
-        if epoch % log_interval == 0 or epoch == max_iter - 1:
-            elapsed = time.time() - start_time
-            print(f"Epoch {epoch:5d}/{max_iter} | "
-                  f"Loss: {losses[0]:.4e} | "
-                  f"Data: {losses[1]:.4e} | "
-                  f"Reg: {losses[2]:.4e} | "
-                  f"Time: {elapsed:.1f}s")
-
-            # Save checkpoint
-            if losses[0] < best_loss:
-                best_loss = losses[0]
-                best_model = {
-                    'epoch': epoch,
-                    'state_dict': model.vel_net.state_dict(),
-                    'optimizer': optimizer.state_dict(),
-                    'loss': best_loss
-                }
-
-            torch.save({
-                'epoch': epoch,
-                'state_dict': model.vel_net.state_dict(),
-                'optimizer': optimizer.state_dict(),
-                'best_model': best_model,
-                'history': history
-            }, output_dir / f'checkpoint_epoch{epoch}.pth')
-
-    total_time = time.time() - start_time
-    print(f"\nTraining completed in {total_time:.1f}s")
-
-    return history, best_model
+def load_config(path):
+    with open(path,encoding='utf-8') as f: config=yaml.safe_load(f)
+    for section in ('model','data','training','optimizer','evaluation'):
+        if section not in config: raise ValueError('Missing config section: '+section)
+    t=config['training']; d=config['data']
+    if any(not isinstance(t[k],int) or t[k]<1 for k in ('max_iterations','log_interval')):
+        raise ValueError('Iterations/log_interval must be positive integers')
+    if d['dt']<=0 or d['dz']<=0 or d['nt']<2 or d.get('downsample',4)<1:
+        raise ValueError('Invalid data sampling')
+    if config['model'].get('network_type','vanilla') not in ('vanilla','attention'):
+        raise ValueError('Only vanilla/attention supported by this protocol')
+    if config['model'].get('dropout',False): raise ValueError('Dropout outside this deterministic comparison protocol')
+    if config['loss'].get('use_depth_weight') or config['optimizer'].get('use_grad_modifier'):
+        raise ValueError('Legacy gradient settings: use gradient_preconditioner instead')
+    return config
 
 
-def evaluate_model(model, data, config, output_dir):
-    """Evaluate model on deep layer metrics."""
-    eval_config = config['evaluation']
+def build_model(config,data,device):
+    geom=data['geometry']; params=data['params']; mc=config['model']
+    return ImprovedIFWI(improved_config=config,mean=3.,std=1.,neuron=mc['neuron'],
+        omega_0=mc.get('omega_0',30),prob=mc.get('prob',.2),activation=mc.get('activation','sine'),
+        bias=mc.get('bias',True),dropout=mc.get('dropout',False),outermost_linear=mc.get('outermost_linear',True),
+        nz=geom['nz'],nx=geom['nx'],zs=geom['zs'],xs=geom['xs'],zr=geom['zr'],xr=geom['xr'],
+        dz=params['dz'],dt=params['dt'],npad=15,order=2,vmax=float(data['vp_true'].max()),
+        log_para=1e-6,segment_size=params['nt'],freeSurface=True,regularization='TV',
+        dtype=torch.float32,device=device,netOpt='IFWI')
 
-    # Get predictions
-    model.vel_net.eval()
-    with torch.no_grad():
-        v_pred, _ = model.predict()
 
-    v_pred = v_pred.squeeze().cpu().numpy()
-    v_true = data['vp_true'].squeeze().cpu().numpy()
+def save_plot(truth,pred,dz,path,model_title='Best saved model'):
+    import matplotlib
+    matplotlib.use('Agg')
+    import matplotlib.pyplot as plt
+    extent=[0,truth.shape[1]*dz/1000,truth.shape[0]*dz/1000,0]
+    fig,axes=plt.subplots(1,3,figsize=(13,4),layout='constrained')
+    for ax,v,title in zip(axes[:2],[truth,pred],['Truth',model_title]):
+        im=ax.imshow(v/1000,extent=extent,aspect='auto',cmap='RdBu_r',vmin=truth.min()/1000,vmax=truth.max()/1000)
+        ax.set(title=title,xlabel='Distance (km)',ylabel='Depth (km)')
+        fig.colorbar(im,ax=ax,label='km/s')
+    error=pred-truth; bound=max(float(np.abs(error).max()),1.)
+    im=axes[2].imshow(error,extent=extent,aspect='auto',cmap='RdBu_r',vmin=-bound,vmax=bound)
+    axes[2].set(title='Prediction minus truth',xlabel='Distance (km)',ylabel='Depth (km)')
+    fig.colorbar(im,ax=axes[2],label='m/s'); fig.savefig(path,dpi=160); plt.close(fig)
 
-    # Compute metrics
-    metrics = evaluate_deep_layers(
-        v_true, v_pred,
-        depth_threshold=eval_config['depth_threshold'],
-        corner_size=eval_config['corner_size'],
-        dz=data['params']['dz']
-    )
 
-    # Save metrics
-    with open(output_dir / 'metrics.json', 'w') as f:
-        # Convert numpy arrays to lists for JSON serialization
-        metrics_serializable = {
-            k: (v.tolist() if isinstance(v, np.ndarray) else v)
-            for k, v in metrics.items()
-        }
-        json.dump(metrics_serializable, f, indent=2)
-
-    # Print summary
-    print("\n" + "="*50)
-    print("EVALUATION RESULTS")
-    print("="*50)
-    print(f"Deep Layer Relative Error: {metrics['deep_relative_error']*100:.2f}%")
-    print(f"Deep Layer RMSE: {metrics['deep_rmse']:.1f} m/s")
-    print(f"Deep Layer SSIM: {metrics['deep_ssim']:.4f}")
-    print(f"Bottom-Left Error: {metrics['bottom_left_error']*100:.2f}%")
-    print(f"Bottom-Right Error: {metrics['bottom_right_error']*100:.2f}%")
-    print(f"Deep Quality Score: {metrics['deep_quality_score']:.4f}")
-    print("="*50)
-
-    # Save velocity models
-    np.save(output_dir / 'v_true.npy', v_true)
-    np.save(output_dir / 'v_pred.npy', v_pred)
-
+def evaluate_model_metrics(model, data, config):
+    """Report raw MSE alongside the selected objective and velocity diagnostics."""
+    pred=velocity(model); truth=data['vp_true'].squeeze().cpu().numpy()
+    settings=config['evaluation']; depth=settings.get('depth_threshold',.5)
+    metrics=evaluate_deep_layers(truth,pred,depth_threshold=depth,
+        corner_size=settings.get('corner_size',.25),dz=data['params']['dz'])
+    _,parts=evaluate_loss(model,data,config['training'].get('alpha',0))
+    metrics.update({k:v for k,v in parts.items() if k.startswith('prior_')})
+    deep=pred[int(pred.shape[0]*depth):]
+    metrics.update(data_mse=parts['data_mse'],data_objective=parts['data_loss'],
+        velocity_min_mps=float(pred.min()),velocity_max_mps=float(pred.max()),
+        deep_velocity_std_mps=float(deep.std()),
+        deep_horizontal_tv_mps=float(np.abs(np.diff(deep,axis=1)).mean()))
+    metrics.update(selection_metric=model.selection_metric, objective_step=model.objective_step,
+                   cutoff_hz=model.attention.current_cutoff_hz if model.attention is not None else None)
     return metrics
 
 
 def main():
-    parser = argparse.ArgumentParser(description='Run IFWI experiment with improvements')
-    parser.add_argument('--config', type=str, required=True,
-                       help='Path to YAML config file')
-    parser.add_argument('--output-dir', type=str, default='results',
-                       help='Output directory for results')
-    parser.add_argument('--device', type=str, default='cuda:0',
-                       help='Device to use (cuda:0 or cpu)')
-    parser.add_argument('--seed', type=int, default=42,
-                       help='Random seed')
-    parser.add_argument('--resume', type=str, default=None,
-                       help='Resume from checkpoint')
-
-    args = parser.parse_args()
-
-    # Set random seed
-    torch.manual_seed(args.seed)
-    np.random.seed(args.seed)
-    if torch.cuda.is_available():
-        torch.cuda.manual_seed(args.seed)
-
-    # Load configuration
-    config = load_config(args.config)
-
-    # Setup experiment
-    output_dir = setup_experiment(config, args)
-
-    # Prepare data
-    data = prepare_data(config, args.device)
-
-    # Create model
-    geom = data['geometry']
-    params = data['params']
-    model_config = config['model']
-
-    model = ImprovedIFWI(
-        improved_config=config,
-        mean=3.0,
-        std=1.0,
-        neuron=model_config['neuron'],
-        omega_0=model_config['omega_0'],
-        prob=model_config.get('prob', 0.2),
-        activation=model_config['activation'],
-        bias=True,
-        dropout=model_config.get('dropout', False),
-        outermost_linear=True,
-        nz=geom['nz'],
-        nx=geom['nx'],
-        zs=geom['zs'],
-        xs=geom['xs'],
-        zr=geom['zr'],
-        xr=geom['xr'],
-        dz=params['dz'],
-        dt=params['dt'],
-        npad=15,
-        order=2,
-        vmax=data['vp_true'].max(),
-        log_para=1e-6,
-        segment_size=params['nt'],
-        vpadding=None,
-        freeSurface=True,
-        regularization="TV",
-        dtype=torch.float32,
-        device=args.device,
-        netOpt='IFWI'
-    )
-
-    # Train model
-    history, best_model = train_model(model, data, config, output_dir, args)
-
-    # Save training history
-    history_array = np.array(history)
-    np.savetxt(output_dir / 'loss_history.csv',
-              history_array,
-              delimiter=',',
-              header='total_loss,data_loss,reg_loss',
-              comments='')
-
-    # Load best model for evaluation
-    if best_model:
-        model.vel_net.load_state_dict(best_model['state_dict'])
-
-    # Evaluate
-    metrics = evaluate_model(model, data, config, output_dir)
-
-    print(f"\nResults saved to: {output_dir}")
-
+    parser=argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--config',required=True)
+    parser.add_argument('--output-dir',default='results')
+    parser.add_argument('--device',default='cuda:0')
+    parser.add_argument('--seed',type=int)
+    parser.add_argument('--resume',type=Path)
+    parser.add_argument('--allow-execution-change',action='store_true',help='Verified resume across shot-batching/runner changes; core physics and objective must match')
+    parser.add_argument('--iterations',type=int,help='Override total update budget, not scheduler horizon')
+    parser.add_argument('--log-interval',type=int)
+    parser.add_argument('--preliminary',action='store_true',help='Explicit short original-protocol validation budget')
+    args=parser.parse_args()
+    if args.allow_execution_change and args.resume is None:
+        parser.error('--allow-execution-change requires --resume')
+    config=load_config(args.config)
+    if args.iterations is not None: config['training']['max_iterations']=args.iterations
+    if args.log_interval is not None: config['training']['log_interval']=args.log_interval
+    if config['training']['max_iterations']<1 or config['training']['log_interval']<1:
+        parser.error('iterations and log-interval must be positive')
+    args.seed = args.seed if args.seed is not None else config.get('seed', 42)
+    config['seed']=args.seed
+    if config.get('execution', {}).get('protocol') == 'original_baseline':
+        if args.allow_execution_change:
+            parser.error('Original baseline resumes require the same original code and full-shot input')
+        from baseline_experiment import run_config
+        run_config(config, Path(args.output_dir), device=args.device, seed=args.seed,
+                   resume=args.resume, preliminary=args.preliminary)
+        return 0
+    torch.set_num_threads(2)
+    random.seed(args.seed); np.random.seed(args.seed); torch.manual_seed(args.seed)
+    if torch.cuda.is_available(): torch.cuda.manual_seed_all(args.seed)
+    torch.backends.cudnn.deterministic=True; torch.backends.cudnn.benchmark=False
+    out=Path(args.output_dir)/(config['experiment_name']+'_'+time.strftime('%Y%m%d_%H%M%S')+'_'+uuid.uuid4().hex[:6])
+    out.mkdir(parents=True,exist_ok=False)
+    write_json(out/'config.json',config)
+    (out/'config.yaml').write_text(yaml.safe_dump(config,sort_keys=False),encoding='utf-8')
+    write_json(out/'status.json',{'state':'preparing','completed_updates':0})
+    import importlib.metadata as metadata
+    write_json(out/'environment.json',{'python':sys.version,'device':args.device,
+        'packages':{n:metadata.version(n) for n in ('torch','torchvision','numpy','pandas','scipy','matplotlib','scikit-image','PyYAML')},
+        'source_hashes':source_hashes()})
+    print('Output directory: '+str(out),flush=True)
+    try:
+        data=prepare_data(config,args.device)
+        np.save(out/'observed.npy',data['shots'].cpu().numpy())
+        write_json(out/'acquisition.json', {
+            'num_shots': int(data['geometry']['xs'].shape[1]),
+            'source_x_indices': data['geometry']['xs'].tolist(),
+            'source_z_indices': data['geometry']['zs'].tolist(),
+            'receiver_x_indices': data['geometry']['xr'].tolist(),
+            'receiver_z_indices': data['geometry']['zr'].tolist()})
+        # Decouple network initialization from acquisition/noise RNG consumption.
+        random.seed(args.seed); np.random.seed(args.seed); torch.manual_seed(args.seed)
+        if torch.cuda.is_available(): torch.cuda.manual_seed_all(args.seed)
+        model=build_model(config,data,args.device)
+        if model.depth_weights is not None: np.save(out/'depth_weights.npy',model.depth_weights.cpu().numpy())
+        result=train_loop(model,data,config,out,resume=args.resume,allow_execution_change=args.allow_execution_change)
+        final_metrics=evaluate_model_metrics(model,data,config)
+        final_metrics['completed_updates']=result['completed_updates']
+        write_json(out/'final_metrics.json',final_metrics)
+        model.vel_net.load_state_dict(result['best_state'])
+        model.set_training_step(result['best_update'] - 1)
+        pred=velocity(model); truth=data['vp_true'].squeeze().cpu().numpy()
+        settings=config['evaluation']
+        metrics=evaluate_model_metrics(model,data,config)
+        metrics.update(parameter_count=result['parameter_count'],best_update=result['best_update'])
+        metrics['selection_metric'] = result['selection_metric']
+        write_json(out/'metrics.json',metrics)
+        np.save(out/'v_pred.npy',pred)
+        if settings.get('save_plots',True): save_plot(truth,pred,data['params']['dz'],out/'result.png')
+        write_json(out/'status.json',{'state':'completed','completed_updates':result['completed_updates']})
+        print(f"Completed: best_update={result['best_update']}, deep_rmse={metrics['deep_rmse']:.2f} m/s; {out}",flush=True)
+    except BaseException as exc:
+        previous=json.loads((out/'status.json').read_text(encoding='utf-8'))
+        write_json(out/'status.json',{'state':'failed','completed_updates':previous.get('completed_updates',0),'error':str(exc)})
+        raise
     return 0
 
-
-if __name__ == '__main__':
-    sys.exit(main())
+if __name__=='__main__': raise SystemExit(main())

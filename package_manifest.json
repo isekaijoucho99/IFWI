@@ -1,14 +1,34 @@
 {
-  "source": "IFWI_clean",
-  "packaged_on": "2026-09-29",
+  "schema_version": 2,
+  "source": "Git source release with original main files retained",
+  "packaged_on": "2026-10-05",
+  "repository": "https://github.com/isekaijoucho99/IFWI",
+  "branch": "feature/experiment-cli-release-20261005",
+  "comparison_base": {
+    "branch": "main",
+    "commit": "c5ce59af3c9988dc730a29de2e541c23d1572cd2"
+  },
+  "scope": "All delivered source, tests, data, pretrained weight and documentation; excludes this manifest itself, local environments, research library and experiment outputs",
   "files": {
     ".gitattributes": {
       "bytes": 104,
       "sha256": "130e73a90876060d5d7d09fdd2b12237bd3d2ab7e11cd0d0b222ef43d7c94c30"
     },
     ".gitignore": {
-      "bytes": 219,
-      "sha256": "3e5ab0a3639bd2c9d6f5d18c0ffa6aea314efa9a6df1f05d725ad11db55fb787"
+      "bytes": 805,
+      "sha256": "77330c0d9c15b168f0608b391007281e19a26ec5fef8bb0d5b240a3cd98c3d44"
+    },
+    "README.md": {
+      "bytes": 10210,
+      "sha256": "fd9c02722f6435d85c47c39ab0718f5a8bc49fdba9be6f0d7bb12e327f50a832"
+    },
+    "README_IMPROVEMENTS.md": {
+      "bytes": 3855,
+      "sha256": "f7115dbb16f70eda4aa35e1edaa9f6bdcf86eb49c15cf568a14ec7fa1bac04fe"
+    },
+    "THIRD_PARTY_NOTICES.md": {
+      "bytes": 1424,
+      "sha256": "798b2eb0d72e0208f9e7ec0ca19ad89397a64e386f5937a0ed634eddab39fe21"
     },
     "data/overthrust2d.npz": {
       "bytes": 302290,
@@ -26,13 +46,201 @@
       "bytes": 579,
       "sha256": "fb51a3b0e6e692e5ead01acdf65aca20019c0f5ddc52d5e92d8b0ba1d112c1a0"
     },
+    "docs/optimization-validation-20260930.md": {
+      "bytes": 10271,
+      "sha256": "b452e6be2577601e7115ccbb8ddb70bc6a148941d43478ffec6315f8944343aa"
+    },
     "docs/original_notes.md": {
       "bytes": 9670,
       "sha256": "f14e8161da1a2bc26348df1b30851e35d1a82ee1ffcae3858d9f5c651026e9e3"
     },
     "docs/packaging.md": {
-      "bytes": 2412,
-      "sha256": "d52912df113097fa9a7e63fde156d9c7db4acadb675c689ec392b4b71bb15f94"
+      "bytes": 2160,
+      "sha256": "e6d334ce1b4fb48711a78238ec50dc771cc31ca391b381e82e29dbd6e6ccdd72"
+    },
+    "docs/release-check-20261005.md": {
+      "bytes": 3829,
+      "sha256": "41d8a502964c48932ae52c10ddbe935bb284095ac277a337b1b997714f0ad54a"
+    },
+    "docs/repair-validation-20260930.md": {
+      "bytes": 4821,
+      "sha256": "3d8fc16a56ff442aa81fc62f09455552bbb42394dfe194dc0cf2b0780cc8ee9b"
+    },
+    "docs/spatiotemporal-probe-20260930.md": {
+      "bytes": 9015,
+      "sha256": "9976f99dace7ff2078d8f98eadfa55850a26b5f2f57155974783e33172fcfbeb"
+    },
+    "docs/superpowers/plans/2026-09-29-deep-layer-repair.md": {
+      "bytes": 13332,
+      "sha256": "a4c186660e2adf8b6eca742acb13dbf33c2c829eca3e0137879ec6d35c071239"
+    },
+    "docs/superpowers/plans/2026-09-30-optimization-ablations.md": {
+      "bytes": 4150,
+      "sha256": "87b1b3dd11321c9638f915968511683ece4e8e7003d164018b03794b9cb07280"
+    },
+    "docs/superpowers/plans/2026-09-30-spatiotemporal-probe.md": {
+      "bytes": 2686,
+      "sha256": "a58da80e8fe04214c93946baf1d3c67b6e45870a5458f1f51e1b3d9c9e46fef7"
+    },
+    "docs/superpowers/plans/2026-10-05-original-baseline-protocol.md": {
+      "bytes": 4977,
+      "sha256": "cf06792812753a79c2ab1448d7b7fd18af97fcc29cbbae98b90a91adfda2afcf"
+    },
+    "experiment.py": {
+      "bytes": 4596,
+      "sha256": "f939d4420daa506efbc7ce1700097971bd8ecfecbaea6524300106a6ec6fe6d2"
+    },
+    "experiments/README.md": {
+      "bytes": 10008,
+      "sha256": "4b587681028e2a6c5b06badc65b9077de2c882bd0b8020fb69d8849f724977de"
+    },
+    "experiments/baseline_experiment.py": {
+      "bytes": 16215,
+      "sha256": "d8b65915f94eeda00e9a4fb811221713c6cdf297063bcda55f3c8fc32ddbc1db"
+    },
+    "experiments/baseline_protocol.py": {
+      "bytes": 8211,
+      "sha256": "933415ea523403bbc818fc28d1e9e6a4b04b7708356ca2b86e242f58757008c9"
+    },
+    "experiments/baseline_reference/ifwi_experiment.py": {
+      "bytes": 14465,
+      "sha256": "748137c90c47bbd9e032cc70f07d25b4bc027a30580511ff74e2079134728459"
+    },
+    "experiments/compare_results.py": {
+      "bytes": 3092,
+      "sha256": "bd9753728e0e70b64aaa6e821963e490d8856dae1a5e0370b9de3c0fd8ce48a1"
+    },
+    "experiments/configs/adaptive_lr.yaml": {
+      "bytes": 816,
+      "sha256": "eb9664e3c477dc52e785f541a7dd15482fbb67705580e46535424ca172bb4349"
+    },
+    "experiments/configs/attention.yaml": {
+      "bytes": 811,
+      "sha256": "ba8b2b00c42ca5d3dce45955f16fa5d41ed7aed6eee7e25a424f70d5556808a5"
+    },
+    "experiments/configs/attention_film.yaml": {
+      "bytes": 901,
+      "sha256": "52b9ad55ee9d8b52b79e4bf4bcdb53c6472d45a61f5a983890c0e5b3e6154eeb"
+    },
+    "experiments/configs/attention_residual.yaml": {
+      "bytes": 909,
+      "sha256": "1f1ec1abd5e7cf8f0f124fa7f83408a0ced8ad4dbc8e6c49df6bfe708fa3e0c8"
+    },
+    "experiments/configs/baseline.yaml": {
+      "bytes": 850,
+      "sha256": "7463f026d9c1bf810148138aad467305988694e020e577bc709e043b2d62725d"
+    },
+    "experiments/configs/combined_best.yaml": {
+      "bytes": 1016,
+      "sha256": "3c7b14a751da191d33f717ab562059b05425b19d7aa73a6fb7de62c2c49af53c"
+    },
+    "experiments/configs/data_huber.yaml": {
+      "bytes": 821,
+      "sha256": "84a8d27d8111eb1d77f2417076b837425f133aecdac9532f217792c31336a48d"
+    },
+    "experiments/configs/depth_weighted_loss.yaml": {
+      "bytes": 863,
+      "sha256": "a4d7881ca83516e4269ed27ab181fa68959ab5737d7f9f7c2b22076083322bb7"
+    },
+    "experiments/configs/feature_baseline.yaml": {
+      "bytes": 697,
+      "sha256": "10cef30ab975dfb5c8e389a53689623b565e00bb76ae5025da6af21b043fb615"
+    },
+    "experiments/configs/layerwise_conservative.yaml": {
+      "bytes": 825,
+      "sha256": "7997021524c7df6ff0073dda902172df8bf3654843c041d05f9824ddd7276a8c"
+    },
+    "experiments/configs/legacy_random_baseline.yaml": {
+      "bytes": 808,
+      "sha256": "1399caab669b7ba031352010540adbe605855f1f209017c84ab15a100de47b71"
+    },
+    "experiments/configs/prior_normalized_charbonnier.yaml": {
+      "bytes": 1052,
+      "sha256": "09f26252ddaeaac00b82cb18c894c3d5f8f689399377d94aadbf1b55fe32cbb2"
+    },
+    "experiments/configs/prior_normalized_tv.yaml": {
+      "bytes": 1025,
+      "sha256": "357d9b57f9d394b297f2f88d5b145b58ecfe6459c514c93af97ce6674f7e3898"
+    },
+    "experiments/configs/prior_only.yaml": {
+      "bytes": 935,
+      "sha256": "e91914621dc4cdc03e78ab13a2f66d6da5e205b5a9232fa4bede25b042a8edc2"
+    },
+    "experiments/configs/st_joint.yaml": {
+      "bytes": 1016,
+      "sha256": "e2e72fd489d7c51e4869e937e1932710eb2987efa9053a6ddb347e8f7f1d4185"
+    },
+    "experiments/configs/st_multiscale.yaml": {
+      "bytes": 1023,
+      "sha256": "10f8e9dcb70466b11a5eb90105bca30ca4a2f8a9480ae6db9d1939635d3d0899"
+    },
+    "experiments/configs/st_space.yaml": {
+      "bytes": 1017,
+      "sha256": "1f920d8faffb8074436d49376cf75481e6225918c5085163726e539efbb41c33"
+    },
+    "experiments/configs/st_time.yaml": {
+      "bytes": 1016,
+      "sha256": "5578bac680b054f6d905b6e34db93dd185e08007cd4a68de6fa07ad8fbc35da3"
+    },
+    "experiments/experiment_runtime.py": {
+      "bytes": 14720,
+      "sha256": "a0cc10e40ce3479c8dd8bec295e852aa41ed4c7216f9e1c9760c7ecf0015983b"
+    },
+    "experiments/import_completed_baseline.py": {
+      "bytes": 18386,
+      "sha256": "2a530ce42834a5a6b29e668540a783d9ad8efff36586af884ea80b24a1660788"
+    },
+    "experiments/improved_modules/evaluate_deep.py": {
+      "bytes": 2574,
+      "sha256": "64665f5da8d5ae88052d69ad2c95c1e4e63383e8ffb49c06ea5fac0ba22af046"
+    },
+    "experiments/improved_modules/losses.py": {
+      "bytes": 8882,
+      "sha256": "1459dfa6230b43223dd13595f28618f4c758fe4e7a5de6156650da90f6ff33e0"
+    },
+    "experiments/improved_modules/networks.py": {
+      "bytes": 15780,
+      "sha256": "d8fdf544d05ff9c3ea1b91092af9e57d8534bea3b2399044ba2bf32e6a55d3aa"
+    },
+    "experiments/improved_modules/optimizers.py": {
+      "bytes": 3950,
+      "sha256": "b24d103e4ca41f4f803c522646684933c9d5c8d863546bde0ab2f29ab7251b82"
+    },
+    "experiments/improved_modules/spatiotemporal.py": {
+      "bytes": 11669,
+      "sha256": "7d9f549436a33b45914d7500b8ba2b2804a09448fa0ff31491bcb59292cf9ecd"
+    },
+    "experiments/parameter_sweep.py": {
+      "bytes": 6282,
+      "sha256": "193c6e814c09cc8500404a4d71a6b240f711661e7b86b35afaef14cb03379ea9"
+    },
+    "experiments/requirements.txt": {
+      "bytes": 99,
+      "sha256": "bcd87a71d195d243b5b04389a28b48c95261287c651b76ad0a22477d154bb30e"
+    },
+    "experiments/run_ablation_suite.py": {
+      "bytes": 5046,
+      "sha256": "91e93978cf1975d18c94237f5df97c4ad56e9802b0b948e375229f2a2e2fbcfb"
+    },
+    "experiments/run_all_experiments.bat": {
+      "bytes": 635,
+      "sha256": "f7f7d438683e420441f63e4826ffa4c0d23a89ae1cff350550e3db7ee68c3f4c"
+    },
+    "experiments/run_all_experiments.sh": {
+      "bytes": 560,
+      "sha256": "a8cf49622819a727dc7bd2ed4ef8df9a90af2ced2359adc27b9c91a5faf93944"
+    },
+    "experiments/run_experiment.py": {
+      "bytes": 18900,
+      "sha256": "50627601f6a508a1df17b8386cf6927b4c1bb135c400b9754003d4bf6d686856"
+    },
+    "experiments/run_parameter_sweep.py": {
+      "bytes": 11916,
+      "sha256": "9fe738725297dd823f33eec1c57a8259aab5fc2a7186c0e369fedb1ac31cda5b"
+    },
+    "experiments/summarize_parameter_sweep.py": {
+      "bytes": 7854,
+      "sha256": "777d1ad61b2bf35eeb2a39855208503305bea14a8a66b2693f465f0a1ff5f426"
     },
     "fwi.py": {
       "bytes": 15295,
@@ -58,25 +266,169 @@
       "bytes": 6073,
       "sha256": "c1e947c4d28d815faec9b21534783383e8d7f249bad73fbfc95077f37b458a17"
     },
-    "README.md": {
-      "bytes": 6504,
-      "sha256": "e47dd3b2b9b97579e0d89e9685d8fd17cdc53666a8b12cb11669b393c7973aff"
+    "pytest.ini": {
+      "bytes": 27,
+      "sha256": "c809c969ec7e11b9ff37784e9c6fcc0b7c5148d168e18b05aed797e03fbd6ead"
+    },
+    "requirements-dev.txt": {
+      "bytes": 34,
+      "sha256": "446698dabb39bf58615845cdf1edf3c68dee2d81dac6a7797d9fa153a3fa0f7c"
     },
     "requirements.txt": {
-      "bytes": 151,
-      "sha256": "1b44c46678bb69e408abfd7a6be13f1d385dc1b43375c797e43c997272bbdf1f"
+      "bytes": 186,
+      "sha256": "7088f79f863f5b6c2dd26c9f0f56d06250f7603c6eac3e142677fe50af6261dc"
     },
     "rnn_fd.py": {
       "bytes": 23299,
       "sha256": "eeeebd821462fadb52bb9b12a06932f2c9f764e3e7482b316e12a94d26ec9fd0"
     },
+    "scripts/audit_spatiotemporal.py": {
+      "bytes": 24423,
+      "sha256": "b8e6f64279d9aa373524471e342a1a7fe0a98734256e45d3e30339370eb6f230"
+    },
+    "scripts/benchmark_shot_batch.py": {
+      "bytes": 5326,
+      "sha256": "152f323a32831f04984d213b9aa8414df85d611bdb6b4c35b52ecb8775eecc24"
+    },
+    "scripts/capture_stage_checkpoints.py": {
+      "bytes": 1847,
+      "sha256": "bfa101efb3612714d5c546460f0474e4242fff33f41f25efd98826e343fa405d"
+    },
+    "scripts/inspect_observed_spectrum.py": {
+      "bytes": 1722,
+      "sha256": "789c3c374b6a7da499ad0dd810c56aee189aed5c3b2455db7dbb2e8be9c875b4"
+    },
+    "scripts/plot_parameter_sweep_losses.py": {
+      "bytes": 12493,
+      "sha256": "43f56e02fb70ad77482f960afd7065a7180bf1a1dc32c6de46c9058b9c5966eb"
+    },
+    "scripts/resume_parameter_sweep.py": {
+      "bytes": 13895,
+      "sha256": "0face97197b8853cfa022f1207b272dcb124e3becf748c0cdb7d0af94f93ea71"
+    },
+    "scripts/start_loss_export_detached.ps1": {
+      "bytes": 2538,
+      "sha256": "d3d11610ffb5910a8672be58434b7d1c9f849f7f52f0be3aa325d4370162ba66"
+    },
+    "scripts/start_parameter_sweep_detached.ps1": {
+      "bytes": 2606,
+      "sha256": "10b1f6b43b8a9a6eb34ae7f959b5c2e8e16b796ceb12dafcb993f8bf903d0241"
+    },
+    "scripts/start_progress_monitor_detached.ps1": {
+      "bytes": 2198,
+      "sha256": "a624f4dc7ba96f7e1dbb56db7254e91a6284715bb9731fa2e924d8eb726961a6"
+    },
+    "scripts/summarize_ablations.py": {
+      "bytes": 24713,
+      "sha256": "92031de74f3134be98540c8330a46d8f62f1076539a31d663de86e62766329f9"
+    },
+    "scripts/summarize_spatiotemporal.py": {
+      "bytes": 28682,
+      "sha256": "5dea3d1c972ca65dd14a6a9a2778a6fe96b57180b795044cd537e61743fcee55"
+    },
+    "scripts/watch_parameter_sweep.ps1": {
+      "bytes": 2670,
+      "sha256": "46f52191ad51b30ba0f7bc9286c609414d111c5da9f181f8617ea06ebee10f23"
+    },
     "source_manifest.json": {
       "bytes": 576,
       "sha256": "df4733f7dc71b9fddfe0a0e5955196138d1a5b8024b0baf95de2da684c7899ca"
     },
-    "THIRD_PARTY_NOTICES.md": {
-      "bytes": 1424,
-      "sha256": "798b2eb0d72e0208f9e7ec0ca19ad89397a64e386f5937a0ed634eddab39fe21"
+    "test_framework.py": {
+      "bytes": 435,
+      "sha256": "6bb011885851078e6bfa7cfeea7f505a46d121e1f80af40f6db2527c7fb247d3"
+    },
+    "tests/helpers.py": {
+      "bytes": 1486,
+      "sha256": "892068e7f24686751ecd9fedbd18c9a5a7eaba768d70c68b0748a97b168c9b0c"
+    },
+    "tests/test_attention_variants.py": {
+      "bytes": 8273,
+      "sha256": "0d14feb8a1e36d4b41b1ced0bff5596c51684e0231ca1da290a4012643bbb56c"
+    },
+    "tests/test_baseline_protocol.py": {
+      "bytes": 19723,
+      "sha256": "1208361517010e7064db8939fe3df38c5c10398f7d137b16355d57f054c45b7a"
+    },
+    "tests/test_experiment_cli.py": {
+      "bytes": 5544,
+      "sha256": "9d8e2e0edcab639a9e14e434bb70fc6351bc240a63825f1b287a01f4efca95a4"
+    },
+    "tests/test_experiment_results.py": {
+      "bytes": 2862,
+      "sha256": "22c93a582671f79d2c5abb5cf1af2f9210128ba2c5fd4960e93a9d310b380c66"
+    },
+    "tests/test_experiment_resume.py": {
+      "bytes": 3097,
+      "sha256": "cd82df600f9e734b01d220e14212742188a679b6fc0974e9bb709cda7672490a"
+    },
+    "tests/test_experiment_training.py": {
+      "bytes": 1819,
+      "sha256": "26a350d652ac92359961d98fd6ad1f8b1e2ee39ac2ac7cc6e47c2c4ac51af63b"
+    },
+    "tests/test_improvement_semantics.py": {
+      "bytes": 3751,
+      "sha256": "a33e391bc51a2b87c103fd8e34b0a6919cf13bd5cd0782fcb75f26c0d80106f9"
+    },
+    "tests/test_legacy_baseline.py": {
+      "bytes": 1755,
+      "sha256": "0b49522fd03d179e49e49d14de9cbd2709a2ae1cc58ff4370e3df27194cc9001"
+    },
+    "tests/test_loss_variants.py": {
+      "bytes": 6464,
+      "sha256": "d31704c4a8995ff71fd8df164b860edd299f32a33f38d74fee2d92e58ffc25a4"
+    },
+    "tests/test_objective_reporting.py": {
+      "bytes": 1809,
+      "sha256": "d30db58940728a83be8b62e9da7d155dd82c281618b8a6358c670f9dbdbf218d"
+    },
+    "tests/test_original_baseline_import.py": {
+      "bytes": 8041,
+      "sha256": "d4b6a0e5622948b97ea2406d13c29a1931be0a10a5f279883719295aba3c5e14"
+    },
+    "tests/test_original_baseline_runner.py": {
+      "bytes": 9415,
+      "sha256": "cccecf98369d0c2b3c1fa1871aec1d4fae43ea9d922dc7ab367debd6e11f6af0"
+    },
+    "tests/test_original_sweep_entry.py": {
+      "bytes": 2238,
+      "sha256": "cbf06a9734449176831b40dfab549a18548c6306a11880986126372efc35eaad"
+    },
+    "tests/test_parameter_sweep.py": {
+      "bytes": 5006,
+      "sha256": "9926e36c7fe17dee1edb6781cbff7c2471e02969285ee55a7a1d15b555ba59d7"
+    },
+    "tests/test_release_protocol_boundaries.py": {
+      "bytes": 8037,
+      "sha256": "d6578fc3739bac2739761840396c5602319ca2302bf6e46a9336ed2157947d85"
+    },
+    "tests/test_resume_execution.py": {
+      "bytes": 2881,
+      "sha256": "5aeba5162afc7e79765bc3053795f402b91b069eda29d3b2f77478bf04364ddb"
+    },
+    "tests/test_single_experiment_runtime.py": {
+      "bytes": 9026,
+      "sha256": "a8dd70fe10ef8b25be1e6f2af3efaf534f2870fb2a76500f37aeddd8e49610b0"
+    },
+    "tests/test_spatiotemporal.py": {
+      "bytes": 12565,
+      "sha256": "557288b45681201fd613c99349cfc624fb55a0b5f3fb60942f3da6273df8b1b8"
+    },
+    "tests/test_spatiotemporal_runtime.py": {
+      "bytes": 4236,
+      "sha256": "582c635ea7620882ad7d20c3a8475b50497117a364460c612f387479b146e284"
+    },
+    "tests/test_sweep_loss_export.py": {
+      "bytes": 5355,
+      "sha256": "a8611f7bfada0b134a80772d16e4415142724b1e6d1bc8aae0b0a15aa7800adf"
+    },
+    "tests/test_sweep_recovery.py": {
+      "bytes": 12395,
+      "sha256": "b7f6f99cffbd522047f80f3840a558c085654371529c71d750ec846d90b6f4ef"
+    },
+    "tests/test_velocity_gradient.py": {
+      "bytes": 2602,
+      "sha256": "0e5ca1810eb93a4c683e5570ab051cd40b16bb0dc9577e29e36adc7daa5468ae"
     },
     "weights/ifwi_pretrain_marmousi.pth": {
       "bytes": 204661,

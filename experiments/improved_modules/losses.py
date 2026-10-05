@@ -15,143 +15,80 @@ import torch.nn.functional as F
 import numpy as np
 
 
+def make_depth_weights(nz, config, device, dtype):
+    """Positive spatial preconditioner with unit mean; ratios retain their meaning."""
+    if nz < 1: raise ValueError('nz must be positive')
+    kind=config.get('weight_type','piecewise')
+    deep=float(config.get('deep_weight',2.)); bottom=float(config.get('bottom_weight',5.))
+    start=float(config.get('deep_start',.5)); scale=float(config.get('scale',.3))
+    if not all(np.isfinite(x) for x in (deep,bottom,start,scale)) or min(deep,bottom,scale)<=0 or not 0<=start<1:
+        raise ValueError('Invalid depth weights')
+    z=torch.arange(nz,device=device,dtype=dtype)
+    if kind=='identity': w=torch.ones_like(z)
+    elif kind=='piecewise':
+        w=torch.ones_like(z); w[int(nz*start):]=deep; w[int(nz*.75):]=bottom
+    elif kind=='linear': w=torch.linspace(1,deep,nz,device=device,dtype=dtype)
+    elif kind=='exponential':
+        # Subtract maximum before exponentiation to avoid overflow.
+        w=torch.exp((z-z.max())/(nz*scale))
+    else: raise ValueError('Unknown weight_type: '+kind)
+    if not torch.isfinite(w).all() or not (w>0).all(): raise ValueError('Nonfinite/underflowed weights')
+    return w/w.mean()
+
+
+def attach_velocity_preconditioner(v_wave, weights):
+    if v_wave.ndim!=3 or weights.ndim!=1 or v_wave.shape[1]!=len(weights):
+        raise ValueError('Expected velocity [batch,nz,nx] and weights [nz]')
+    weights=weights.to(device=v_wave.device,dtype=v_wave.dtype)
+    return v_wave.register_hook(lambda grad: grad*weights[None,:,None])
+
+
 class DepthWeightedLoss:
-    """
-    Depth-weighted data fitting loss.
-    Gives higher weights to gradients from deeper layers.
-    """
-    def __init__(self, nz, weight_type='exponential', scale=0.3,
-                 deep_start=0.5, deep_weight=2.0, bottom_weight=5.0):
-        """
-        Args:
-            nz: number of depth samples
-            weight_type: 'exponential', 'linear', or 'piecewise'
-            scale: scale factor for exponential weighting
-            deep_start: fraction of depth where deep layer starts (for piecewise)
-            deep_weight: weight multiplier for deep layers
-            bottom_weight: weight multiplier for bottom quarter
-        """
-        self.nz = nz
-        self.weight_type = weight_type
-
-        if weight_type == 'exponential':
-            # Exponentially increasing weights with depth
-            depth_indices = torch.arange(nz, dtype=torch.float32)
-            self.depth_weights = torch.exp(depth_indices / (nz * scale))
-
-        elif weight_type == 'linear':
-            # Linearly increasing weights
-            self.depth_weights = torch.linspace(1.0, deep_weight, nz)
-
-        elif weight_type == 'piecewise':
-            # Piecewise constant weights
-            self.depth_weights = torch.ones(nz)
-            deep_idx = int(nz * deep_start)
-            bottom_idx = int(nz * 0.75)
-            self.depth_weights[deep_idx:] = deep_weight
-            self.depth_weights[bottom_idx:] = bottom_weight
-
-        else:
-            raise ValueError(f"Unknown weight_type: {weight_type}")
-
-    def __call__(self, data_pred, data_obs, velocity_model=None):
-        """
-        Compute depth-weighted loss.
-
-        Args:
-            data_pred: predicted shot gathers [num_vels, ns, nt, nx]
-            data_obs: observed shot gathers [num_vels, ns, nt, nx]
-            velocity_model: velocity model [num_vels, nz, nx] (optional, for gradient weighting)
-
-        Returns:
-            loss: scalar weighted loss
-        """
-        # Standard data fitting loss
-        residual = (data_pred - data_obs) ** 2
-        data_loss = residual.sum() / (data_pred.shape[0] * data_pred.shape[1] *
-                                      data_pred.shape[2] * data_pred.shape[3])
-
-        # If velocity model is provided, apply depth weighting to its gradient
-        if velocity_model is not None:
-            # This will be applied during backward pass via gradient hooks
-            pass
-
-        return data_loss
-
-    def apply_gradient_weighting(self, velocity_grad, device='cpu'):
-        """
-        Apply depth weights to velocity gradient.
-
-        Args:
-            velocity_grad: gradient tensor [num_vels, nz, nx]
-            device: torch device
-
-        Returns:
-            weighted_grad: depth-weighted gradient
-        """
-        weights = self.depth_weights.to(device)
-        # Broadcast weights: [nz] -> [1, nz, 1]
-        weighted_grad = velocity_grad * weights[None, :, None]
-        return weighted_grad
+    """Removed misleading API: depth is not an axis of shot-gather MSE."""
+    def __init__(self,*args,**kwargs):
+        raise ValueError('Use gradient_preconditioner on the wave velocity branch; data loss remains MSE')
 
 
 class DeepLayerPriorLoss:
+    """Deep priors on physical velocity, with explicit units and smoothing kernel.
+
+    ``velocity_scale=1000`` expresses penalties in km/s for m/s input.
+    Charbonnier smooths the horizontal TV term only; range and monotonic
+    violations retain their one-sided hinge interpretation.
     """
-    Regularization loss with geological priors for deep layers.
-    """
-    def __init__(self, nz, nx, deep_start=0.5):
-        """
-        Args:
-            nz, nx: model dimensions
-            deep_start: fraction of depth where deep layer starts
-        """
-        self.nz = nz
-        self.nx = nx
-        self.deep_idx = int(nz * deep_start)
-
-    def __call__(self, velocity_model, prior_info=None):
-        """
-        Compute deep layer prior loss.
-
-        Args:
-            velocity_model: [num_vels, nz, nx] in m/s
-            prior_info: dict with optional constraints
-                - 'deep_velocity_range': (v_min, v_max) in m/s
-                - 'well_log': (well_x, well_velocities)
-
-        Returns:
-            loss: scalar prior loss
-        """
-        deep_region = velocity_model[:, self.deep_idx:, :]
-        losses = []
-
-        # 1. Monotonic increase with depth (deep layers usually faster)
-        if velocity_model.shape[1] > 1:
-            vertical_diff = torch.diff(velocity_model, dim=1)
-            # Penalize decrease in velocity with depth
-            loss_monotonic = torch.relu(-vertical_diff).mean()
-            losses.append(loss_monotonic)
-
-        # 2. Velocity range constraint for deep layers
+    def __init__(self,nz,nx,deep_start=.5,monotonic_weight=0.,horizontal_weight=.1,range_weight=1.,
+                 velocity_scale=1.,prior_form='tv',charbonnier_eps=1e-3):
+        if not 0<=deep_start<1: raise ValueError('Invalid deep_start')
+        self.deep_idx=int(nz*deep_start)
+        self.monotonic_weight=monotonic_weight
+        self.horizontal_weight=horizontal_weight
+        self.range_weight=range_weight
+        self.velocity_scale=float(velocity_scale)
+        self.prior_form=prior_form
+        self.charbonnier_eps=float(charbonnier_eps)
+        if any(not np.isfinite(x) or x<0 for x in (monotonic_weight,horizontal_weight,range_weight)):
+            raise ValueError('Prior coefficients must be nonnegative and finite')
+        if any(not np.isfinite(x) or x<=0 for x in (self.velocity_scale,self.charbonnier_eps)):
+            raise ValueError('velocity_scale and charbonnier_eps must be positive and finite')
+        if prior_form not in ('tv','charbonnier'):
+            raise ValueError('Unknown prior_form: '+str(prior_form))
+    def components(self,velocity_model,prior_info=None):
+        deep=velocity_model[:,self.deep_idx:,:]/self.velocity_scale
+        terms={k:velocity_model.new_zeros(()) for k in ('prior_monotonic','prior_horizontal','prior_range')}
+        if self.monotonic_weight and deep.shape[1]>1:
+            terms['prior_monotonic']=self.monotonic_weight*torch.relu(-torch.diff(deep,dim=1)).mean()
+        if self.horizontal_weight and deep.shape[-1]>1:
+            diff=torch.diff(deep,dim=-1)
+            horizontal=diff.abs() if self.prior_form=='tv' else (diff.square()+self.charbonnier_eps**2).sqrt()-self.charbonnier_eps
+            terms['prior_horizontal']=self.horizontal_weight*horizontal.mean()
         if prior_info and 'deep_velocity_range' in prior_info:
-            v_min, v_max = prior_info['deep_velocity_range']
-            loss_range = (torch.relu(v_min - deep_region).mean() +
-                         torch.relu(deep_region - v_max).mean())
-            losses.append(loss_range)
-
-        # 3. Horizontal smoothness in deep layers
-        if deep_region.shape[-1] > 1:
-            horizontal_tv = torch.abs(torch.diff(deep_region, dim=-1)).mean()
-            losses.append(0.1 * horizontal_tv)
-
-        # 4. Well log constraint
-        if prior_info and 'well_log' in prior_info:
-            well_x, well_velocities = prior_info['well_log']
-            if isinstance(well_x, int):
-                loss_well = ((velocity_model[:, :, well_x] - well_velocities) ** 2).mean()
-                losses.append(loss_well)
-
-        return sum(losses) if losses else torch.tensor(0.0, device=velocity_model.device)
+            lo,hi=prior_info['deep_velocity_range']
+            if not np.isfinite([lo,hi]).all() or lo>=hi: raise ValueError('Invalid velocity range')
+            lo,hi=lo/self.velocity_scale,hi/self.velocity_scale
+            terms['prior_range']=self.range_weight*(torch.relu(lo-deep).mean()+torch.relu(deep-hi).mean())
+        return terms
+    def __call__(self,velocity_model,prior_info=None):
+        return sum(self.components(velocity_model,prior_info).values())
 
 
 class MultiScaleLoss:
@@ -216,81 +153,33 @@ class MultiScaleLoss:
 
 
 class CombinedLoss:
-    """
-    Combined loss function integrating all improvements.
-    """
-    def __init__(self, nz, nx, config):
-        """
-        Args:
-            nz, nx: model dimensions
-            config: dict with loss configuration
-                - 'use_depth_weight': bool
-                - 'use_prior': bool
-                - 'use_multiscale': bool
-                - 'depth_weight_params': dict for DepthWeightedLoss
-                - 'prior_params': dict for DeepLayerPriorLoss
-                - 'multiscale_params': dict for MultiScaleLoss
-                - 'lambda_prior': weight for prior loss
-        """
-        self.config = config
-
-        if config.get('use_depth_weight', False):
-            self.depth_loss = DepthWeightedLoss(
-                nz, **config.get('depth_weight_params', {})
-            )
+    """Explicit data objective and priors; raw waveform MSE is always reported."""
+    def __init__(self,nz,nx,config):
+        if config.get('use_depth_weight'):
+            raise ValueError('Move use_depth_weight to gradient_preconditioner.enabled')
+        if config.get('use_multiscale'):
+            raise ValueError('Multiscale objective is outside the repaired comparison protocol')
+        self.config=config
+        self.data_objective=config.get('data_objective','mse')
+        if self.data_objective not in ('mse','huber'):
+            raise ValueError('Unknown data_objective: '+str(self.data_objective))
+        self.huber_beta=float(config.get('huber_beta',1.))
+        if self.data_objective=='huber' and (not np.isfinite(self.huber_beta) or self.huber_beta<=0):
+            raise ValueError('huber_beta must be positive and finite in shot amplitude units')
+        self.prior_loss=DeepLayerPriorLoss(nz,nx,**config.get('prior_params',{})) if config.get('use_prior') else None
+        self.lambda_prior=float(config.get('lambda_prior',.1))
+        if not np.isfinite(self.lambda_prior) or self.lambda_prior<0: raise ValueError('Invalid lambda_prior')
+    def __call__(self,data_pred,data_obs,velocity_model,prior_info=None,dt=.001):
+        residual=data_pred-data_obs
+        data_mse=residual.square().mean()
+        if self.data_objective=='huber':
+            # This convention matches r^2 (and its derivative) in the core.
+            beta=self.huber_beta
+            data_loss=torch.where(residual.abs()<=beta,residual.square(),2*beta*residual.abs()-beta**2).mean()
         else:
-            self.depth_loss = None
-
-        if config.get('use_prior', False):
-            self.prior_loss = DeepLayerPriorLoss(
-                nz, nx, **config.get('prior_params', {})
-            )
-        else:
-            self.prior_loss = None
-
-        if config.get('use_multiscale', False):
-            self.multiscale_loss = MultiScaleLoss(
-                **config.get('multiscale_params', {})
-            )
-        else:
-            self.multiscale_loss = None
-
-        self.lambda_prior = config.get('lambda_prior', 0.1)
-
-    def __call__(self, data_pred, data_obs, velocity_model,
-                 prior_info=None, dt=0.001):
-        """
-        Compute combined loss.
-
-        Returns:
-            loss_dict: dict with individual loss components
-        """
-        loss_dict = {}
-
-        # Data fitting loss
-        if self.depth_loss:
-            data_loss = self.depth_loss(data_pred, data_obs, velocity_model)
-        elif self.multiscale_loss:
-            data_loss = self.multiscale_loss(data_pred, data_obs, dt)
-        else:
-            # Standard MSE loss
-            data_loss = ((data_pred - data_obs) ** 2).sum() / (
-                data_pred.shape[0] * data_pred.shape[1] *
-                data_pred.shape[2] * data_pred.shape[3]
-            )
-
-        loss_dict['data_loss'] = data_loss
-
-        # Prior loss
-        if self.prior_loss and velocity_model is not None:
-            prior_loss = self.prior_loss(velocity_model, prior_info)
-            loss_dict['prior_loss'] = prior_loss
-        else:
-            prior_loss = torch.tensor(0.0, device=data_pred.device)
-            loss_dict['prior_loss'] = prior_loss
-
-        # Total loss
-        total_loss = data_loss + self.lambda_prior * prior_loss
-        loss_dict['total_loss'] = total_loss
-
-        return total_loss, loss_dict
+            data_loss=data_mse
+        info=prior_info or {'deep_velocity_range': self.config.get('velocity_range',[1500.,5500.])}
+        terms=self.prior_loss.components(velocity_model,info) if self.prior_loss else {k:data_loss.new_zeros(()) for k in ('prior_monotonic','prior_horizontal','prior_range')}
+        prior=sum(terms.values())
+        total=data_loss+self.lambda_prior*prior
+        return total,{'data_loss':data_loss,'data_mse':data_mse,'prior_loss':prior,'total_loss':total,**terms}

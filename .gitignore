@@ -48,3 +48,22 @@ temp/
 
 # Local archive
 /archive/
+
+# Local research library and desktop previews
+/research_assets/
+/实验资产入口.html
+/打开训练进度.cmd
+/.superpowers/
+
+# Private configuration, caches and generated release packages
+.env
+.env.*
+.pytest_cache/
+.venv/
+runs/
+logs/
+wandb/
+*.zip
+
+# Keep the original distributed pretrained weight
+!weights/ifwi_pretrain_marmousi.pth
