@@ -2,6 +2,55 @@
 
 基于 SIREN 隐式神经表示与有限差分波动方程的二维地震全波形反演代码。主要入口 `experiment.py` 用于随机初始化的 Marmousi 参数实验；另保留预训练、含噪观测、Dropout 不确定性、Overthrust 和传统 FWI 入口，以及独立的方法消融框架。
 
+## 目录
+
+- [项目结构](#项目结构)
+- [安装与检查](#安装与检查)
+- [单次参数实验](#单次参数实验)
+- [默认 baseline](#默认-baseline)
+- [输出与续训](#输出与续训)
+- [批量参数与方法对照](#批量参数与方法对照)
+- [保留的 legacy 入口](#保留的-legacy-入口)
+- [来源与限制](#来源与限制)
+
+## 项目结构
+
+```text
+IFWI_GitHub/
+├── experiment.py                 # 单次实验：baseline、预设、参数组合
+├── main.py                       # 原 IFWI 多实验入口
+├── fwi.py                        # 传统 FWI 对照入口
+├── pretrain_marmousi.py           # 平滑模型预训练
+├── ifwi_modules.py               # 原隐式网络与训练核心
+├── rnn_fd.py                     # 原有限差分正演
+├── generator.py                  # 子波与时间分段
+├── plot_functions.py             # 绘图辅助
+├── experiments/
+│   ├── configs/                  # 基线、参数和方法配置
+│   ├── baseline_protocol.py      # 原版参数与源码身份
+│   ├── baseline_experiment.py    # 调用原版训练流程
+│   ├── baseline_reference/       # 原日志与绘图参考代码
+│   ├── run_parameter_sweep.py    # 注册的单变量矩阵
+│   ├── run_experiment.py         # 配置入口
+│   ├── improved_modules/         # 独立方法消融模块
+│   └── README.md                 # 批量运行与方法说明
+├── scripts/                      # 恢复、结果汇总和进度工具
+├── tests/                        # CPU 回归测试
+├── data/                         # 两份 Marmousi CSV、Overthrust NPZ
+├── weights/                      # 原仓库分发的预训练权重
+├── docs/                         # 来源、环境与公开打包说明
+├── requirements.txt              # 运行依赖
+├── requirements-dev.txt          # 测试依赖
+├── pytest.ini                    # 测试发现范围
+├── test_framework.py             # unittest 测试入口
+├── README_IMPROVEMENTS.md         # 独立方法框架概览
+├── source_manifest.json          # 原作者文件校验值
+├── package_manifest.json         # 交付文件清单与 SHA256
+└── THIRD_PARTY_NOTICES.md         # 第三方署名与来源
+```
+
+目录树展示公开源码的主要文件。虚拟环境、`results/`、`outputs/`、本地研究资产、浏览器缓存及内部开发计划保留在本地，并由 `.gitignore` 排除。`data/` 是运行所需的基准数据；`weights/` 只有原仓库已有的预训练权重，不包含反演 checkpoint 序列。
+
 ## 安装与检查
 
 在仓库根目录使用 Python 3.10 环境。先安装与设备、驱动匹配且彼此兼容的 **torch / torchvision**，再安装仓库依赖；GPU 构建请使用对应的 PyTorch 安装命令。
@@ -145,4 +194,4 @@ python main.py --experiment pretrain --epochs 4001 --pretrained outputs/pretrain
 
 原作者模块为 `ifwi_modules.py`、`rnn_fd.py`、`generator.py`、`plot_functions.py`，文件头署名与参考信息保留。补充入口及 `experiments/` 不应全部署名为原论文作者的发布实现；具体来源与引用见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。来源材料没有可确认的上游 LICENSE，本仓库不擅自授予新许可。
 
-本版本 Marmousi 震源深度 15 m、接收深度 30 m；采样与其他论文版本可能不同。legacy `regularization` 的原 auto-TV 逻辑及原 IFWI 非有限波场处理保留；它们不能作为有效 TV 正则化或数值稳定性的证据。结果受训练预算、硬件、依赖与随机性影响，本仓库不代表论文全部实验的精确复现。历史记录保存在 `docs/`，其中的本机环境、旧路径与旧验证结论仅属于各自记录。
+本版本 Marmousi 震源深度 15 m、接收深度 30 m；采样与其他论文版本可能不同。legacy `regularization` 的原 auto-TV 逻辑及原 IFWI 非有限波场处理保留；它们不能作为有效 TV 正则化或数值稳定性的证据。结果受训练预算、硬件、依赖与随机性影响，本仓库不代表论文全部实验的精确复现。`docs/` 中保留的原始来源和环境说明按其记录日期理解；内部开发计划和本地历史实验工作记录不属于公开源码交付。

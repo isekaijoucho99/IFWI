@@ -55,6 +55,17 @@ temp/
 /打开训练进度.cmd
 /.superpowers/
 
+# Internal development plans and local experiment records
+/docs/superpowers/
+/docs/*-2026*.txt
+/docs/*-2026*.json
+/docs/parameter-*-2026*.md
+/docs/optimization-validation-20260930.md
+/docs/repair-validation-20260930.md
+/docs/spatiotemporal-probe-20260930.md
+/scripts/audit_spatiotemporal.py
+/scripts/benchmark_shot_batch.py
+
 # Private configuration, caches and generated release packages
 .env
 .env.*

@@ -8,19 +8,19 @@
     "branch": "main",
     "commit": "c5ce59af3c9988dc730a29de2e541c23d1572cd2"
   },
-  "scope": "All delivered source, tests, data, pretrained weight and documentation; excludes this manifest itself, local environments, research library and experiment outputs",
+  "scope": "Public source, configurations, tests, required benchmark data, distributed pretrained weight and user documentation. Excludes this manifest itself, local environments, research assets, experiment outputs, internal plans, historical working notes and obsolete dedicated scripts.",
   "files": {
     ".gitattributes": {
       "bytes": 104,
       "sha256": "130e73a90876060d5d7d09fdd2b12237bd3d2ab7e11cd0d0b222ef43d7c94c30"
     },
     ".gitignore": {
-      "bytes": 805,
-      "sha256": "77330c0d9c15b168f0608b391007281e19a26ec5fef8bb0d5b240a3cd98c3d44"
+      "bytes": 1130,
+      "sha256": "f3d4531c005ddf077b01615435edbdf78564cf686d435caeee2792581e3ed18b"
     },
     "README.md": {
-      "bytes": 10210,
-      "sha256": "fd9c02722f6435d85c47c39ab0718f5a8bc49fdba9be6f0d7bb12e327f50a832"
+      "bytes": 12985,
+      "sha256": "1aead939dc7b12abe1557ff29ccb094fe2d384d687bd1fb5fd00ad04cd57ab89"
     },
     "README_IMPROVEMENTS.md": {
       "bytes": 3855,
@@ -46,45 +46,17 @@
       "bytes": 579,
       "sha256": "fb51a3b0e6e692e5ead01acdf65aca20019c0f5ddc52d5e92d8b0ba1d112c1a0"
     },
-    "docs/optimization-validation-20260930.md": {
-      "bytes": 10271,
-      "sha256": "b452e6be2577601e7115ccbb8ddb70bc6a148941d43478ffec6315f8944343aa"
-    },
     "docs/original_notes.md": {
       "bytes": 9670,
       "sha256": "f14e8161da1a2bc26348df1b30851e35d1a82ee1ffcae3858d9f5c651026e9e3"
     },
     "docs/packaging.md": {
-      "bytes": 2160,
-      "sha256": "e6d334ce1b4fb48711a78238ec50dc771cc31ca391b381e82e29dbd6e6ccdd72"
+      "bytes": 2259,
+      "sha256": "80e1a61a115e0eda4b65dd2ca75927dcd9184375b9cfec1c9463df02c186fa7f"
     },
     "docs/release-check-20261005.md": {
-      "bytes": 3829,
-      "sha256": "41d8a502964c48932ae52c10ddbe935bb284095ac277a337b1b997714f0ad54a"
-    },
-    "docs/repair-validation-20260930.md": {
-      "bytes": 4821,
-      "sha256": "3d8fc16a56ff442aa81fc62f09455552bbb42394dfe194dc0cf2b0780cc8ee9b"
-    },
-    "docs/spatiotemporal-probe-20260930.md": {
-      "bytes": 9015,
-      "sha256": "9976f99dace7ff2078d8f98eadfa55850a26b5f2f57155974783e33172fcfbeb"
-    },
-    "docs/superpowers/plans/2026-09-29-deep-layer-repair.md": {
-      "bytes": 13332,
-      "sha256": "a4c186660e2adf8b6eca742acb13dbf33c2c829eca3e0137879ec6d35c071239"
-    },
-    "docs/superpowers/plans/2026-09-30-optimization-ablations.md": {
-      "bytes": 4150,
-      "sha256": "87b1b3dd11321c9638f915968511683ece4e8e7003d164018b03794b9cb07280"
-    },
-    "docs/superpowers/plans/2026-09-30-spatiotemporal-probe.md": {
-      "bytes": 2686,
-      "sha256": "a58da80e8fe04214c93946baf1d3c67b6e45870a5458f1f51e1b3d9c9e46fef7"
-    },
-    "docs/superpowers/plans/2026-10-05-original-baseline-protocol.md": {
-      "bytes": 4977,
-      "sha256": "cf06792812753a79c2ab1448d7b7fd18af97fcc29cbbae98b90a91adfda2afcf"
+      "bytes": 4235,
+      "sha256": "99b25a278a6c0a6c5a5af7283ff6d619d167a1eca723dcc66154cf11d6885c43"
     },
     "experiment.py": {
       "bytes": 4596,
@@ -281,14 +253,6 @@
     "rnn_fd.py": {
       "bytes": 23299,
       "sha256": "eeeebd821462fadb52bb9b12a06932f2c9f764e3e7482b316e12a94d26ec9fd0"
-    },
-    "scripts/audit_spatiotemporal.py": {
-      "bytes": 24423,
-      "sha256": "b8e6f64279d9aa373524471e342a1a7fe0a98734256e45d3e30339370eb6f230"
-    },
-    "scripts/benchmark_shot_batch.py": {
-      "bytes": 5326,
-      "sha256": "152f323a32831f04984d213b9aa8414df85d611bdb6b4c35b52ecb8775eecc24"
     },
     "scripts/capture_stage_checkpoints.py": {
       "bytes": 1847,
