@@ -1,0 +1,50 @@
+experiment_name: modern13_warmup400_cosine_half
+description: 'AMFMS-inspired LR policy: 400-update linear warmup then cosine to half
+  peak; unvalidated IFWI candidate'
+seed: 3
+model:
+  network_type: vanilla
+  neuron:
+  - 2
+  - 128
+  - 128
+  - 128
+  - 128
+  - 1
+  omega_0: 30
+  activation: sine
+  dropout: false
+  prob: 0.2
+  outermost_linear: true
+  bias: true
+loss:
+  type: standard_mse
+  use_prior: false
+optimizer:
+  optimizer_type: adam
+  learning_rate: 0.0001
+  use_scheduler: true
+  scheduler_params:
+    warmup_epochs: 400
+    max_epochs: 4001
+    eta_min: 5.0e-05
+training:
+  max_iterations: 4001
+  log_interval: 100
+  alpha: 0
+  clip_grad: null
+  shot_batch_size: null
+data:
+  model_file: vel_marmousi_376x1151.csv
+  downsample: 4
+  noise_level: 0.0
+  dz: 15
+  dt: 0.0019
+  nt: 1000
+  num_shots: 13
+evaluation:
+  depth_threshold: 0.5
+  corner_size: 0.25
+  save_plots: true
+gradient_preconditioner:
+  enabled: false

@@ -1,4 +1,4 @@
-"""Read-only audit for the registered modern13 constant-versus-cosine LR pair.
+"""Read-only audits for registered modern13 constant/cosine and constant/warmup policies.
 
 Does not train, load pickled checkpoints, choose a model using velocity truth,
 or write inside either source run. All existing training code stays unchanged.
@@ -19,6 +19,7 @@ ROOT = Path(__file__).resolve().parents[1]
 UPSTREAM_COMMIT = '22fa517bc9c9217e9c08d47c585a56a916702a91'
 SOURCE_MANIFEST = ROOT / 'experiments/configs/lr_control_sources.json'
 SCHEDULE = {'warmup_epochs': 0, 'max_epochs': 4001, 'eta_min': 1e-5}
+WARMUP_SCHEDULE = {'warmup_epochs': 400, 'max_epochs': 4001, 'eta_min': 5e-5}
 
 
 def json_hash(value):
@@ -45,6 +46,25 @@ def validate_pair(constant, cosine):
     return {'upstream_commit': UPSTREAM_COMMIT, 'only_treatment': 'optimizer.use_scheduler',
             'constant_config_sha256': json_hash(constant), 'cosine_config_sha256': json_hash(cosine),
             'historical_frozen_runtime_verified': False}
+
+
+def validate_warmup_pair(constant, warmup):
+    """Validate the whole approved LR policy without relaxing the original pair."""
+    if json_hash(warmup.get('optimizer', {}).get('scheduler_params')) != json_hash(WARMUP_SCHEDULE):
+        raise ValueError('Warmup configuration is not the registered W400/half-floor policy')
+    normalized = copy.deepcopy(warmup)
+    normalized['optimizer']['scheduler_params'] = copy.deepcopy(SCHEDULE)
+    report = validate_pair(constant, normalized)
+    report.pop('cosine_config_sha256')
+    report.pop('only_treatment')
+    report.update(comparison='constant_vs_warmup400_cosine_half',
+                  treatment='registered learning-rate policy as a whole',
+                  changed_fields=['optimizer.use_scheduler',
+                                  'optimizer.scheduler_params.warmup_epochs',
+                                  'optimizer.scheduler_params.eta_min'],
+                  warmup_config_sha256=json_hash(warmup),
+                  attribution='The result does not isolate warmup from the cosine tail or its endpoint')
+    return report
 
 
 def load_config(path):
@@ -82,7 +102,9 @@ def _close(actual, expected, label):
         raise ValueError('Mismatch: ' + label)
 
 
-def _read_run(path, enabled):
+def _read_run(path, enabled, schedule=None, arm=None):
+    schedule = SCHEDULE if schedule is None else schedule
+    arm = ('cosine' if enabled else 'constant') if arm is None else arm
     config = _json(path / 'config.json')
     status = _json(path / 'status.json')
     summary = _json(path / 'training_summary.json')
@@ -126,7 +148,16 @@ def _read_run(path, enabled):
         raise ValueError('Incomplete or duplicate completed updates in loss history')
     evaluated = []
     for update, row in enumerate(history, 1):
-        expected_lr = (1e-5 + 9e-5 * (1 + math.cos(math.pi * (update - 1) / 4000)) / 2) if enabled else 1e-4
+        expected_lr = 1e-4
+        if enabled:
+            warmup = schedule['warmup_epochs']
+            if update <= warmup:
+                expected_lr *= update / warmup
+            else:
+                start = max(warmup - 1, 0)
+                phase = (update - 1 - start) / (schedule['max_epochs'] - 1 - start)
+                floor = schedule['eta_min']
+                expected_lr = floor + (expected_lr - floor) * (1 + math.cos(math.pi * phase)) / 2
         rates = json.loads(row['learning_rates'])
         if len(rates) != 1 or not math.isclose(float(rates[0]), expected_lr, rel_tol=1e-10, abs_tol=1e-15):
             raise ValueError('Unexpected learning rate at update ' + str(update))
@@ -166,7 +197,7 @@ def _read_run(path, enabled):
         deep_rmse = float(np.sqrt(np.mean(error[47:] ** 2)))
         _close(metrics['full_rmse'], full_rmse, 'full RMSE')
         _close(metrics['deep_rmse'], deep_rmse, 'deep RMSE')
-        rows[label] = dict(arm='cosine' if enabled else 'constant', completed_updates=update,
+        rows[label] = dict(arm=arm, completed_updates=update,
                           waveform_mse=mse, full_rmse_mps=full_rmse, deep_rmse_mps=deep_rmse,
                           deep_velocity_std_mps=float(prediction[47:].std()),
                           deep_horizontal_tv_mps=float(np.abs(np.diff(prediction[47:], axis=1)).mean()),
@@ -178,15 +209,18 @@ def _read_run(path, enabled):
                 arrays=arrays, rows=rows, inputs={name: _file_hash(path / name) for name in inputs})
 
 
-def compare_runs(constant_path, cosine_path, output_path):
+def _compare_runs(constant_path, cosine_path, output_path, warmup=False):
     """Validate before writing; truth is used only for fixed final/best diagnostics."""
     constant_path, cosine_path, output_path = [Path(p).resolve() for p in (constant_path, cosine_path, output_path)]
     if constant_path == cosine_path:
         raise ValueError('Provide two distinct runs')
     if output_path.exists() or any(run == output_path or run in output_path.parents for run in (constant_path, cosine_path)):
         raise ValueError('Use a new output directory outside both input runs')
-    report = validate_pair(_json(constant_path / 'config.json'), _json(cosine_path / 'config.json'))
-    a, b = _read_run(constant_path, False), _read_run(cosine_path, True)
+    validate = validate_warmup_pair if warmup else validate_pair
+    report = validate(_json(constant_path / 'config.json'), _json(cosine_path / 'config.json'))
+    candidate_label = 'warmup400_cosine_half' if warmup else 'cosine'
+    schedule = WARMUP_SCHEDULE if warmup else SCHEDULE
+    a, b = _read_run(constant_path, False), _read_run(cosine_path, True, schedule, candidate_label)
     if a['contract'] != b['contract']:
         raise ValueError('Run comparison contracts differ')
     for key in ('python', 'device', 'packages'):
@@ -199,7 +233,7 @@ def compare_runs(constant_path, cosine_path, output_path):
                   initial_velocity_sha256=_array_hash(a['arrays']['initial_velocity']),
                   analysis_script_sha256=_file_hash(__file__),
                   source_manifest_sha256=_file_hash(SOURCE_MANIFEST),
-                  input_file_sha256={'constant': a['inputs'], 'cosine': b['inputs']},
+                  input_file_sha256={'constant': a['inputs'], candidate_label: b['inputs']},
                   environment={k: a['environment'][k] for k in ('python', 'device', 'packages')},
                   limitations=['Single seed; no claim of convergence or velocity improvement',
                                'Historical frozen runtime has not been matched',
@@ -214,7 +248,7 @@ def compare_runs(constant_path, cosine_path, output_path):
     matplotlib.use('Agg')
     import matplotlib.pyplot as plt
     fig, axes = plt.subplots(3, 1, figsize=(10, 9), sharex=True, layout='constrained')
-    for run, label in ((a, 'constant'), (b, 'cosine')):
+    for run, label in ((a, 'constant'), (b, candidate_label)):
         h = run['history']; x = [int(row['completed_updates']) for row in h]
         axes[0].plot(np.asarray(x)-1, [float(r['data_mse_before_update']) for r in h], label=label, linewidth=.8)
         saved = [r for r in h if r['data_mse_after_update']]
@@ -229,6 +263,16 @@ def compare_runs(constant_path, cosine_path, output_path):
     return report
 
 
+def compare_runs(constant_path, cosine_path, output_path):
+    """Original strict constant-versus-pure-cosine comparison; unchanged defaults."""
+    return _compare_runs(constant_path, cosine_path, output_path)
+
+
+def compare_warmup_runs(constant_path, warmup_path, output_path):
+    """Independent constant-versus-warmup policy; no pure-cosine run is required."""
+    return _compare_runs(constant_path, warmup_path, output_path, warmup=True)
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     sub = parser.add_subparsers(dest='command', required=True)
@@ -239,10 +283,21 @@ def main():
     compare.add_argument('--constant-run', type=Path, required=True)
     compare.add_argument('--cosine-run', type=Path, required=True)
     compare.add_argument('--output', type=Path, required=True)
+    warmup_check = sub.add_parser('check-warmup-configs', help='Validate constant versus the registered W400/half-floor policy')
+    warmup_check.add_argument('--constant', type=Path, default=ROOT / 'experiments/configs/modern13_constant_lr.yaml')
+    warmup_check.add_argument('--warmup', type=Path, default=ROOT / 'experiments/configs/modern13_warmup400_cosine_half.yaml')
+    warmup_compare = sub.add_parser('compare-warmup', help='Compare completed constant and W400/half-floor runs')
+    warmup_compare.add_argument('--constant-run', type=Path, required=True)
+    warmup_compare.add_argument('--warmup-run', type=Path, required=True)
+    warmup_compare.add_argument('--output', type=Path, required=True)
     args = parser.parse_args()
     try:
         if args.command == 'check-configs':
             report = validate_pair(load_config(args.constant), load_config(args.cosine))
+        elif args.command == 'check-warmup-configs':
+            report = validate_warmup_pair(load_config(args.constant), load_config(args.warmup))
+        elif args.command == 'compare-warmup':
+            report = compare_warmup_runs(args.constant_run, args.warmup_run, args.output)
         else:
             report = compare_runs(args.constant_run, args.cosine_run, args.output)
     except (ValueError, TypeError, KeyError, OSError) as exc:
