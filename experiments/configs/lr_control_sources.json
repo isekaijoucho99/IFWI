@@ -1,0 +1,25 @@
+{
+  "upstream_commit": "22fa517bc9c9217e9c08d47c585a56a916702a91",
+  "sources": {
+    "experiments/baseline_experiment.py": "d8b65915f94eeda00e9a4fb811221713c6cdf297063bcda55f3c8fc32ddbc1db",
+    "experiments/baseline_protocol.py": "933415ea523403bbc818fc28d1e9e6a4b04b7708356ca2b86e242f58757008c9",
+    "experiments/baseline_reference/ifwi_experiment.py": "748137c90c47bbd9e032cc70f07d25b4bc027a30580511ff74e2079134728459",
+    "experiments/compare_results.py": "bd9753728e0e70b64aaa6e821963e490d8856dae1a5e0370b9de3c0fd8ce48a1",
+    "experiments/experiment_runtime.py": "a0cc10e40ce3479c8dd8bec295e852aa41ed4c7216f9e1c9760c7ecf0015983b",
+    "experiments/import_completed_baseline.py": "2a530ce42834a5a6b29e668540a783d9ad8efff36586af884ea80b24a1660788",
+    "experiments/improved_modules/evaluate_deep.py": "64665f5da8d5ae88052d69ad2c95c1e4e63383e8ffb49c06ea5fac0ba22af046",
+    "experiments/improved_modules/losses.py": "1459dfa6230b43223dd13595f28618f4c758fe4e7a5de6156650da90f6ff33e0",
+    "experiments/improved_modules/networks.py": "d8fdf544d05ff9c3ea1b91092af9e57d8534bea3b2399044ba2bf32e6a55d3aa",
+    "experiments/improved_modules/optimizers.py": "b24d103e4ca41f4f803c522646684933c9d5c8d863546bde0ab2f29ab7251b82",
+    "experiments/improved_modules/spatiotemporal.py": "7d9f549436a33b45914d7500b8ba2b2804a09448fa0ff31491bcb59292cf9ecd",
+    "experiments/parameter_sweep.py": "193c6e814c09cc8500404a4d71a6b240f711661e7b86b35afaef14cb03379ea9",
+    "experiments/run_ablation_suite.py": "91e93978cf1975d18c94237f5df97c4ad56e9802b0b948e375229f2a2e2fbcfb",
+    "experiments/run_experiment.py": "50627601f6a508a1df17b8386cf6927b4c1bb135c400b9754003d4bf6d686856",
+    "experiments/run_parameter_sweep.py": "9fe738725297dd823f33eec1c57a8259aab5fc2a7186c0e369fedb1ac31cda5b",
+    "experiments/summarize_parameter_sweep.py": "777d1ad61b2bf35eeb2a39855208503305bea14a8a66b2693f465f0a1ff5f426",
+    "generator.py": "c37e49c631a2f654808455b92a8125604d7dbf46b6dac7c63a17d736ef79f69c",
+    "ifwi_modules.py": "900adab18822769946a64109fa77314d71d396403e70179b815094cd952bb043",
+    "plot_functions.py": "53d70c622cc2e4fef19aded39835c73e4feca06ddaa6e6d40ff043bdc337737b",
+    "rnn_fd.py": "eeeebd821462fadb52bb9b12a06932f2c9f764e3e7482b316e12a94d26ec9fd0"
+  }
+}
