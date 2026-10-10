@@ -1,0 +1,61 @@
+name: Residual FR CPU verification
+on:
+  push:
+    branches: [feature/residual-fr-ifwi-20261010]
+  pull_request:
+    paths:
+      - 'experiments/**'
+      - 'verification/**'
+      - 'residual_ifwi.py'
+      - '.github/workflows/residual-fr-cpu.yml'
+permissions:
+  contents: read
+concurrency:
+  group: residual-fr-cpu-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  cpu:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      MPLBACKEND: Agg
+      OMP_NUM_THREADS: '1'
+      MKL_NUM_THREADS: '1'
+      CUDA_VISIBLE_DEVICES: ''
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Archive exact tracked source
+        run: |
+          mkdir -p validation
+          git archive --format=zip --output=validation/source.zip HEAD
+          git rev-parse HEAD > validation/commit.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: residual-fr-source
+          path: validation/source.zip
+          retention-days: 7
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+          cache: pip
+      - name: Install CPU test dependencies
+        run: |
+          python -m pip install torch==2.10.0 torchvision==0.25.0 --index-url https://download.pytorch.org/whl/cpu
+          python -m pip install -r requirements.txt pytest
+          python -m pip freeze > validation/environment.txt
+      - name: Run repository tests on CPU
+        run: |
+          set -o pipefail
+          python -m pytest -q --junitxml=validation/pytest.xml 2>&1 | tee validation/pytest.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: residual-fr-cpu-results
+          path: |
+            validation/commit.txt
+            validation/environment.txt
+            validation/pytest.xml
+            validation/pytest.log
+          retention-days: 14
