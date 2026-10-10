@@ -8,6 +8,7 @@
 - [安装与检查](#安装与检查)
 - [单次参数实验](#单次参数实验)
 - [默认 baseline](#默认-baseline)
+- [Residual IFWI baseline1000](#residual-ifwi-baseline1000)
 - [输出与续训](#输出与续训)
 - [批量参数与方法对照](#批量参数与方法对照)
 - [scripts 辅助工具](#scripts-辅助工具)
@@ -62,7 +63,7 @@ python experiment.py --dry-run
 
 第一条是通用安装示例，不固定 CUDA 构建。已有可用的 torch / torchvision 时可跳过。`experiments/requirements.txt` 引用同一套基础依赖。本地虚拟环境与 CUDA 版本不随仓库分发。
 
-公开前已在本地通过 148 项 CPU 小网格测试，覆盖真实正演、梯度、更新、参数校验、checkpoint 恢复与结果汇总。测试程序仅保留本地，公开仓库不包含测试入口；这些检查不保证完整规模的反演精度。验证范围见 [发布检查](docs/release-check-20261005.md)。
+原版发布前已在本地通过 148 项 CPU 小网格测试，覆盖真实正演、梯度、更新、参数校验、checkpoint 恢复与结果汇总；该批历史测试仅保留本地，验证范围见 [发布检查](docs/release-check-20261005.md)。新增 Residual IFWI 检查代码见 [运行与验证说明](docs/residual_ifwi.md#小规模检查)。小规模检查不保证完整规模的反演精度。
 
 ## 单次参数实验
 
@@ -123,6 +124,16 @@ python experiment.py -width 192 --epochs 3
 自定义炮数保持 x 索引 20..260 的孔径，用均匀取点后取整生成位置；不一定包含原 13 个炮点。实际源与接收器位置保存于 `acquisition.json`。增加炮数、深度或宽度会提高计算和显存需求，25/49 炮的完整输入显存需求尚未实测。
 
 `--epochs` 表示最终总更新数。`--log-interval` 同时控制 best 选择与 checkpoint 保存，最后一步也会保存；不是仅改变终端打印。偏离 4001 次更新或间隔 100 时，`run_metadata.json` 标记 `preliminary=true`。短跑只检查运行情况，不能代替完整预算的精度对照。
+
+## Residual IFWI baseline1000
+
+独立入口 `residual_ifwi.py` 使用采样后 Gaussian sigma15 的固定初速度加 SIREN 残差。今后的 Residual IFWI 对照采用 [baseline1000 配置](experiments/configs/residual_ifwi_baseline1000.yaml)：49 炮、每次随机 8 炮、4 炮微批次、约 5 s 记录、seed=3、1000 次 Adam 更新。实测第 1000 次更新后 RMSE 为 438.387596 m/s、SSIM 为 0.609624；1000 是用户指定比较预算，不表示最优或收敛，原版随机初始化 baseline 保留。
+
+```bash
+python residual_ifwi.py --config experiments/configs/residual_ifwi_baseline1000.yaml --device cuda:0 --output-dir outputs/residual_ifwi_baseline1000
+```
+
+初速度生成、单位、可移植运行/续训、小规模检查及归因限制见 [Residual IFWI 文档](docs/residual_ifwi.md)，实际配置、断点链和结果哈希见 [1000 次结果记录](docs/experiments/residual_ifwi_baseline1000.json)。
 
 ## 输出与续训
 

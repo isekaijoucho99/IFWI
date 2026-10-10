@@ -1,0 +1,326 @@
+{
+  "schema_version": 1,
+  "baseline_id": "residual_ifwi_baseline1000",
+  "selection": "User-designated 1000 completed Adam updates; saved postupdate endpoint; no truth-based checkpoint selection; not a convergence or optimality claim.",
+  "research_asset_id": "3ac9cf9b-e5dd-4140-9c4f-a118a10225cc",
+  "research_asset_status_at_capture": "draft revision 1",
+  "baseline_config": "experiments/configs/residual_ifwi_baseline1000.yaml",
+  "baseline_config_sha256": "6a379130af9802c05c6f7dfb8ef3514f9c9355c02be21654858a196d4a9cdb90",
+  "baseline_config_changes_from_recorded_config": {
+    "experiment_name": "residual_ifwi_baseline1000",
+    "note": "Recorded config already has epochs=1000; fresh public preset differs only in experiment_name. Relative to the 800-update YAML, only experiment_name and training.epochs change."
+  },
+  "recorded_run": "residual_until_convergence_20261009_1103/stages/stage_0001/residual_seed3_20261009_110500_0a550a",
+  "recorded_config": {
+    "experiment_name": "residual_ifwi_49shots_5s_800",
+    "parameterization": "residual",
+    "seed": 3,
+    "data": {
+      "model_file": "vel_marmousi_376x1151.csv",
+      "model_units": "m/s",
+      "csv_header": "legacy",
+      "downsample": 4,
+      "crop_shape": null,
+      "grid_spacing_m": 15.0
+    },
+    "initialization": {
+      "sigma": 15.0,
+      "gaussian_mode": "reflect",
+      "gaussian_truncate": 4.0
+    },
+    "model": {
+      "neurons": [
+        2,
+        128,
+        128,
+        128,
+        128,
+        1
+      ],
+      "omega_0": 30.0,
+      "mean_kmps": 3.0,
+      "std_kmps": 1.0
+    },
+    "acquisition": {
+      "num_shots": 49,
+      "source_x_indices": [
+        20,
+        25,
+        30,
+        35,
+        40,
+        45,
+        50,
+        55,
+        60,
+        65,
+        70,
+        75,
+        80,
+        85,
+        90,
+        95,
+        100,
+        105,
+        110,
+        115,
+        120,
+        125,
+        130,
+        135,
+        140,
+        145,
+        150,
+        155,
+        160,
+        165,
+        170,
+        175,
+        180,
+        185,
+        190,
+        195,
+        200,
+        205,
+        210,
+        215,
+        220,
+        225,
+        230,
+        235,
+        240,
+        245,
+        250,
+        255,
+        260
+      ],
+      "source_start_index": 20,
+      "source_spacing_index": 20,
+      "source_end_margin": 10,
+      "source_depth_index": 1,
+      "receiver_depth_index": 2,
+      "receiver_stride": 1
+    },
+    "forward": {
+      "dt_s": 0.0019,
+      "nt": 2632,
+      "frequency_hz": 8.0,
+      "npad": 15,
+      "order": 2,
+      "free_surface": true,
+      "pml_reflection": 1E-06
+    },
+    "training": {
+      "epochs": 1000,
+      "learning_rate": 0.0001,
+      "checkpoint_interval": 50,
+      "shot_batch_size": 4,
+      "shots_per_update": 8,
+      "full_eval_interval": 50
+    }
+  },
+  "training_chain": [
+    {
+      "from_updates": 0,
+      "to_updates": 800,
+      "run": "residual_49shots_5s_800_20261009_0021/runs/residual_seed3_20261009_002114_8a80cb",
+      "timing": {
+        "preparation_seconds": 186.15298599999733,
+        "training_seconds": 27333.564112099997,
+        "total_seconds_before_plots": 27519.7574568,
+        "peak_cuda_allocated_gib": 9.29088544845581
+      }
+    },
+    {
+      "from_updates": 800,
+      "to_updates": 1000,
+      "run": "residual_until_convergence_20261009_1103/stages/stage_0001/residual_seed3_20261009_110500_0a550a",
+      "timing": {
+        "preparation_seconds": 188.62602669998887,
+        "training_seconds": 7435.457642900001,
+        "total_seconds_before_plots": 7624.130895399998,
+        "peak_cuda_allocated_gib": 9.29088544845581
+      }
+    }
+  ],
+  "metric_velocity_units": "m/s",
+  "ssim_data_range_mps": 4000.0,
+  "completed_updates": 1000,
+  "resumed_from_updates": 800,
+  "fixed_background": {
+    "rmse_mps": 518.7527934736858,
+    "mae_mps": 348.3287387559318,
+    "ssim": 0.38109386261418826
+  },
+  "fresh_initial_metrics": {
+    "rmse_mps": 518.7527934736858,
+    "mae_mps": 348.3287387559318,
+    "ssim": 0.38109386261418826,
+    "data_mse": 0.01496156508801505,
+    "common_1p9s_data_mse": 0.035495468822773546,
+    "baseline_13shots_1p9s_data_mse": 0.03477985435165465
+  },
+  "resumed_run_start_metrics": {
+    "rmse_mps": 454.05498098849955,
+    "mae_mps": 261.39702423582685,
+    "ssim": 0.589978102475878,
+    "data_mse": 0.00016637037515465636,
+    "common_1p9s_data_mse": 0.000253535428782925,
+    "baseline_13shots_1p9s_data_mse": 0.0002618708604131825
+  },
+  "final": {
+    "rmse_mps": 438.38759603945476,
+    "mae_mps": 248.8663456603427,
+    "ssim": 0.6096241070979631,
+    "data_mse": 0.0005433399091998581,
+    "common_1p9s_data_mse": 0.0009028941194628715,
+    "baseline_13shots_1p9s_data_mse": 0.0007871614980103914
+  },
+  "loss_timing": "Sampled training rows evaluate before each update; full evaluation rows and final metrics evaluate the saved postupdate model.",
+  "environment": {
+    "python": "3.10.18",
+    "torch": "2.9.0.dev20250904+cu128",
+    "numpy": "2.2.6",
+    "cuda": "12.8",
+    "device": "cuda:0",
+    "git_head": "5b6487e9264af57ac638e096f4e13dc7d7cd3b19",
+    "torch_threads": 1,
+    "deterministic_cudnn": true,
+    "gpu": "NVIDIA GeForce RTX 5060 Ti"
+  },
+  "scipy_version": "1.15.3",
+  "data": {
+    "file": "data/vel_marmousi_376x1151.csv",
+    "sha256": "9b79c401fb161d0edb58a668b572cac7de29f18e1d141f08caee9b55377cfb4d",
+    "model_units": "m/s",
+    "csv_header": "legacy",
+    "consumed_numeric_first_row": true,
+    "raw_shape": [
+      376,
+      1151
+    ],
+    "loaded_shape": [
+      375,
+      1151
+    ],
+    "sampling": {
+      "downsample": 4,
+      "sampled_shape": [
+        94,
+        288
+      ],
+      "crop_shape": null,
+      "crop_origin": [
+        0,
+        0
+      ],
+      "output_shape": [
+        94,
+        288
+      ]
+    },
+    "grid_spacing_m": 15.0,
+    "initialization": {
+      "method": "scipy.ndimage.gaussian_filter",
+      "filter_order": [
+        "read_csv",
+        "convert_units_to_m/s",
+        "downsample",
+        "crop",
+        "float32",
+        "gaussian_filter"
+      ],
+      "sigma_gridpoints": 15.0,
+      "sigma_physical_m": 225.0,
+      "gaussian_mode": "reflect",
+      "gaussian_truncate": 4.0,
+      "scipy_version": "1.15.3"
+    },
+    "truth": {
+      "units": "m/s",
+      "dtype": "float32",
+      "shape": [
+        94,
+        288
+      ],
+      "sha256": "c02de6f85b1d9125768c6aa4dabab2bd619b2128e659ac2f353ccba7f8b7ee9f",
+      "sha256_encoding": "C-order little-endian float32 array bytes",
+      "min_mps": 1500.0,
+      "max_mps": 5500.0
+    },
+    "fixed_background": {
+      "units": "m/s",
+      "dtype": "float32",
+      "shape": [
+        94,
+        288
+      ],
+      "sha256": "054e117aadd5af051cb7484e81cc444c4b0a7b18e4942e551b1f228ec2bfcdda",
+      "sha256_encoding": "C-order little-endian float32 array bytes",
+      "min_mps": 1726.138671875,
+      "max_mps": 4029.408203125
+    }
+  },
+  "original_source_sha256": {
+    "ifwi_modules.py": "900adab18822769946a64109fa77314d71d396403e70179b815094cd952bb043",
+    "rnn_fd.py": "eeeebd821462fadb52bb9b12a06932f2c9f764e3e7482b316e12a94d26ec9fd0",
+    "generator.py": "c37e49c631a2f654808455b92a8125604d7dbf46b6dac7c63a17d736ef79f69c",
+    "plot_functions.py": "53d70c622cc2e4fef19aded39835c73e4feca06ddaa6e6d40ff043bdc337737b"
+  },
+  "residual_source_sha256": {
+    "residual_ifwi.py": "b48c6736b5aa19b44943c4f94086ac29eae0a2d3c965b531da6e9b86b1c267ea",
+    "experiments/residual_ifwi_experiment.py": "bad732ab953041aea397dd55f15c401c5ebc246f1a9f8b4a0ca9cac8b98806a9",
+    "experiments/residual_ifwi_stochastic.py": "639082d830cc88927fdb453cfe10925775b2b49c6acd25aa899214df4b1e4e55",
+    "experiments/residual_ifwi_data.py": "e26406adbc2807b2831506d7300066f88406d8e22fff07a68d1b62543a9619e8",
+    "experiments/residual_ifwi_report.py": "81fbe0677599b8ca7b034d4fcba3a27cace1f6c4bb3d879b3f0547ab26f23a83"
+  },
+  "recorded_artifact_sha256": {
+    "metrics.json": "9f9672f93fdafd9719eb8df8bc80f13e8bc6eb52f2a7048f200588b0a925bc5e",
+    "config.json": "147c40139033c0c11c7450598c760c87a4544dcd69422898bf803dc04cf2e58a",
+    "environment.json": "09951be3635d9c613b6f7cc40c5f1f8b2781bda56613199596d5c453d4236578",
+    "initial_model_provenance.json": "35a1fe7564583130bbf27ac09b664c01d820269d59d1cc7ca61a431259537107",
+    "original_source_hashes.json": "88130e8c15668cf59a33e734cc7f31bd11e0bc76960f8a6ed9118967fe733e56",
+    "experiment_source_hashes.json": "8cdae73ea63a6189c28b84c252250bd44c443e142c6907d564980806d81d1883",
+    "full_evaluation_history.json": "2d27209d809240ec10f912642920c79fb0bcfafc5d5fa67bcff98968f1c523e6",
+    "audit.json": "828bf793423862ccdfa9185d7dca6a4369269814f00e0ded35bb6d2d59f8bbf6",
+    "checkpoint.pt": "32f2e6cf699b92dbdf980d90acf9d039b6d5aab43cffb7dc6dd68f2913124184",
+    "final_velocity.npy": "2f8e653983887a05d2b70b970a192ab90889a115a45fbd515d8e2e14c618b3b6",
+    "final_residual.npy": "8bc438f21054c27e00a3d183f3a0f76e50f09a791077847be87109f301cf9877"
+  },
+  "historical_cpu_audit": {
+    "passed": true,
+    "check_count": 44,
+    "completed_updates": 1000,
+    "limitations": [
+      "No finite-difference simulation or waveform MSE is recomputed.",
+      "This checks saved artifact consistency; it does not establish physical correctness or convergence.",
+      "Nonzero late-time observations exclude an entirely zero-appended tail, not every possible data error.",
+      "CPU checkpoint evaluation uses declared tolerances because CUDA and CPU arithmetic can differ."
+    ]
+  },
+  "later_observations_not_selected_as_baseline": {
+    "run": "residual_until_convergence_20261009_1103/stages/stage_0006/residual_seed3_20261009_212249_6d48ba",
+    "postupdate_1900": {
+      "evaluated_updates": 1900,
+      "update": 1900,
+      "data_mse": 9.366472045257979E-05,
+      "common_1p9s_data_mse": 0.00014779014759369602,
+      "baseline_13shots_1p9s_data_mse": 0.00021159104312573618,
+      "rmse_mps": 391.99523006807624,
+      "mae_mps": 217.19572197122775,
+      "ssim": 0.6725830909551197,
+      "loss_scope": "all_available_shots",
+      "timing": "postupdate_evaluation"
+    },
+    "postupdate_2000": {
+      "rmse_mps": 402.1926881587748,
+      "mae_mps": 226.21823046167972,
+      "ssim": 0.645306164322296,
+      "data_mse": 0.0006537334948006901,
+      "common_1p9s_data_mse": 0.001288797362576588,
+      "baseline_13shots_1p9s_data_mse": 0.0008975709733931581
+    }
+  },
+  "reproducibility": "Small-grid finite-difference checks cover continuous versus resumed parameters and random state. Fresh 1000 updates use the same numerical protocol as 0-to-800-to-1000; a separate fresh full-scale run was not measured. Cross-device or dependency bitwise equality is not promised.",
+  "distribution": "This small fact record contains no model weights, observations, local environment, or machine-absolute paths; historical artifacts remain local and are identified by SHA256."
+}
