@@ -48,7 +48,10 @@ jobs:
       - name: Run repository tests on CPU
         run: |
           set -o pipefail
-          python -m pytest -q --junitxml=validation/pytest.xml 2>&1 | tee validation/pytest.log
+          python -m pytest verification/fr_ifwi/test_fourier.py -q --junitxml=validation/fr-default-backend.xml 2>&1 | tee validation/fr-default-backend.log
+          python verification/fr_ifwi/run_cpu_checks.py -q --junitxml=validation/pytest.xml 2>&1 | tee validation/pytest.log
+          python scripts/check_fr_ifwi.py --output validation/fourier-preflight.json
+          python residual_ifwi.py --config experiments/configs/residual_ifwi_fr1000.yaml --dry-run > validation/resolved-config.json
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -58,4 +61,8 @@ jobs:
             validation/environment.txt
             validation/pytest.xml
             validation/pytest.log
+            validation/fr-default-backend.xml
+            validation/fr-default-backend.log
+            validation/fourier-preflight.json
+            validation/resolved-config.json
           retention-days: 14

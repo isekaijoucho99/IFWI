@@ -1,0 +1,63 @@
+experiment_name: residual_ifwi_fr_smoke
+parameterization: residual
+seed: 3
+data:
+  model_file: vel_marmousi_376x1151.csv
+  model_units: m/s
+  csv_header: legacy
+  downsample: 4
+  crop_shape:
+  - 24
+  - 64
+  grid_spacing_m: 15.0
+initialization:
+  sigma: 15.0
+  gaussian_mode: reflect
+  gaussian_truncate: 4.0
+model:
+  neurons:
+  - 2
+  - 16
+  - 16
+  - 16
+  - 1
+  omega_0: 30.0
+  mean_kmps: 3.0
+  std_kmps: 1.0
+  architecture: fr_siren
+  fourier:
+    low_freq_num: 2
+    high_freq_num: 2
+    phi_num: 4
+    alpha: 0.01
+    target_layers: hidden_only
+    learnable_omega: false
+acquisition:
+  num_shots: 5
+  source_x_indices:
+  - 4
+  - 16
+  - 28
+  - 40
+  - 52
+  source_start_index: 20
+  source_spacing_index: 20
+  source_end_margin: 10
+  source_depth_index: 1
+  receiver_depth_index: 2
+  receiver_stride: 1
+forward:
+  dt_s: 0.0019
+  nt: 100
+  frequency_hz: 8.0
+  npad: 15
+  order: 2
+  free_surface: true
+  pml_reflection: 1.0e-06
+training:
+  epochs: 3
+  learning_rate: 0.0001
+  checkpoint_interval: 1
+  shot_batch_size: 2
+  shots_per_update: 3
+  full_eval_interval: 1

@@ -63,7 +63,8 @@ def validate_config(config):
     if not isinstance(config, dict) or set(config) != set(template):
         raise ValueError("Configuration must contain exactly the stage-1 sections")
     for name in ("data", "initialization", "model", "acquisition", "forward", "training"):
-        allowed_optional = {"shots_per_update", "full_eval_interval"} if name == "training" else set()
+        allowed_optional = ({"shots_per_update", "full_eval_interval"} if name == "training"
+                            else {"architecture", "fourier"} if name == "model" else set())
         if (not isinstance(config[name], dict) or not set(template[name]).issubset(config[name])
                 or set(config[name]) - set(template[name]) - allowed_optional):
             raise ValueError(f"Unknown/missing stage-1 settings in {name}")
@@ -98,6 +99,11 @@ def validate_config(config):
         _positive(n, "neurons", integer=True)
     for key in ("omega_0", "mean_kmps", "std_kmps"):
         _positive(model[key], key)
+    if "architecture" in model or "fourier" in model:
+        from experiments.fr_siren import validate_architecture
+        validate_architecture(model.get("architecture", "siren"), model.get("fourier"))
+        if model.get("architecture") == "fr_siren" and (len(neurons) < 4 or min(neurons[1:-1]) < 2):
+            raise ValueError("FR-SIREN requires at least two hidden layers, each with width >= 2")
     for key in ("num_shots", "source_spacing_index", "receiver_stride"):
         _positive(acq[key], key, integer=True)
     for key in ("source_start_index", "source_end_margin", "source_depth_index", "receiver_depth_index"):
@@ -134,10 +140,10 @@ def validate_config(config):
 
 
 class VelocityParameterization(torch.nn.Module):
-    """Original SIREN with fixed background; only the SIREN is trainable."""
+    """Fixed background with an original SIREN or optional Fourier-SIREN residual."""
 
     def __init__(self, initial_mps, dx_m, neurons, omega_0=30., mean_kmps=3.,
-                 std_kmps=1., parameterization="residual"):
+                 std_kmps=1., parameterization="residual", architecture="siren", fourier=None):
         super().__init__()
         initial = torch.as_tensor(initial_mps, dtype=torch.float32).detach().clone()
         if initial.ndim != 2 or not torch.isfinite(initial).all() or initial.min() <= 0:
@@ -151,8 +157,14 @@ class VelocityParameterization(torch.nn.Module):
         x, z = np.meshgrid(np.arange(initial.shape[1]) * dx_m / 1000,
                            np.arange(initial.shape[0]) * dx_m / 1000)
         self.register_buffer("coords", torch.from_numpy(np.stack((x, z), axis=-1).astype(np.float32))[None])
-        self.net = IRN(neuron=list(neurons), omega_0=omega_0, bias=True,
-                       activation="sine", dropout=False, outermost_linear=True)
+        if architecture == "siren" and fourier is None:
+            # Keep the old construction and random draw order exactly intact.
+            self.net = IRN(neuron=list(neurons), omega_0=omega_0, bias=True,
+                           activation="sine", dropout=False, outermost_linear=True)
+        else:
+            from experiments.fr_siren import FourierIRN, validate_architecture
+            options = validate_architecture(architecture, fourier)
+            self.net = FourierIRN(list(neurons), omega_0=omega_0, fourier=options)
         self.std_kmps, self.mean_kmps = std_kmps, mean_kmps
         self.parameterization = parameterization
         if parameterization == "residual":
@@ -358,11 +370,20 @@ def _resume_configuration(config):
     return result
 
 
+def _fr_source_hashes(config):
+    if config["model"].get("architecture", "siren") != "fr_siren":
+        return None
+    names = ("experiments/fr_siren.py", "experiments/residual_ifwi_experiment.py")
+    return {name: hashlib.sha256((ROOT / name).read_bytes()).hexdigest() for name in names}
+
+
 def _save_checkpoint(path, model, optimizer, config, completed, history, provenance, sources, full_evaluation_history=None):
     payload = {"schema": SCHEMA, "model": model.state_dict(), "optimizer": optimizer.state_dict(),
                "config": config, "completed_updates": completed, "history": history,
                "provenance": provenance, "original_source_hashes": sources,
                "fixed_init_units": "m/s", "rng": _rng_state()}
+    if config["model"].get("architecture", "siren") == "fr_siren":
+        payload["fr_implementation_sha256"] = _fr_source_hashes(config)
     if full_evaluation_history is not None:
         payload["full_evaluation_history"] = full_evaluation_history
     temporary = path.with_suffix(path.suffix + ".tmp")
@@ -386,6 +407,9 @@ def run_experiment(config, output_parent, device="cpu", resume=None, save_figure
             raise ValueError("Resume checkpoint schema/configuration differs")
         if saved["original_source_hashes"] != sources or saved["provenance"] != provenance:
             raise ValueError("Resume source/model/initializer provenance differs")
+        if (config["model"].get("architecture", "siren") == "fr_siren"
+                and saved.get("fr_implementation_sha256") != _fr_source_hashes(config)):
+            raise ValueError("Fourier implementation differs from checkpoint; do not mix code versions during resume")
         if (saved["completed_updates"] > config["training"]["epochs"]
                 or (not stochastic and saved["completed_updates"] == config["training"]["epochs"])):
             raise ValueError("Requested total epochs must exceed completed updates")
@@ -400,7 +424,9 @@ def run_experiment(config, output_parent, device="cpu", resume=None, save_figure
     _json(out / "comparison_notes.json", {
         "parameterization": config["parameterization"],
         "initialization": "fixed sampled-grid Gaussian + zero last layer" if config["parameterization"] == "residual" else "original random absolute SIREN, mean/std km/s",
-        "controlled_components": ["original IRN architecture", "reference FD", "observations", "waveform MSE", "Adam", "acquisition", "update budget"],
+        "architecture": config["model"].get("architecture", "siren"),
+        "fourier": config["model"].get("fourier"),
+        "controlled_components": ["declared network width/depth", "reference FD", "observations", "waveform MSE", "Adam", "acquisition", "update budget"],
         "changes_vs_original_random": ["fixed spatial background", "zero final-layer initialization", "residual parameterization"] if config["parameterization"] == "residual" else [],
         "attribution": "Residual vs random absolute changes initialization and parameterization jointly; it does not isolate residual parameterization.",
         "historical_baseline_budget": 4001, "this_run_budget": config["training"]["epochs"],
@@ -411,6 +437,8 @@ def run_experiment(config, output_parent, device="cpu", resume=None, save_figure
         runner_names = ("residual_ifwi.py", "experiments/residual_ifwi_experiment.py",
                         "experiments/residual_ifwi_stochastic.py", "experiments/residual_ifwi_data.py",
                         "experiments/residual_ifwi_report.py")
+        if config["model"].get("architecture", "siren") == "fr_siren":
+            runner_names += ("experiments/fr_siren.py",)
         _json(out / "experiment_source_hashes.json", {
             name: hashlib.sha256((ROOT / name).read_bytes()).hexdigest() for name in runner_names})
         _json(out / "sampling_protocol.json", {
@@ -453,7 +481,8 @@ def run_experiment(config, output_parent, device="cpu", resume=None, save_figure
         problem = build_forward_problem(truth, config, device)
         cfg_model = config["model"]
         model = VelocityParameterization(background, config["data"]["grid_spacing_m"], cfg_model["neurons"],
-            cfg_model["omega_0"], cfg_model["mean_kmps"], cfg_model["std_kmps"], config["parameterization"]).to(device)
+            cfg_model["omega_0"], cfg_model["mean_kmps"], cfg_model["std_kmps"], config["parameterization"],
+            architecture=cfg_model.get("architecture", "siren"), fourier=cfg_model.get("fourier")).to(device)
         optimizer = torch.optim.Adam(model.parameters(), lr=config["training"]["learning_rate"])
         if saved:
             model.load_state_dict(saved["model"], strict=True)
@@ -462,6 +491,12 @@ def run_experiment(config, output_parent, device="cpu", resume=None, save_figure
             full_history = saved.get("full_evaluation_history", [])
             _restore_rng(saved["rng"])
             del saved
+        if cfg_model.get("architecture", "siren") == "fr_siren":
+            _json(out / "fourier_diagnostics.json", {
+                **model.net.diagnostics(), "evaluated_updates": completed,
+                "implementation_sha256": _fr_source_hashes(config),
+                "note": "Fixed cosine bases on feature indices; rank deficiency is reported, not repaired."
+            })
         resumed_from_updates = completed
         with torch.no_grad():
             run_initial = model().cpu().numpy()[0].copy()
