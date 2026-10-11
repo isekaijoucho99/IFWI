@@ -13,7 +13,7 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 torch.set_num_threads(1)
 
-SMALL = {"high_freq_num": 4, "low_freq_num": 4, "phi_num": 8, "alpha": .01, "lambda_init": "fr_inr"}
+SMALL = {"high_freq_num": 8, "low_freq_num": 8, "phi_num": 8, "alpha": .01, "lambda_init": "fr_inr"}
 
 
 def fr():
@@ -54,7 +54,20 @@ def test_only_hidden_layers_are_reparameterized_and_rank_checked():
     assert fr().reparameterize_irn(net, SMALL) == [1, 2]
     assert isinstance(net.linear[0], torch.nn.Linear) and isinstance(net.linear[-1], torch.nn.Linear)
     assert all(isinstance(net.linear[i], fr().FRLinear) for i in (1, 2))
-    assert all(net.linear[i].rank() == 8 for i in (1, 2))
+    # Effective rank 7 = 8 inputs minus the inherent endpoint tie.
+    assert all(net.linear[i].rank() == 7 for i in (1, 2))
+
+
+def test_fr_inr_bases_tie_first_and_last_input_and_guard_rejects_more_loss():
+    """All frequencies are multiples of the lowest, so both endpoints share every basis value."""
+    for spec in ((128, 128, 128, 32, .01), (8, 8, 8, 8, .01)):
+        bases = fr().fourier_bases(*spec)
+        assert torch.allclose(bases[:, 0], bases[:, -1], atol=1e-6)
+        assert fr().FRLinear(spec[0], spec[0], *spec[1:]).rank() == spec[0] - 1
+    from ifwi_modules import IRN
+    net = IRN(neuron=[2, 8, 8, 1], omega_0=30., outermost_linear=True)
+    with pytest.raises(ValueError, match="rank 6"):
+        fr().reparameterize_irn(net, {**SMALL, "high_freq_num": 4, "low_freq_num": 4})
 
 
 def test_fr_inr_lambda_init_bounds_and_zero_bias():
@@ -69,15 +82,33 @@ def test_fr_inr_lambda_init_bounds_and_zero_bias():
 
 def test_pinv_init_reproduces_seed_matched_original_network():
     from ifwi_modules import IRN
-    coords = torch.rand(1, 5, 7, 2)
     torch.manual_seed(3)
     plain = IRN(neuron=[2, 8, 8, 8, 1], omega_0=30., outermost_linear=True)
     torch.manual_seed(3)
     net = IRN(neuron=[2, 8, 8, 8, 1], omega_0=30., outermost_linear=True)
     fr().reparameterize_irn(net, {**SMALL, "lambda_init": "pinv"})
-    for a, b in zip(fr().merged_weights(plain), fr().merged_weights(net)):
-        assert torch.allclose(a, b, atol=1e-5)
-    assert torch.allclose(plain(coords)[0], net(coords)[0], atol=1e-4)
+    for index, (a, b) in enumerate(zip(fr().merged_weights(plain), fr().merged_weights(net))):
+        if index in (0, len(net.linear) - 1):
+            assert torch.equal(a, b)
+            continue
+        # Inner input columns are exact; the tied endpoint columns become their mean.
+        assert torch.allclose(a[:, 1:-1], b[:, 1:-1], atol=1e-6)
+        assert torch.allclose(b[:, 0], (a[:, 0] + a[:, -1]) / 2, atol=1e-6)
+        assert torch.allclose(b[:, -1], b[:, 0], atol=1e-6)
+        assert net.linear[index].lamb.abs().max() < 1
+
+
+def test_pinv_init_is_well_conditioned_at_full_size():
+    """Untruncated pinv turned the float32 tie into |lamb| ~ 5e6 and a 17x weight error."""
+    torch.manual_seed(3)
+    linear = torch.nn.Linear(128, 128)
+    torch.nn.init.uniform_(linear.weight, -(6 / 128) ** .5 / 30, (6 / 128) ** .5 / 30)
+    layer = fr().FRLinear(128, 128, 128, 128, 32, .01)
+    layer.init_from_linear(linear)
+    w0, w = linear.weight.detach(), layer.weight.detach()
+    assert layer.lamb.abs().max() < 1
+    assert torch.allclose(w[:, 1:-1], w0[:, 1:-1], atol=1e-6)
+    assert torch.allclose(w[:, 0], (w0[:, 0] + w0[:, -1]) / 2, atol=1e-6)
 
 
 @pytest.mark.parametrize("lambda_init", ["fr_inr", "pinv"])

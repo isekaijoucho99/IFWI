@@ -17,8 +17,9 @@ so B has rank 1 and x/z become indistinguishable. The last layer stays plain so
 the residual zero initialization (start exactly at v_init) is unchanged.
 
 lambda_init="fr_inr" is the authors' initialization (paper-faithful default).
-lambda_init="pinv" (ours, ablation) sets lamb @ B = the seed-matched original
-IRN weights, so only the training dynamics differ from the baseline.
+lambda_init="pinv" (ours, ablation) sets lamb @ B to the seed-matched original
+IRN weights, except that the first/last input columns, which every FR-INR basis
+ties together, are averaged; otherwise only the training dynamics differ.
 """
 from __future__ import annotations
 
@@ -56,8 +57,7 @@ def validate_fourier(fourier):
         raise ValueError(f"fourier.lambda_init must be one of {LAMBDA_INITS}")
 
 
-def fourier_bases(in_features, high_freq_num, low_freq_num, phi_num, alpha):
-    """Return B [(L+H)*P, in_features], ordered low then high frequency, phase fastest."""
+def _bases_array(in_features, high_freq_num, low_freq_num, phi_num, alpha):
     phases = 2 * np.pi * np.arange(phi_num) / phi_num
     low = (np.arange(low_freq_num) + 1) / low_freq_num if low_freq_num else np.zeros(0)
     high = np.arange(high_freq_num, dtype=np.float64) + 1
@@ -65,7 +65,16 @@ def fourier_bases(in_features, high_freq_num, low_freq_num, phi_num, alpha):
     t_max = 2 * np.pi / frequencies.min()
     points = np.linspace(-t_max / 2, t_max / 2, in_features)
     bases = np.cos(frequencies[:, None, None] * points[None, None, :] + phases[None, :, None])
-    return torch.from_numpy(alpha * bases.reshape(-1, in_features)).float()
+    return alpha * bases.reshape(-1, in_features)
+
+
+def fourier_bases(in_features, high_freq_num, low_freq_num, phi_num, alpha):
+    """Return B [(L+H)*P, in_features], ordered low then high frequency, phase fastest.
+
+    Every frequency is a multiple of the lowest, so all bases are T_max-periodic and
+    the two endpoint columns are equal: rank(B) <= in_features - 1 (as in FR-INR).
+    """
+    return torch.from_numpy(_bases_array(in_features, high_freq_num, low_freq_num, phi_num, alpha)).float()
 
 
 class FRLinear(torch.nn.Module):
@@ -74,6 +83,7 @@ class FRLinear(torch.nn.Module):
     def __init__(self, in_features, out_features, high_freq_num, low_freq_num, phi_num, alpha):
         super().__init__()
         self.in_features, self.out_features = in_features, out_features
+        self._spec = (in_features, high_freq_num, low_freq_num, phi_num, alpha)
         # Deterministic from the config, so not stored in checkpoints.
         self.register_buffer("bases", fourier_bases(in_features, high_freq_num, low_freq_num, phi_num, alpha),
                              persistent=False)
@@ -84,10 +94,15 @@ class FRLinear(torch.nn.Module):
     def weight(self):
         return self.lamb @ self.bases
 
-    def init_from_linear(self, linear):
-        """Minimum-norm lamb with lamb @ bases = W0; keeps the original bias."""
+    def init_from_linear(self, linear, rtol=1e-6):
+        """Minimum-norm lamb with lamb @ bases = W0 projected on the row space of bases.
+
+        Inner columns of W0 are reproduced; the tied endpoint columns become their mean.
+        rtol drops the float32-rounding singular value of the tie, which an untruncated
+        pinv amplifies into a garbage lamb (~1e6 entries).
+        """
         with torch.no_grad():
-            pinv = torch.linalg.pinv(self.bases.double())
+            pinv = torch.linalg.pinv(self.bases.double(), rtol=rtol)
             self.lamb.copy_((linear.weight.double() @ pinv).float())
             self.bias.copy_(linear.bias)
 
@@ -99,8 +114,10 @@ class FRLinear(torch.nn.Module):
             self.lamb.copy_((torch.rand_like(self.lamb) * 2 - 1) * bound[None])
             self.bias.zero_()
 
-    def rank(self):
-        return int(torch.linalg.matrix_rank(self.bases.double()))
+    def rank(self, rtol=1e-6):
+        """Effective rank of the float64 construction; float32 rounding would hide the endpoint tie."""
+        singular = np.linalg.svd(_bases_array(*self._spec), compute_uv=False)
+        return int((singular > rtol * singular[0]).sum())
 
     def forward(self, x):
         return torch.nn.functional.linear(x, self.weight, self.bias)
@@ -117,8 +134,9 @@ def reparameterize_irn(irn, fourier):
             raise ValueError("FR reparameterization expects IRN layers with bias")
         layer = FRLinear(linear.in_features, linear.out_features, *(fourier[k] for k in keys))
         layer = layer.to(device=linear.weight.device)
-        if layer.rank() < layer.in_features:
-            raise ValueError(f"Fourier bases of layer {index} have rank {layer.rank()} < {layer.in_features}")
+        # Only the inherent endpoint tie (first/last input share a weight column) is allowed.
+        if layer.rank() < layer.in_features - 1:
+            raise ValueError(f"Fourier bases of layer {index} have rank {layer.rank()} < {layer.in_features - 1}")
         if fourier["lambda_init"] == "pinv":
             layer.init_from_linear(linear)
         else:

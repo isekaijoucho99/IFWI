@@ -135,7 +135,7 @@ python residual_ifwi.py --config experiments/configs/residual_ifwi_baseline1000.
 
 初速度生成、单位、可移植运行/续训、小规模检查及归因限制见 [Residual IFWI 文档](docs/residual_ifwi.md)，实际配置、断点链和结果哈希见 [1000 次结果记录](docs/experiments/residual_ifwi_baseline1000.json)。
 
-在此 baseline 上加入 FR-IFWI 的 Fourier 重参数化隐藏层（`model.fourier`，未设置时与 baseline 完全相同），以及分频带误差诊断，见 [FR-IFWI 文档](docs/fr_ifwi.md)。该部分尚未训练验证。
+在此 baseline 上加入 FR-IFWI 的 Fourier 重参数化隐藏层（`model.fourier`，未设置时与 baseline 完全相同），可训练激活频率（`model.trainable_omega`）、按论文协议的 13 炮对照配置（`paper13_ifwi.yaml` / `paper13_fr_ifwi.yaml`）以及分频带误差诊断，见 [FR-IFWI 文档](docs/fr_ifwi.md)。
 
 ## 输出与续训
 

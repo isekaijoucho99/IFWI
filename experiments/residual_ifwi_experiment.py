@@ -25,6 +25,7 @@ from generator import wGenerator
 from ifwi_modules import IRN
 from rnn_fd import rnn2D
 from experiments.fourier_modules import validate_fourier
+from experiments.trainable_omega import omega_values, parameter_groups, validate_trainable_omega
 from experiments.residual_ifwi_data import load_velocity_data
 from experiments.residual_ifwi_report import save_plots, save_sampling_plot, velocity_metrics
 
@@ -64,7 +65,7 @@ def validate_config(config):
     if not isinstance(config, dict) or set(config) != set(template):
         raise ValueError("Configuration must contain exactly the stage-1 sections")
     for name in ("data", "initialization", "model", "acquisition", "forward", "training"):
-        allowed_optional = {"training": {"shots_per_update", "full_eval_interval"}, "model": {"fourier"}}.get(name, set())
+        allowed_optional = {"training": {"shots_per_update", "full_eval_interval"}, "model": {"fourier", "trainable_omega"}}.get(name, set())
         if (not isinstance(config[name], dict) or not set(template[name]).issubset(config[name])
                 or set(config[name]) - set(template[name]) - allowed_optional):
             raise ValueError(f"Unknown/missing stage-1 settings in {name}")
@@ -102,6 +103,7 @@ def validate_config(config):
     validate_fourier(model.get("fourier"))
     if model.get("fourier") is not None and len(neurons) < 4:
         raise ValueError("Fourier reparameterization needs at least one hidden-to-hidden layer")
+    validate_trainable_omega(model.get("trainable_omega"))
     for key in ("num_shots", "source_spacing_index", "receiver_stride"):
         _positive(acq[key], key, integer=True)
     for key in ("source_start_index", "source_end_margin", "source_depth_index", "receiver_depth_index"):
@@ -141,7 +143,7 @@ class VelocityParameterization(torch.nn.Module):
     """Original SIREN with fixed background; only the SIREN is trainable."""
 
     def __init__(self, initial_mps, dx_m, neurons, omega_0=30., mean_kmps=3.,
-                 std_kmps=1., parameterization="residual", fourier=None):
+                 std_kmps=1., parameterization="residual", fourier=None, trainable_omega=False):
         super().__init__()
         initial = torch.as_tensor(initial_mps, dtype=torch.float32).detach().clone()
         if initial.ndim != 2 or not torch.isfinite(initial).all() or initial.min() <= 0:
@@ -164,6 +166,11 @@ class VelocityParameterization(torch.nn.Module):
         if fourier is not None:
             from experiments.fourier_modules import reparameterize_irn
             self.fourier_layers = reparameterize_irn(self.net, fourier)
+        # Wrap after FR so FR init still sees omega_0; step 0 equals the fixed-omega network.
+        self.omega_layers = []
+        if trainable_omega:
+            from experiments.trainable_omega import wrap_irn_omega
+            self.omega_layers = wrap_irn_omega(self.net)
         if parameterization == "residual":
             with torch.no_grad():
                 self.net.linear[-1].weight.zero_()
@@ -299,6 +306,9 @@ def train_update(model, problem, optimizer):
         raise
     report = {"data_mse": loss_value, "gradient_norm": grad_norm,
               "parameter_update_norm": change, "velocity_before_mps": velocity_before}
+    omegas = omega_values(model)
+    if omegas:
+        report["omega_after"] = omegas
     if selected_indices is not None:
         report.update(shot_indices=selected_indices, source_x_indices=problem["geometry"]["source_x_indices"],
                       loss_scope="sampled_shots_mean")
@@ -365,6 +375,7 @@ def _resume_configuration(config):
     result["training"].pop("full_eval_interval", None)
     result["training"].setdefault("shots_per_update", None)
     result["model"].setdefault("fourier", None)
+    result["model"].setdefault("trainable_omega", None)
     return result
 
 
@@ -387,6 +398,7 @@ def run_experiment(config, output_parent, device="cpu", resume=None, save_figure
     full_eval_interval = config["training"].get("full_eval_interval", config["training"]["checkpoint_interval"])
     sources = original_source_hashes()
     fourier = config["model"].get("fourier")
+    trainable_omega = config["model"].get("trainable_omega")
     if str(device).startswith("cuda") and not torch.cuda.is_available():
         raise ValueError("CUDA requested but unavailable")
     truth, background, provenance = load_velocity_data(config, ROOT)
@@ -414,7 +426,8 @@ def run_experiment(config, output_parent, device="cpu", resume=None, save_figure
         "controlled_components": ["original IRN architecture" if fourier is None else "original IRN first/last layers and activations",
                                   "reference FD", "observations", "waveform MSE", "Adam", "acquisition", "update budget"],
         "changes_vs_original_random": (["fixed spatial background", "zero final-layer initialization", "residual parameterization"] if config["parameterization"] == "residual" else [])
-                                      + ([] if fourier is None else [f"Fourier reparameterized hidden layers (W = Lambda B, lambda_init={fourier['lambda_init']})"]),
+                                      + ([] if fourier is None else [f"Fourier reparameterized hidden layers (W = Lambda B, lambda_init={fourier['lambda_init']})"])
+                                      + ([] if trainable_omega is None else [f"per-layer trainable sine omega (init omega_0, Adam lr {trainable_omega['learning_rate']})"]),
         "attribution": "Residual vs random absolute changes initialization and parameterization jointly; it does not isolate residual parameterization.",
         "historical_baseline_budget": 4001, "this_run_budget": config["training"]["epochs"],
         "runner_differences": "No unused TV coordinate derivatives, no NaN/Inf masking; original clipping effectively inactive; explicit final postupdate waveform evaluation.",
@@ -423,7 +436,8 @@ def run_experiment(config, output_parent, device="cpu", resume=None, save_figure
     if stochastic:
         runner_names = ("residual_ifwi.py", "experiments/residual_ifwi_experiment.py",
                         "experiments/residual_ifwi_stochastic.py", "experiments/residual_ifwi_data.py",
-                        "experiments/residual_ifwi_report.py", "experiments/fourier_modules.py")
+                        "experiments/residual_ifwi_report.py", "experiments/fourier_modules.py",
+                        "experiments/trainable_omega.py")
         _json(out / "experiment_source_hashes.json", {
             name: hashlib.sha256((ROOT / name).read_bytes()).hexdigest() for name in runner_names})
         _json(out / "sampling_protocol.json", {
@@ -467,8 +481,8 @@ def run_experiment(config, output_parent, device="cpu", resume=None, save_figure
         cfg_model = config["model"]
         model = VelocityParameterization(background, config["data"]["grid_spacing_m"], cfg_model["neurons"],
             cfg_model["omega_0"], cfg_model["mean_kmps"], cfg_model["std_kmps"], config["parameterization"],
-            fourier=fourier).to(device)
-        optimizer = torch.optim.Adam(model.parameters(), lr=config["training"]["learning_rate"])
+            fourier=fourier, trainable_omega=trainable_omega is not None).to(device)
+        optimizer = torch.optim.Adam(parameter_groups(model, config["training"]["learning_rate"], trainable_omega))
         if saved:
             model.load_state_dict(saved["model"], strict=True)
             optimizer.load_state_dict(saved["optimizer"])
@@ -542,7 +556,8 @@ def run_experiment(config, output_parent, device="cpu", resume=None, save_figure
                 _json(out / "status.json", {"state": "running", "pid": os.getpid(), "completed_updates": completed,
                     "total_updates": config["training"]["epochs"], "last_training_mse": entry["data_mse"],
                     "last_loss_evaluated_updates": completed - 1, "elapsed_training_seconds": time.perf_counter() - training_started})
-                emit(f"Update {update}/{config['training']['epochs']}: MSE={entry['data_mse']:.7g} RMSE(before)={entry['rmse_mps']:.3f} m/s grad={entry['gradient_norm']:.4g} step={entry['step_seconds']:.2f}s")
+                emit(f"Update {update}/{config['training']['epochs']}: MSE={entry['data_mse']:.7g} RMSE(before)={entry['rmse_mps']:.3f} m/s grad={entry['gradient_norm']:.4g} step={entry['step_seconds']:.2f}s"
+                     + (f" omega={[round(w, 3) for w in entry['omega_after']]}" if "omega_after" in entry else ""))
                 if stochastic and (update % full_eval_interval == 0 or update == config["training"]["epochs"]):
                     full_losses = evaluate_windows(model, problem)
                     with torch.no_grad():
