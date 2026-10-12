@@ -25,6 +25,7 @@ from generator import wGenerator
 from ifwi_modules import IRN
 from rnn_fd import rnn2D
 from experiments.fourier_modules import validate_fourier
+from experiments.low_rank_modules import validate_low_rank
 from experiments.trainable_omega import omega_values, parameter_groups, validate_trainable_omega
 from experiments.residual_ifwi_data import load_velocity_data
 from experiments.residual_ifwi_report import save_plots, save_sampling_plot, velocity_metrics
@@ -65,7 +66,7 @@ def validate_config(config):
     if not isinstance(config, dict) or set(config) != set(template):
         raise ValueError("Configuration must contain exactly the stage-1 sections")
     for name in ("data", "initialization", "model", "acquisition", "forward", "training"):
-        allowed_optional = {"training": {"shots_per_update", "full_eval_interval"}, "model": {"fourier", "trainable_omega"}}.get(name, set())
+        allowed_optional = {"training": {"shots_per_update", "full_eval_interval"}, "model": {"fourier", "trainable_omega", "low_rank"}}.get(name, set())
         if (not isinstance(config[name], dict) or not set(template[name]).issubset(config[name])
                 or set(config[name]) - set(template[name]) - allowed_optional):
             raise ValueError(f"Unknown/missing stage-1 settings in {name}")
@@ -93,15 +94,25 @@ def validate_config(config):
     _positive(init["gaussian_truncate"], "gaussian_truncate")
     if init["gaussian_mode"] not in ("reflect", "nearest", "mirror", "wrap", "constant"):
         raise ValueError("Unsupported Gaussian boundary mode")
-    neurons = model["neurons"]
-    if not isinstance(neurons, list) or len(neurons) < 3 or neurons[0] != 2 or neurons[-1] != 1:
-        raise ValueError("neurons must describe an original SIREN with 2 inputs and 1 output")
-    for n in neurons:
-        _positive(n, "neurons", integer=True)
+    neurons, low_rank = model["neurons"], model.get("low_rank")
+    validate_low_rank(low_rank)
+    if low_rank is not None:
+        # The factor networks replace the 2-D SIREN; a leftover neurons list would be silently unused.
+        if neurons is not None:
+            raise ValueError("model.neurons must be null when model.low_rank is set")
+        if config["parameterization"] != "residual":
+            raise ValueError("model.low_rank is implemented for the residual parameterization only")
+        hidden_layers = len(low_rank["hidden"])
+    else:
+        if not isinstance(neurons, list) or len(neurons) < 3 or neurons[0] != 2 or neurons[-1] != 1:
+            raise ValueError("neurons must describe an original SIREN with 2 inputs and 1 output")
+        for n in neurons:
+            _positive(n, "neurons", integer=True)
+        hidden_layers = len(neurons) - 2
     for key in ("omega_0", "mean_kmps", "std_kmps"):
         _positive(model[key], key)
     validate_fourier(model.get("fourier"))
-    if model.get("fourier") is not None and len(neurons) < 4:
+    if model.get("fourier") is not None and hidden_layers < 2:
         raise ValueError("Fourier reparameterization needs at least one hidden-to-hidden layer")
     validate_trainable_omega(model.get("trainable_omega"))
     for key in ("num_shots", "source_spacing_index", "receiver_stride"):
@@ -140,10 +151,10 @@ def validate_config(config):
 
 
 class VelocityParameterization(torch.nn.Module):
-    """Original SIREN with fixed background; only the SIREN is trainable."""
+    """Original SIREN (or a low-rank factorized residual) with fixed background; only the network is trainable."""
 
     def __init__(self, initial_mps, dx_m, neurons, omega_0=30., mean_kmps=3.,
-                 std_kmps=1., parameterization="residual", fourier=None, trainable_omega=False):
+                 std_kmps=1., parameterization="residual", fourier=None, trainable_omega=False, low_rank=None):
         super().__init__()
         initial = torch.as_tensor(initial_mps, dtype=torch.float32).detach().clone()
         if initial.ndim != 2 or not torch.isfinite(initial).all() or initial.min() <= 0:
@@ -153,14 +164,25 @@ class VelocityParameterization(torch.nn.Module):
         _positive(dx_m, "dx_m")
         _positive(std_kmps, "std_kmps")
         self.register_buffer("fixed_init_mps", initial[None])
+        self.std_kmps, self.mean_kmps = std_kmps, mean_kmps
+        self.parameterization = parameterization
+        if low_rank is not None:
+            # Zero core C: step 0 equals the background, as the zero last layer does below.
+            if parameterization != "residual":
+                raise ValueError("low_rank is implemented for the residual parameterization only")
+            from experiments.low_rank_modules import LowRankResidual
+            self.net = None
+            self.low_rank = LowRankResidual(*initial.shape, dx_m, low_rank, omega_0,
+                                            fourier=fourier, trainable_omega=trainable_omega)
+            self.fourier_layers, self.omega_layers = self.low_rank.fourier_layers, self.low_rank.omega_layers
+            return
         # Preserve the original NumPy-float64 construction before its float32 cast.
         x, z = np.meshgrid(np.arange(initial.shape[1]) * dx_m / 1000,
                            np.arange(initial.shape[0]) * dx_m / 1000)
         self.register_buffer("coords", torch.from_numpy(np.stack((x, z), axis=-1).astype(np.float32))[None])
         self.net = IRN(neuron=list(neurons), omega_0=omega_0, bias=True,
                        activation="sine", dropout=False, outermost_linear=True)
-        self.std_kmps, self.mean_kmps = std_kmps, mean_kmps
-        self.parameterization = parameterization
+        self.low_rank = None
         # Replace hidden layers after IRN init, so seed-matched first/last layers are unchanged.
         self.fourier_layers = []
         if fourier is not None:
@@ -177,11 +199,23 @@ class VelocityParameterization(torch.nn.Module):
                 self.net.linear[-1].bias.zero_()
 
     def forward(self):
-        raw, _ = self.net(self.coords)
-        raw = raw.squeeze(-1)
+        if self.low_rank is not None:
+            raw = self.low_rank()[None]
+        else:
+            raw, _ = self.net(self.coords)
+            raw = raw.squeeze(-1)
         if self.parameterization == "residual":
             return self.fixed_init_mps + raw * (1000 * self.std_kmps)
         return (raw * self.std_kmps + self.mean_kmps) * 1000
+
+
+def model_from_config(initial_mps, config):
+    """VelocityParameterization exactly as the runner builds it from a validated config."""
+    model = config["model"]
+    return VelocityParameterization(initial_mps, config["data"]["grid_spacing_m"], model["neurons"],
+        model["omega_0"], model["mean_kmps"], model["std_kmps"], config["parameterization"],
+        fourier=model.get("fourier"), trainable_omega=model.get("trainable_omega") is not None,
+        low_rank=model.get("low_rank"))
 
 
 def require_finite(value, label):
@@ -376,6 +410,7 @@ def _resume_configuration(config):
     result["training"].setdefault("shots_per_update", None)
     result["model"].setdefault("fourier", None)
     result["model"].setdefault("trainable_omega", None)
+    result["model"].setdefault("low_rank", None)
     return result
 
 
@@ -399,6 +434,7 @@ def run_experiment(config, output_parent, device="cpu", resume=None, save_figure
     sources = original_source_hashes()
     fourier = config["model"].get("fourier")
     trainable_omega = config["model"].get("trainable_omega")
+    low_rank = config["model"].get("low_rank")
     if str(device).startswith("cuda") and not torch.cuda.is_available():
         raise ValueError("CUDA requested but unavailable")
     truth, background, provenance = load_velocity_data(config, ROOT)
@@ -422,12 +458,18 @@ def run_experiment(config, output_parent, device="cpu", resume=None, save_figure
     _json(out / "status.json", {"state": "preparing", "pid": os.getpid(), "completed_updates": 0})
     _json(out / "comparison_notes.json", {
         "parameterization": config["parameterization"],
-        "initialization": "fixed sampled-grid Gaussian + zero last layer" if config["parameterization"] == "residual" else "original random absolute SIREN, mean/std km/s",
-        "controlled_components": ["original IRN architecture" if fourier is None else "original IRN first/last layers and activations",
+        "initialization": ("original random absolute SIREN, mean/std km/s" if config["parameterization"] != "residual"
+                           else "fixed sampled-grid Gaussian + " + ("zero last layer" if low_rank is None else "zero low-rank core C")),
+        "controlled_components": ["original IRN architecture" if fourier is None and low_rank is None
+                                  else "original IRN sine layers" + ("" if low_rank is None else " inside both 1-D factor networks"),
                                   "reference FD", "observations", "waveform MSE", "Adam", "acquisition", "update budget"],
         "changes_vs_original_random": (["fixed spatial background", "zero final-layer initialization", "residual parameterization"] if config["parameterization"] == "residual" else [])
                                       + ([] if fourier is None else [f"Fourier reparameterized hidden layers (W = Lambda B, lambda_init={fourier['lambda_init']})"])
-                                      + ([] if trainable_omega is None else [f"per-layer trainable sine omega (init omega_0, Adam lr {trainable_omega['learning_rate']})"]),
+                                      + ([] if trainable_omega is None else [f"per-layer trainable sine omega (init omega_0, Adam lr {trainable_omega['learning_rate']})"])
+                                      + ([] if low_rank is None else [
+                                          f"low-rank residual U C V^T (rank_z={low_rank['rank_z']}, rank_x={low_rank['rank_x']}, "
+                                          f"1-D factor IRNs hidden={low_rank['hidden']}, coord_scale={low_rank['coord_scale']}, "
+                                          f"output_gain={low_rank['output_gain']}, zero core instead of zero last layer)"]),
         "attribution": "Residual vs random absolute changes initialization and parameterization jointly; it does not isolate residual parameterization.",
         "historical_baseline_budget": 4001, "this_run_budget": config["training"]["epochs"],
         "runner_differences": "No unused TV coordinate derivatives, no NaN/Inf masking; original clipping effectively inactive; explicit final postupdate waveform evaluation.",
@@ -437,7 +479,7 @@ def run_experiment(config, output_parent, device="cpu", resume=None, save_figure
         runner_names = ("residual_ifwi.py", "experiments/residual_ifwi_experiment.py",
                         "experiments/residual_ifwi_stochastic.py", "experiments/residual_ifwi_data.py",
                         "experiments/residual_ifwi_report.py", "experiments/fourier_modules.py",
-                        "experiments/trainable_omega.py")
+                        "experiments/trainable_omega.py", "experiments/low_rank_modules.py")
         _json(out / "experiment_source_hashes.json", {
             name: hashlib.sha256((ROOT / name).read_bytes()).hexdigest() for name in runner_names})
         _json(out / "sampling_protocol.json", {
@@ -479,9 +521,7 @@ def run_experiment(config, output_parent, device="cpu", resume=None, save_figure
         preparation_started = time.perf_counter()
         problem = build_forward_problem(truth, config, device)
         cfg_model = config["model"]
-        model = VelocityParameterization(background, config["data"]["grid_spacing_m"], cfg_model["neurons"],
-            cfg_model["omega_0"], cfg_model["mean_kmps"], cfg_model["std_kmps"], config["parameterization"],
-            fourier=fourier, trainable_omega=trainable_omega is not None).to(device)
+        model = model_from_config(background, config).to(device)
         optimizer = torch.optim.Adam(parameter_groups(model, config["training"]["learning_rate"], trainable_omega))
         if saved:
             model.load_state_dict(saved["model"], strict=True)
@@ -514,7 +554,11 @@ def run_experiment(config, output_parent, device="cpu", resume=None, save_figure
         _json(out / "acquisition.json", problem["geometry"])
         _json(out / "initial_checks.json", {"velocity_units": "m/s", "residual_unit_scale_mps": 1000 * cfg_model["std_kmps"],
             "mean_applied_to_residual": False, "velocity_shape": [1, *truth.shape],
-            "coordinates_shape": list(model.coords.shape), "coordinates_order": ["x", "z"], "coordinates_units": "km",
+            **({"coordinates_shape": list(model.coords.shape), "coordinates_order": ["x", "z"], "coordinates_units": "km"}
+               if low_rank is None else
+               {"coordinates_shape": {"z": list(model.low_rank.z_coords.shape), "x": list(model.low_rank.x_coords.shape)},
+                "coordinates_order": ["z", "x"], "coordinates_units": f"km x coord_scale {low_rank['coord_scale']}",
+                "low_rank_core_zero_at_start": bool(model.low_rank.core.detach().count_nonzero().item() == 0)}),
             "waveform_shape": list(problem["observed"].shape), "observations_detached": not problem["observed"].requires_grad,
             "fixed_initializer_requires_grad": model.fixed_init_mps.requires_grad,
             "max_residual_at_run_start_mps": float(np.max(np.abs(run_initial - background))),
