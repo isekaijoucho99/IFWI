@@ -63,6 +63,31 @@ python residual_ifwi.py --config experiments/configs/residual_lr_ifwi_baseline10
 
 续训、`--crop/--shots/--nt` 小规模检查与 baseline 相同，见 [Residual IFWI 文档](residual_ifwi.md)。`--shots` 需配合自动生成炮点的配置（如 stage1），baseline1000 系配置写死了 49 个炮点。
 
+## 13 炮协议（paper13）
+
+49 炮每步随机 8 炮、约 5 s 记录的协议下 FR 后期停在约 430 m/s；13 炮、1.9 s、每步全炮的 paper13 协议下 FR + 可训练 ω 1000 步达 375 m/s，因此后续低秩实验以 paper13 为基础。两份配置相对各自基准只改 `experiment_name` 与模型部分（有测试保证，并满足标定脚本对其余设置完全一致的要求）：
+
+| 配置 | 残差网络 | 标定参考 | 对照 |
+| --- | --- | --- | --- |
+| `paper13_lr_fr_ifwi.yaml` | 低秩 U C Vᵀ，FR 与可训练 ω 作用于两个因子网络 | `paper13_fr_ifwi.yaml` | FR13（375.3 m/s） |
+| `paper13_lr_ifwi.yaml` | 低秩 U C Vᵀ，固定 ω、无 FR | `paper13_ifwi.yaml` | IFWI13（升到 749.0 m/s，未越过早期陷阱） |
+
+先在 GPU 上分别标定，各只算一次全 13 炮梯度：
+
+```bash
+python -m experiments.low_rank_calibration --config experiments/configs/paper13_lr_fr_ifwi.yaml --reference-config experiments/configs/paper13_fr_ifwi.yaml --device cuda:0 --output outputs/low_rank_calibration_paper13_fr.json
+python -m experiments.low_rank_calibration --config experiments/configs/paper13_lr_ifwi.yaml --reference-config experiments/configs/paper13_ifwi.yaml --device cuda:0 --output outputs/low_rank_calibration_paper13.json
+```
+
+把各自的 `recommended_output_gain` 写入对应配置后训练：
+
+```bash
+python residual_ifwi.py --config experiments/configs/paper13_lr_fr_ifwi.yaml --device cuda:0 --output-dir outputs/paper13_lr_fr_ifwi
+python residual_ifwi.py --config experiments/configs/paper13_lr_ifwi.yaml --device cuda:0 --output-dir outputs/paper13_lr_ifwi
+```
+
+两份配置要分别标定、不能共用一个增益：CPU 小网格检查（24×288、2 炮、120 采样点）中，FR + ω 二维参考的首步 RMS 为 1.23 m/s，普通二维参考为 5.80 m/s，推荐增益分别约 1.2 与 4.9。这些只是流程检查，全尺寸数值须在 GPU 上重测。标定只匹配第一步步长；FR 层之后的有效步长放大（二维时中间层约 5.5–7.1 倍）不在其中。
+
 ## 诊断
 
 奇异值谱、有效秩与检查点间相对变化（对应论文 Fig. 3 与 Fig. 23），只读已保存的速度数组，也可直接用于已有 baseline1000 输出：

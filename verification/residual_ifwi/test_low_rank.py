@@ -255,3 +255,17 @@ def test_lowrank_report_spectra_ranks_and_relative_change(tmp_path):
     assert result["truth_residual"]["r99"] > 2
     expected = np.square(rank_two - rank_one).sum() / np.square(background + rank_one).sum()
     assert rows[2]["window_start"] == 50 and rows[2]["relative_change"] == pytest.approx(expected)
+
+
+@pytest.mark.parametrize("name,base", [("paper13_lr_fr_ifwi", "paper13_fr_ifwi"), ("paper13_lr_ifwi", "paper13_ifwi")])
+def test_paper13_low_rank_configs_change_only_the_residual_network(name, base):
+    yaml = pytest.importorskip("yaml")
+    folder = ROOT / "experiments/configs"
+    cfg, ref = (yaml.safe_load((folder / f"{n}.yaml").read_text(encoding="utf-8")) for n in (name, base))
+    api().validate_config(cfg)
+    # The calibration script requires every non-model section to match its reference.
+    mod("low_rank_calibration").check_comparable(cfg, ref)
+    assert cfg["model"].pop("low_rank") == {**mod("low_rank_modules").default_low_rank(), "output_gain": 1.}
+    assert cfg["model"].pop("neurons") is None and ref["model"].pop("neurons") == [2, 128, 128, 128, 128, 1]
+    assert cfg["model"] == ref["model"]  # FR and trainable omega kept exactly as in the base run
+    assert cfg["experiment_name"] == name
