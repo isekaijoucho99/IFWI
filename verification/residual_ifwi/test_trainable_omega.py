@@ -133,3 +133,28 @@ def test_paper13_configs_follow_paper_protocol_and_differ_only_in_network():
     stage1.update(experiment_name=ifwi["experiment_name"])
     stage1["training"]["epochs"] = 1000
     assert stage1 == ifwi
+
+
+def test_paper13_sampled8_differs_only_in_shot_sampling():
+    sampled, full = _yaml("paper13_fr_ifwi_sampled8"), _yaml("paper13_fr_ifwi")
+    api().validate_config(sampled)
+    assert sampled["training"].pop("shots_per_update") == 8
+    assert sampled["training"].pop("full_eval_interval") == 10
+    sampled["experiment_name"] = full["experiment_name"]
+    assert sampled == full
+
+
+def test_paper13_sampled8_runs_and_its_shared_window_mse_is_the_full_13_shot_mse(tmp_path):
+    cfg = _yaml("paper13_fr_ifwi_sampled8")
+    # Real CSV and the paper's 13 source positions on a shallow crop; short, higher-frequency record.
+    cfg["data"]["crop_shape"] = [24, 288]
+    cfg["model"].update(neurons=[2, 8, 8, 8, 1], fourier=SMALL_FR)
+    cfg["forward"].update(dt_s=.001, nt=60, frequency_hz=30, npad=3)
+    cfg["training"].update(epochs=2, checkpoint_interval=1, full_eval_interval=1)
+    out = api().run_experiment(cfg, tmp_path, "cpu", save_figures=False)
+    sampled = json.loads((out / "sampled_training_history.json").read_text())
+    assert all(len(set(row["shot_indices"])) == 8 for row in sampled)
+    full = json.loads((out / "full_evaluation_history.json").read_text())
+    assert [row["evaluated_updates"] for row in full] == [0, 1, 2]
+    for row in full:
+        assert row["baseline_13shots_1p9s_data_mse"] == pytest.approx(row["data_mse"], rel=1e-6)

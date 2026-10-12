@@ -2,7 +2,7 @@
 
 对应论文：Kang, Chen, Yang, Li & Wu, *Implicit full waveform inversion with adaptive Fourier frequency bases learning*, GJI 244 (2025), ggaf404（下称 FR-IFWI）。论文未公开代码；Fourier 基的具体构造沿用其方法来源 Shi et al. (CVPR 2024) 的公开实现 [FR-INR](https://github.com/LabShuHangGU/FR-INR)（`modules.py::sin_fr_layer`、`2d_image_fitting.py`）。
 
-fr_inr 主配置已在 baseline1000 协议上训练 1000 次（RMSE 429.6 m/s、SSIM 0.573，baseline 为 438.4 / 0.610）；可训练 ω、修正后的 pinv 与 paper13 配置尚未训练。
+fr_inr 主配置已在 baseline1000 协议上训练 1000 次（RMSE 429.6 m/s、SSIM 0.573，baseline 为 438.4 / 0.610）；可训练 ω 版为 429.3 m/s；paper13 结果见下文；修正后的 pinv 尚未训练。
 
 ## 与论文的对应关系
 
@@ -37,7 +37,11 @@ model:
 
 ## 论文协议对照（paper13）
 
-`paper13_ifwi.yaml` / `paper13_fr_ifwi.yaml` 按论文 §3.1：13 炮、炮距 300 m、源深 15 m、每个网格点一个接收器、8 Hz、dt 1.9 ms、1000 个采样点、每次更新用全部炮，1000 次更新（Table 1 平滑初始模型）。二者只差 `fourier` + `trainable_omega`（有测试保证），IFWI 侧固定 ω。论文未给出的项沿用 stage1：Adam lr 1e-4、高斯 σ = 15 格、4×128 网络、接收器深度索引 2。因此绝对数值仍不能直接对照论文 Table 1（论文 IFWI 平滑初始 1000 步速度 MSE 0.0299 (km/s)²，约 173 m/s RMSE），应比较两者的相对差。
+`paper13_ifwi.yaml` / `paper13_fr_ifwi.yaml` 按论文 §3.1：13 炮、炮距 300 m、源深 15 m、每个网格点一个接收器、8 Hz、dt 1.9 ms、1000 个采样点、每次更新用全部炮，1000 次更新（Table 1 平滑初始模型）。二者只差 `fourier` + `trainable_omega`（有测试保证），IFWI 侧固定 ω。论文未给出的项沿用 stage1：Adam lr 1e-4、高斯 σ = 15 格、4×128 网络、接收器深度索引 2。论文 Table 1（IFWI 平滑初始 1000 步速度 MSE 0.0299）与其 Fig. 6(b) 不一致：Fig. 6(b) 的速度 MSE 从约 0.30 降到 IFWI 约 0.18、FR-IFWI 约 0.16 (km/s)²（RMSE 约 548 → 424 / 400 m/s），FR/IFWI 比值 0.89，Table 1 为 0.47；Table 1 的定义或归一化不明，不宜换算成 m/s 对照。
+
+实测（seed 3、1000 次更新）：FR + 可训练 ω 的 RMSE 为 375.3 m/s、全 13 炮波形 MSE 2.3e-5；普通 IFWI 的 RMSE 单调升到 749.0 m/s，loss 约 100 步后停在 1e-2 左右，浅部出现卷曲伪影。论文 IFWI 在 Fig. 6(b) 单调下降，故此处 IFWI 失败与论文不符，最可能的差异是论文未给出的学习率；FR 中间层实测有效步长约为普通层 5.5–7.1 倍，二者差距尚不能归因于 FR 结构本身。
+
+`paper13_fr_ifwi_sampled8.yaml` 与 `paper13_fr_ifwi.yaml` 只差每次更新随机抽 8/13 炮（`shots_per_update: 8`，每 10 次全 13 炮评价；有测试保证）。用于检验 49 炮协议后期平台是否来自抽炮噪声：炮位与 1.9 s 时窗不变。注意 8/13 的抽样方差（有限总体修正后）约为 8/49 的一半，是较弱的噪声；若不出现平台，可再试 5–6 炮。此几何下 `full_evaluation_history.json` 的 `baseline_13shots_1p9s_data_mse` 等于 `data_mse`，可直接与 paper13_fr_ifwi 的 `data_mse` 对照。
 
 ## 运行（需在 GPU 机器上）
 
@@ -49,6 +53,7 @@ python residual_ifwi.py --config experiments/configs/residual_fr_ifwi_pinv_basel
 python residual_ifwi.py --config experiments/configs/residual_fr_ifwi_omega_baseline1000.yaml --device cuda:0 --output-dir outputs/residual_fr_ifwi_omega
 python residual_ifwi.py --config experiments/configs/paper13_ifwi.yaml --device cuda:0 --output-dir outputs/paper13_ifwi
 python residual_ifwi.py --config experiments/configs/paper13_fr_ifwi.yaml --device cuda:0 --output-dir outputs/paper13_fr_ifwi
+python residual_ifwi.py --config experiments/configs/paper13_fr_ifwi_sampled8.yaml --device cuda:0 --output-dir outputs/paper13_fr_ifwi_sampled8
 ```
 
 建议先各跑 300 次更新（`--epochs 300`），对照 baseline 每 50 次的全炮评价曲线，再决定是否跑满 1000。续训、`--crop/--shots/--nt` 小规模检查与 baseline 用法相同，见 [Residual IFWI 文档](residual_ifwi.md)。

@@ -1,0 +1,59 @@
+# Control for paper13_fr_ifwi: identical except each Adam update uses a uniform random
+# subset of 8 of the 13 shots (redrawn every update, global NumPy RNG, seed 3).
+# Tests whether shot-sampling noise alone, at the same positions and 1.9 s window,
+# reproduces the late plateau seen with 8 of 49 shots. All 13 shots are evaluated
+# every 10 updates; on this geometry baseline_13shots_1p9s_data_mse equals
+# paper13_fr_ifwi's data_mse.
+experiment_name: paper13_fr_ifwi_sampled8
+parameterization: residual
+seed: 3
+data:
+  model_file: vel_marmousi_376x1151.csv
+  model_units: m/s
+  csv_header: legacy
+  downsample: 4
+  crop_shape: null
+  grid_spacing_m: 15.0
+initialization:
+  sigma: 15.0
+  gaussian_mode: reflect
+  gaussian_truncate: 4.0
+model:
+  neurons: [2, 128, 128, 128, 128, 1]
+  omega_0: 30.0
+  mean_kmps: 3.0
+  std_kmps: 1.0
+  # FR hidden layers (W = Lambda B); values from FR-INR 2d_image_fitting.py (sine).
+  fourier:
+    high_freq_num: 128
+    low_freq_num: 128
+    phi_num: 32
+    alpha: 0.01
+    lambda_init: fr_inr
+  # Per-layer trainable sine omega (FR-IFWI Sec. 3.2), init omega_0; lr is ours (paper gives none).
+  trainable_omega:
+    learning_rate: 0.01
+acquisition:
+  num_shots: 13
+  source_x_indices: null
+  source_start_index: 20
+  source_spacing_index: 20
+  source_end_margin: 10
+  source_depth_index: 1
+  receiver_depth_index: 2
+  receiver_stride: 1
+forward:
+  dt_s: 0.0019
+  nt: 1000
+  frequency_hz: 8.0
+  npad: 15
+  order: 2
+  free_surface: true
+  pml_reflection: 0.000001
+training:
+  epochs: 1000
+  learning_rate: 0.0001
+  checkpoint_interval: 50
+  shot_batch_size: null
+  shots_per_update: 8
+  full_eval_interval: 10
