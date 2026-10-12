@@ -57,13 +57,23 @@ python residual_ifwi.py --config experiments/configs/paper13_fr_ifwi.yaml --devi
 
 背景已含真值约 0.8 c/km 以下的长波长，整体 RMSE 的改善几乎都来自中高波数。`experiments/spectral_metrics.py` 用正交 2D DCT-II 计算径向波数 k（cycles/km）各频带的速度 RMSE，各频带平方和严格等于总 RMSE²，并给出相对背景的比值（< 1 表示该频带改善）。默认频带：0–1、1–3、3–8、8–16、>16 c/km（15 m 网格 Nyquist 为 33.3 c/km）。
 
-离线脚本只读取已保存的速度数组，不跑正演，可直接用于已有 baseline1000 输出：
+离线脚本只读取已保存的速度数组，不跑正演，可直接用于已有 baseline1000 输出。续训的一组用逗号连接其目录（先早后晚）：
 
 ```bash
-python -m experiments.residual_band_report outputs/residual_ifwi_baseline1000/RUN_ID outputs/residual_fr_ifwi/RUN_ID --labels baseline fr --output-dir outputs/band_report
+python -m experiments.residual_band_report outputs/residual_ifwi_baseline1000/RUN_ID,outputs/residual_ifwi_baseline1000/RESUMED_RUN_ID outputs/residual_fr_ifwi/RUN_ID --labels baseline fr --output-dir outputs/band_report
 ```
 
-输出 `band_errors.csv/json` 与 `band_ratio.png`。
+输出 `band_errors.csv/json`、`band_ratio.png`，以及区域误差 `region_errors.csv/json`（`experiments/region_metrics.py`）：深度带 0–500、500–1000、>1000 m，和真值 ≥ 5000 m/s 的掩膜及其补集；每个区域给 RMSE 和占总平方误差的比例，终端打印背景与各组终点对照。下采样 Marmousi 中 ≥ 5000 m/s 恰为两条 5500 m/s 薄层（955 格、3.5%、深约 1.1–1.2 km，厚 4–5 格，远薄于 8 Hz 分辨率）；仅高斯背景的误差平方和中它们就占 42%，深于 1 km 的部分占 63%。
+
+## 有效步长诊断
+
+检验"FR 层在相同 Adam lr 下步长更大"（按符号步估计 128/128/32 约 4.7 倍、64/64/4 约 0.3 倍）。`experiments/residual_step_report.py` 读取 `checkpoints/update_XXXX.pt`，按保存的配置重建模型（FR 基确定性生成），合并 W = ΛB，计算相邻检查点之间每层预激活权重 A = ω·W 的位移 ‖ΔA‖_F（输出层无 ω），并在相同窗口上与第一组相除。这是净位移不是路径长度，来回振荡会使其偏小；各组同样口径。只读文件、不跑正演：
+
+```bash
+python -m experiments.residual_step_report outputs/residual_ifwi_baseline1000/RUN_ID,outputs/residual_ifwi_baseline1000/RESUMED_RUN_ID outputs/residual_fr_ifwi/RUN_ID outputs/residual_fr_ifwi_omega/RUN_ID --labels baseline fr128 fr128_omega --output-dir outputs/step_report
+```
+
+输出 `step_displacement.csv/json/png`，终端打印各层相对 baseline 的中位比值及 200 步以内窗口的隐藏层比值。只支持本仓库运行器写出的检查点；FR64/64/4 来自另一实现、配置键不同，不能直接读取。
 
 ## 未验证项
 
