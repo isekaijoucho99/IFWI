@@ -52,6 +52,35 @@ python residual_ifwi.py --config experiments/configs/lrpaper13_lr_ifwi.yaml --de
 
 论文模式不需要 `low_rank_calibration`（无额外增益）。
 
+### 加入 FR + 可训练 ω：2×2×2 对照
+
+`lrpaper13_fr_ifwi.yaml`、`lrpaper13_lr_fr_ifwi.yaml` 在论文模式两份配置上只加 `fourier` 与 `trainable_omega`，取值与 `paper13_fr_ifwi.yaml`（FR13）完全相同。FR-IFWI §4.6 提出把 LR-IFWI 两个因子 INR 的各层改写为 W = ΛB；这里 FR 作用于因子网络的隐藏层（一维输入首层秩为 1、输出层保持普通层，同二维情形）。可训练 ω 在预训练阶段也一起训练（全部参数预训练）。与 residual 系列合起来，8 组只差三个因素，数据、采集、正演、训练各节相同（有测试）：
+
+| | 无 FR | FR + ω |
+| --- | --- | --- |
+| residual 二维 | `paper13_ifwi` | `paper13_fr_ifwi` |
+| residual 低秩 | `paper13_lr_ifwi` | `paper13_lr_fr_ifwi` |
+| 论文模式 二维 | `lrpaper13_ifwi` | `lrpaper13_fr_ifwi` |
+| 论文模式 低秩 | `lrpaper13_lr_ifwi` | `lrpaper13_lr_fr_ifwi` |
+
+```bash
+python residual_ifwi.py --config experiments/configs/lrpaper13_fr_ifwi.yaml --device cuda:0 --output-dir outputs/lrpaper13_fr_ifwi
+python residual_ifwi.py --config experiments/configs/lrpaper13_lr_fr_ifwi.yaml --device cuda:0 --output-dir outputs/lrpaper13_lr_fr_ifwi
+```
+
+CPU 全尺寸预训练检查（5000 次，lr 1e-4，与初始模型的 RMSE，m/s）：
+
+| 模型 | 最低 | 100 次后最大 | 1000/2000/3000/4000/5000 次 |
+| --- | ---: | ---: | --- |
+| 低秩 | 0.8 | — | 3.0 / 1.8 / 1.2 / 2.2 / 2.1 |
+| 低秩 + ω | 0.93 | 488.7 | 125.9 / 2.7 / 1.5 / 1.0 / 3.2 |
+| 低秩 + FR（ω 固定） | 0.61 | 721.5 | 2.5 / 1.0 / 0.7 / 660.3 / 578.2 |
+| 低秩 + FR + ω | 2.52 | 787.2 | 121.7 / 134.0 / 139.9 / 141.3 / 653.4 |
+| 二维 + FR + ω | 0.24 | 446.2 | 0.7 / 0.5 / 0.3 / 0.3 / 2.8 |
+| 二维 | 0.5 | — | 1.7 / 1.0 / 0.7 / 2.1 / 0.5 |
+
+低秩与 FR 组合在 lr 1e-4 下预训练不稳定（ω 固定时同样），可能是 FR 约 6 倍的有效步长经 U C Vᵀ 的双线性乘积放大。预训练保留 loss 最低的状态，起点不受影响；Stage 2 没有这种保护，可能出现 loss 尖峰或局部速度越过 CFL 上限后回滚停止。这是该组合在统一学习率下的结果，属于对照的一部分；若需要它的可用版本，应另设学习率变体，而不是改动这一格。
+
 ## 与论文不同或论文未说明的地方（残差版本）
 
 1. **C 零初始化（论文为随机）**。第 0 步速度严格等于 v_init。第一次更新只有 C 有梯度（∂L/∂U = G V Cᵀ = 0），之后 U、V 才开始更新，对应 2D residual SIREN 末层清零时只有末层先有梯度。不能把 U 或 V 置零，否则梯度恒为 0。

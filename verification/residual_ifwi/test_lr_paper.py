@@ -150,3 +150,36 @@ def test_lrpaper13_configs_follow_the_paper_and_differ_only_in_the_network():
     paper13 = yaml.safe_load((folder / "paper13_ifwi.yaml").read_text(encoding="utf-8"))
     for section in ("data", "acquisition", "forward", "training"):
         assert ifwi[section] == paper13[section]  # comparable with the earlier 13-shot runs
+
+
+def test_factorial_design_varies_only_the_intended_factors():
+    """Residual vs paper mode x 2-D vs low-rank x no FR vs FR + omega share all non-model settings."""
+    yaml = pytest.importorskip("yaml")
+    folder = ROOT / "experiments/configs"
+    load = lambda n: yaml.safe_load((folder / f"{n}.yaml").read_text(encoding="utf-8"))
+    paper = {n: load(n) for n in ("lrpaper13_ifwi", "lrpaper13_fr_ifwi", "lrpaper13_lr_ifwi", "lrpaper13_lr_fr_ifwi")}
+    residual = {n: load(n) for n in ("paper13_ifwi", "paper13_fr_ifwi", "paper13_lr_ifwi", "paper13_lr_fr_ifwi")}
+    for cfg in [*paper.values(), *residual.values()]:
+        api().validate_config(cfg)
+        for section in ("data", "acquisition", "forward", "training"):
+            assert cfg[section] == residual["paper13_ifwi"][section]
+    fr = residual["paper13_fr_ifwi"]["model"]
+    for plain, with_fr in (("lrpaper13_ifwi", "lrpaper13_fr_ifwi"), ("lrpaper13_lr_ifwi", "lrpaper13_lr_fr_ifwi")):
+        a, b = copy.deepcopy(paper[plain]), copy.deepcopy(paper[with_fr])
+        # FR settings are exactly those of the 13-shot FR run.
+        assert b["model"].pop("fourier") == fr["fourier"]
+        assert b["model"].pop("trainable_omega") == fr["trainable_omega"]
+        b["experiment_name"] = a["experiment_name"]
+        assert a == b
+
+
+def test_trainable_omega_also_moves_during_pretraining():
+    torch.manual_seed(3)
+    initial = np.linspace(1800, 3600, 6 * 9, dtype=np.float32).reshape(6, 9)
+    fr = {"high_freq_num": 8, "low_freq_num": 8, "phi_num": 8, "alpha": .01, "lambda_init": "fr_inr"}
+    model = api().VelocityParameterization(initial, 15, None, parameterization="absolute",
+                                           fourier=fr, trainable_omega=True, low_rank=dict(PAPER_LR))
+    api().pretrain_to_initial(model, initial, {"updates": 20, "learning_rate": 1e-2},
+                              {"learning_rate": 1e-2}, 3., 1., emit=lambda _: None)
+    omegas = mod("trainable_omega").omega_values(model)
+    assert len(omegas) == 4 and any(abs(w - 30.) > 1e-3 for w in omegas)
