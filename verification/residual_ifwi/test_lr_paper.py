@@ -74,8 +74,7 @@ def test_pretrain_validation():
     api().validate_config(cfg)
     residual = copy.deepcopy(cfg)
     residual["parameterization"] = "residual"
-    with pytest.raises(ValueError, match="absolute parameterization"):
-        api().validate_config(residual)
+    api().validate_config(residual)  # pretrained features, head zeroed afterwards
     for bad in ({"updates": 0, "learning_rate": 1e-4}, {"updates": 10}, {"updates": 10, "learning_rate": -1},
                 {"updates": 10.5, "learning_rate": 1e-4}, {"updates": 10, "learning_rate": 1e-4, "x": 1}):
         broken = copy.deepcopy(cfg)
@@ -183,3 +182,55 @@ def test_trainable_omega_also_moves_during_pretraining():
                               {"learning_rate": 1e-2}, 3., 1., emit=lambda _: None)
     omegas = mod("trainable_omega").omega_values(model)
     assert len(omegas) == 4 and any(abs(w - 30.) > 1e-3 for w in omegas)
+
+
+@pytest.mark.parametrize("low_rank", [True, False])
+def test_residual_pretraining_matches_absolute_then_starts_exactly_at_the_background(low_rank):
+    initial = np.linspace(1800, 3600, 6 * 9, dtype=np.float32).reshape(6, 9)
+    setting = {"updates": 15, "learning_rate": 1e-2}
+    models = {}
+    for mode in ("absolute", "residual"):
+        torch.manual_seed(3)
+        models[mode] = api().VelocityParameterization(initial, 15, None if low_rank else [2, 8, 8, 1], parameterization=mode,
+                                                      low_rank=dict(PAPER_LR) if low_rank else None, zero_residual_head=False)
+        _, best = api().pretrain_to_initial(models[mode], initial, setting, None, 3., 1., emit=lambda _: None)
+    absolute, residual = (dict(models[m].state_dict()) for m in ("absolute", "residual"))
+    head = {"low_rank.core"} if low_rank else {"net.linear.2.weight", "net.linear.2.bias"}
+    # Identical pretraining; only the residual head is zeroed afterwards.
+    assert all(torch.equal(absolute[k], residual[k]) for k in absolute if k not in head)
+    assert all(torch.count_nonzero(residual[k]) == 0 for k in head)
+    assert all(torch.count_nonzero(absolute[k]) > 0 for k in head)
+    with torch.no_grad():
+        assert torch.equal(models["residual"]()[0], torch.from_numpy(initial))
+
+
+def test_residual_pretrained_run_starts_at_the_background_and_resumes(tmp_path):
+    cfg = tiny_paper_config(tmp_path, low_rank=True)
+    cfg["parameterization"] = "residual"
+    full = api().run_experiment(cfg, tmp_path / "full", "cpu", save_figures=False)
+    info = json.loads((full / "pretraining.json").read_text())
+    assert info["output_head_zeroed_after_pretraining"] is True and info["rmse_vs_initial_mps"] == 0
+    assert info["fit_rmse_vs_initial_mps"] > 0
+    assert np.array_equal(np.load(full / "run_start_velocity.npy"), np.load(full / "initial_velocity.npy"))
+    partial = copy.deepcopy(cfg)
+    partial["training"]["epochs"] = 1
+    first = api().run_experiment(partial, tmp_path / "partial", "cpu", save_figures=False)
+    resumed = api().run_experiment(cfg, tmp_path / "resumed", "cpu", resume=first / "checkpoint.pt", save_figures=False)
+    assert not (resumed / "pretraining.json").exists()
+    assert np.array_equal(np.load(full / "final_velocity.npy"), np.load(resumed / "final_velocity.npy"))
+
+
+def test_pretrained_residual_configs_differ_by_one_factor():
+    yaml = pytest.importorskip("yaml")
+    folder = ROOT / "experiments/configs"
+    load = lambda n: yaml.safe_load((folder / f"{n}.yaml").read_text(encoding="utf-8"))
+    for new, paper in (("paper13_pretrained_ifwi", "lrpaper13_ifwi"), ("paper13_pretrained_lr_ifwi", "lrpaper13_lr_ifwi")):
+        a, b = load(new), load(paper)
+        api().validate_config(a)
+        assert (a.pop("parameterization"), b.pop("parameterization")) == ("residual", "absolute")
+        a["experiment_name"] = b["experiment_name"]
+        assert a == b
+    pretrained, ifwi13 = load("paper13_pretrained_ifwi"), load("paper13_ifwi")
+    assert pretrained["initialization"].pop("pretrain") == {"updates": 5000, "learning_rate": 1e-4}
+    pretrained["experiment_name"] = ifwi13["experiment_name"]
+    assert pretrained == ifwi13

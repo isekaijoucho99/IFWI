@@ -52,6 +52,22 @@ python residual_ifwi.py --config experiments/configs/lrpaper13_lr_ifwi.yaml --de
 
 论文模式不需要 `low_rank_calibration`（无额外增益）。
 
+### 残差 + 预训练特征（我们的变体，两篇论文都没有）
+
+残差版本失败的一个候选原因是 U、V（或二维 SIREN 的隐藏层）停在随机初始化。`initialization.pretrain` 也可用于 residual：网络先与论文模式**完全相同地**预训练（同样的随机输出层或随机 C，损失按绝对表示 (raw·std + mean) 计算，预训练权重与论文模式逐位相同，有测试），再把输出层或 C 清零，以 v = v_init + 1000·std·网络 从 v_init 精确起步，网络特征是预训练后的平滑基。`pretraining.json` 中 `fit_rmse_vs_initial_mps` 为预训练拟合误差，`rmse_vs_initial_mps` 为清零后的起点误差（0）。
+
+| 配置 | 只差一个因素的对照 |
+| --- | --- |
+| `paper13_pretrained_ifwi.yaml` | 对 `paper13_ifwi`（IFWI13）：只加预训练；对 `lrpaper13_ifwi`：只差参数化（清零输出层） |
+| `paper13_pretrained_lr_ifwi.yaml` | 对 `lrpaper13_lr_ifwi`：只差参数化（清零 C） |
+
+低秩这组采用论文模式的模型设置（整数坐标、预训练时随机 C、增益 1），因此与此前残差 `paper13_lr_ifwi`（km×0.5 坐标、零 C、增益 5.50）同时差预训练、坐标与增益，不是单因素对照；那组的增益是在无预训练时标定的，预训练后已无意义。
+
+```bash
+python residual_ifwi.py --config experiments/configs/paper13_pretrained_ifwi.yaml --device cuda:0 --output-dir outputs/paper13_pretrained_ifwi
+python residual_ifwi.py --config experiments/configs/paper13_pretrained_lr_ifwi.yaml --device cuda:0 --output-dir outputs/paper13_pretrained_lr_ifwi
+```
+
 ### 加入 FR + 可训练 ω：2×2×2 对照
 
 `lrpaper13_fr_ifwi.yaml`、`lrpaper13_lr_fr_ifwi.yaml` 在论文模式两份配置上只加 `fourier` 与 `trainable_omega`，取值与 `paper13_fr_ifwi.yaml`（FR13）完全相同。FR-IFWI §4.6 提出把 LR-IFWI 两个因子 INR 的各层改写为 W = ΛB；这里 FR 作用于因子网络的隐藏层（一维输入首层秩为 1、输出层保持普通层，同二维情形）。可训练 ω 在预训练阶段也一起训练（全部参数预训练）。与 residual 系列合起来，8 组只差三个因素，数据、采集、正演、训练各节相同（有测试）：

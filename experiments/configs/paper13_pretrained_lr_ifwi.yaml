@@ -1,0 +1,65 @@
+# Residual low-rank model with pretrained factors (ours; in neither paper): U, V and C are
+# pretrained on the Gaussian initial model exactly as in lrpaper13_lr_ifwi (LR-IFWI Stage 1),
+# then C is zeroed and the run continues as residual v = v_init + 1000 * std * U C V^T, starting
+# exactly at v_init with pretrained factor networks. Differs from lrpaper13_lr_ifwi only in
+# parameterization (and experiment_name). Unlike the residual paper13_lr_ifwi it uses index
+# coordinates, a random core for pretraining and gain 1 (paper-mode model settings).
+experiment_name: paper13_pretrained_lr_ifwi
+parameterization: residual
+seed: 3
+data:
+  model_file: vel_marmousi_376x1151.csv
+  model_units: m/s
+  csv_header: legacy
+  downsample: 4
+  crop_shape: null
+  grid_spacing_m: 15.0
+initialization:
+  sigma: 15.0
+  gaussian_mode: reflect
+  gaussian_truncate: 4.0
+  # Stage 1 (Sec. II-E): fit the network to the Gaussian initial model before inversion.
+  # The paper gives no pretraining updates or lr; these follow pretrain_marmousi.py
+  # (original IFWI: Adam 1e-4, 5000 updates, keep the lowest-loss state).
+  pretrain:
+    updates: 5000
+    learning_rate: 0.0001
+model:
+  # The 2-D SIREN is replaced by the factor networks: m_hat = U C V^T (Eq. 7).
+  neurons: null
+  omega_0: 30.0
+  mean_kmps: 3.0
+  std_kmps: 1.0
+  low_rank:
+    rank_z: 50          # r1, depth (n1 = 94)
+    rank_x: 100         # r2, lateral (n2 = 288)
+    hidden: [128, 128, 128]
+    coordinates: index  # x1 = 1..n1, x2 = 1..n2
+    coord_scale: 1.0
+    core_init: random   # paper: random; ours: U(+-1/sqrt(rank_x))
+    output_gain: 1.0    # no extra gain in the paper
+acquisition:
+  num_shots: 13
+  source_x_indices: null
+  source_start_index: 20
+  source_spacing_index: 20
+  source_end_margin: 10
+  # Original IFWI code geometry, as in all earlier runs (docs/original_notes.md). The IFWI and
+  # LR-IFWI papers state sources at 30 m and receivers on the surface; the authors' code uses
+  # 15 m / 30 m, and LR-IFWI ran IFWI from that code.
+  source_depth_index: 1
+  receiver_depth_index: 2
+  receiver_stride: 1
+forward:
+  dt_s: 0.0019
+  nt: 1000
+  frequency_hz: 8.0
+  npad: 15
+  order: 2
+  free_surface: true
+  pml_reflection: 0.000001
+training:
+  epochs: 1000
+  learning_rate: 0.0001
+  checkpoint_interval: 50
+  shot_batch_size: null

@@ -101,17 +101,16 @@ def validate_config(config):
             raise ValueError("initialization.pretrain must be null or contain exactly updates and learning_rate")
         _positive(pretrain["updates"], "pretrain.updates", integer=True)
         _positive(pretrain["learning_rate"], "pretrain.learning_rate")
-        if config["parameterization"] != "absolute":
-            raise ValueError("initialization.pretrain applies to the absolute parameterization; "
-                             "the residual background already fixes the starting velocity")
     neurons, low_rank = model["neurons"], model.get("low_rank")
     validate_low_rank(low_rank)
     if low_rank is not None:
         # The factor networks replace the 2-D SIREN; a leftover neurons list would be silently unused.
         if neurons is not None:
             raise ValueError("model.neurons must be null when model.low_rank is set")
-        if config["parameterization"] == "residual" and low_rank.get("core_init", "zero") != "zero":
-            raise ValueError("A residual low-rank model needs core_init zero so that step 0 equals the background")
+        if (config["parameterization"] == "residual" and low_rank.get("core_init", "zero") != "zero"
+                and init.get("pretrain") is None):
+            raise ValueError("A residual low-rank model needs core_init zero so that step 0 equals the background "
+                             "(a random core is allowed with pretraining, which zeroes it afterwards)")
         hidden_layers = len(low_rank["hidden"])
     else:
         if not isinstance(neurons, list) or len(neurons) < 3 or neurons[0] != 2 or neurons[-1] != 1:
@@ -164,7 +163,8 @@ class VelocityParameterization(torch.nn.Module):
     """Original SIREN (or a low-rank factorized residual) with fixed background; only the network is trainable."""
 
     def __init__(self, initial_mps, dx_m, neurons, omega_0=30., mean_kmps=3.,
-                 std_kmps=1., parameterization="residual", fourier=None, trainable_omega=False, low_rank=None):
+                 std_kmps=1., parameterization="residual", fourier=None, trainable_omega=False, low_rank=None,
+                 zero_residual_head=True):
         super().__init__()
         initial = torch.as_tensor(initial_mps, dtype=torch.float32).detach().clone()
         if initial.ndim != 2 or not torch.isfinite(initial).all() or initial.min() <= 0:
@@ -202,17 +202,31 @@ class VelocityParameterization(torch.nn.Module):
         if trainable_omega:
             from experiments.trainable_omega import wrap_irn_omega
             self.omega_layers = wrap_irn_omega(self.net)
-        if parameterization == "residual":
-            with torch.no_grad():
+        # A pretrained residual model keeps the random head for pretraining and zeroes it afterwards.
+        if parameterization == "residual" and zero_residual_head:
+            self.zero_output_head()
+
+    def zero_output_head(self):
+        """Zero the last linear layer (2-D) or the core C (low-rank): the residual becomes exactly 0."""
+        with torch.no_grad():
+            if self.low_rank is not None:
+                self.low_rank.core.zero_()
+            else:
                 self.net.linear[-1].weight.zero_()
                 self.net.linear[-1].bias.zero_()
 
-    def forward(self):
+    def raw_output(self):
         if self.low_rank is not None:
-            raw = self.low_rank()[None]
-        else:
-            raw, _ = self.net(self.coords)
-            raw = raw.squeeze(-1)
+            return self.low_rank()[None]
+        raw, _ = self.net(self.coords)
+        return raw.squeeze(-1)
+
+    def absolute_velocity(self):
+        """(raw * std + mean) * 1000: the absolute-parameterization velocity of the current network."""
+        return (self.raw_output() * self.std_kmps + self.mean_kmps) * 1000
+
+    def forward(self):
+        raw = self.raw_output()
         if self.parameterization == "residual":
             return self.fixed_init_mps + raw * (1000 * self.std_kmps)
         return (raw * self.std_kmps + self.mean_kmps) * 1000
@@ -224,7 +238,7 @@ def model_from_config(initial_mps, config):
     return VelocityParameterization(initial_mps, config["data"]["grid_spacing_m"], model["neurons"],
         model["omega_0"], model["mean_kmps"], model["std_kmps"], config["parameterization"],
         fourier=model.get("fourier"), trainable_omega=model.get("trainable_omega") is not None,
-        low_rank=model.get("low_rank"))
+        low_rank=model.get("low_rank"), zero_residual_head=config["initialization"].get("pretrain") is None)
 
 
 def require_finite(value, label):
@@ -443,6 +457,9 @@ def pretrain_to_initial(model, background_mps, setting, trainable_omega, mean_km
     setting['learning_rate']; the paper gives neither updates nor lr, so configs follow the
     original IFWI pretrain script (pretrain_marmousi.py: Adam 1e-4, 5000 updates, keep the
     lowest-loss state). Loss is evaluated at 0..updates completed updates. Truth is not used.
+    The loss always uses the absolute-parameterization output (raw * std + mean), so a residual
+    model pretrains exactly as its absolute counterpart; it then zeroes its output head (last
+    layer or core C), starting Stage 2 exactly at the background with pretrained features.
     Returns (history, selected_update) and leaves the selected state loaded.
     """
     target = (torch.as_tensor(background_mps, dtype=torch.float32, device=model.fixed_init_mps.device) / 1000
@@ -451,7 +468,7 @@ def pretrain_to_initial(model, background_mps, setting, trainable_omega, mean_km
     best_loss, best_update, best_state, history = math.inf, 0, None, []
     for update in range(setting["updates"] + 1):
         optimizer.zero_grad(set_to_none=True)
-        loss = ((model()[0] / 1000 - mean_kmps) / std_kmps - target).square().mean()
+        loss = ((model.absolute_velocity()[0] / 1000 - mean_kmps) / std_kmps - target).square().mean()
         require_finite(loss, "pretraining loss")
         value = float(loss.detach())
         history.append({"completed_updates": update, "normalized_mse": value,
@@ -464,6 +481,8 @@ def pretrain_to_initial(model, background_mps, setting, trainable_omega, mean_km
             loss.backward()
             optimizer.step()
     model.load_state_dict(best_state)
+    if model.parameterization == "residual":
+        model.zero_output_head()
     return history, best_update
 
 
@@ -504,7 +523,10 @@ def run_experiment(config, output_parent, device="cpu", resume=None, save_figure
                             + ("random" if pretrain is None else
                                f"pretrained on the Gaussian initial model ({pretrain['updates']} Adam updates, lr {pretrain['learning_rate']}, lowest-loss state)"))
                            if config["parameterization"] != "residual"
-                           else "fixed sampled-grid Gaussian + " + ("zero last layer" if low_rank is None else "zero low-rank core C")),
+                           else "fixed sampled-grid Gaussian + " + ("zero last layer" if low_rank is None else "zero low-rank core C")
+                           + ("" if pretrain is None else
+                              f" after pretraining the network on the Gaussian initial model ({pretrain['updates']} Adam updates, "
+                              f"lr {pretrain['learning_rate']}, lowest-loss state)")),
         "controlled_components": ["original IRN architecture" if fourier is None and low_rank is None
                                   else "original IRN sine layers" + ("" if low_rank is None else " inside both 1-D factor networks"),
                                   "reference FD", "observations", "waveform MSE", "Adam", "acquisition", "update budget"],
@@ -581,6 +603,8 @@ def run_experiment(config, output_parent, device="cpu", resume=None, save_figure
             _json(out / "pretraining.json", {"updates": pretrain["updates"], "learning_rate": pretrain["learning_rate"],
                 "selected_update": best_update, "selection": "lowest pretraining loss (original IFWI pretrain script)",
                 "target": "Gaussian initial model, (v_init/1000 - mean_kmps)/std_kmps", "loss": "mean squared error, normalized units",
+                "fit_rmse_vs_initial_mps": pretrain_history[best_update]["rmse_vs_initial_mps"],
+                "output_head_zeroed_after_pretraining": config["parameterization"] == "residual",
                 "rmse_vs_initial_mps": float(np.sqrt(np.mean((pretrained - background) ** 2))),
                 "logged_only_rmse_vs_truth_mps": float(np.sqrt(np.mean((pretrained - truth) ** 2)))})
         optimizer = torch.optim.Adam(parameter_groups(model, config["training"]["learning_rate"], trainable_omega))
