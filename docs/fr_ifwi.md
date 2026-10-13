@@ -53,6 +53,8 @@ python residual_ifwi.py --config experiments/configs/paper13_fr_ifwi.yaml --devi
 
 建议先各跑 300 次更新（`--epochs 300`），对照 baseline 每 50 次的全炮评价曲线，再决定是否跑满 1000。续训、`--crop/--shots/--nt` 小规模检查与 baseline 用法相同，见 [Residual IFWI 文档](residual_ifwi.md)。
 
+> **初始模型**：13 炮协议下 σ = 15 的高斯初始模型使第一步梯度在各尺度上背离真值，所有不带 FR 的 13 炮运行都失败。后续 13 炮实验改用 σ = 22（`--sigma 22`），见 [初始模型与第一步梯度方向](initial_model.md)。
+
 ## 分频带误差诊断
 
 背景已含真值约 0.8 c/km 以下的长波长，整体 RMSE 的改善几乎都来自中高波数。`experiments/spectral_metrics.py` 用正交 2D DCT-II 计算径向波数 k（cycles/km）各频带的速度 RMSE，各频带平方和严格等于总 RMSE²，并给出相对背景的比值（< 1 表示该频带改善）。默认频带：0–1、1–3、3–8、8–16、>16 c/km（15 m 网格 Nyquist 为 33.3 c/km）。
