@@ -37,13 +37,13 @@ U = Ψ_z(coord_scale · z_km) ∈ R^{nz×rank_z}，V = Ψ_x(coord_scale · x_km)
 | Stage 1：最小化 ‖Ψ − m_init‖²_F | `initialization.pretrain`：标准化输出上的 MSE、Adam；论文未给步数和学习率，取原 IFWI 预训练脚本 `pretrain_marmousi.py` 的 5000 次、1e-4、保留 loss 最低的状态 |
 | Stage 2：Adam lr 1e-4、平滑初始 1000 epoch、无显式正则 | 预训练后新建 Adam；其余同 runner |
 | IFWI 对照：sine、深度 4、128、Adam 1e-4（§III-A） | `lrpaper13_ifwi.yaml`：绝对 2D SIREN [2,128,128,128,128,1]，同样预训练 |
-| 13 炮、炮距 300 m、震源深 30 m、检波器在地表、8 Hz、1.9 ms、1000 采样 | 震源深度索引 2、检波器深度索引 0；自由表面实现为顶部无 PML 且第 0 行外补零，第 0 行检波器可正常记录（有测试） |
+| 13 炮、炮距 300 m、震源深 30 m、检波器在地表、8 Hz、1.9 ms、1000 采样 | 炮距、频率、采样同论文；深度沿用原 IFWI 代码的震源 15 m（索引 1）、检波器 30 m（索引 2），见下文 |
 
 预训练只用初始模型，真值只写入日志（`pretraining.json` 的 `logged_only_rmse_vs_truth_mps`）。输出 `pretraining_history.csv`、`pretraining.json`；`run_start_velocity.npy` 为预训练后的起点，与 `initial_velocity.npy`（高斯初始模型）不再逐位相同。续训从检查点恢复权重，不重复预训练。CPU 全尺寸预训练检查：LR 5000 次后与初始模型 RMSE 0.8 m/s、IFWI 0.5 m/s。
 
 论文未给出、由我们决定的：高斯 σ（沿用 15 格，与所有 residual 运行一致）、预训练步数与学习率、C 的分布。整数坐标配合 ω₀ = 30 时首层相位在相邻格点间相差可达 30 rad，网格点上的拟合不受影响（上面的预训练结果），但 Lemma 1 的平滑常数很大，论文所述平滑先验在此是否成立需看训练结果；`coordinates: km` 可作消融。
 
-采集几何（震源 30 m、检波器 0 m）与此前 paper13（FR-IFWI 论文：震源 15 m、检波器 30 m）不同，lrpaper13 结果只与 lrpaper13 对照比较。
+采集深度：IFWI 与 LR-IFWI 论文正文均写震源 30 m、检波器在地表（FR-IFWI 写震源 15 m、检波器在地表），但 IFWI 作者公开代码用震源 15 m、检波器 30 m（[原代码说明](original_notes.md)），LR-IFWI 又称 IFWI 按其源码运行。论文实际所用几何无法确认，故 lrpaper13 沿用代码几何，与此前全部 13 炮运行一致（数据、采集、正演、训练各节与 `paper13_ifwi.yaml` 相同，有测试），可直接对照 IFWI13 / FR13。运行器也支持检波器放在第 0 行（自由表面下第 0 行不被置零，有测试），需要时可单独做几何对照。
 
 ```bash
 python residual_ifwi.py --config experiments/configs/lrpaper13_ifwi.yaml --device cuda:0 --output-dir outputs/lrpaper13_ifwi

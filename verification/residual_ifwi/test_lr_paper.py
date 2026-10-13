@@ -136,9 +136,10 @@ def test_lrpaper13_configs_follow_the_paper_and_differ_only_in_the_network():
         assert cfg["initialization"]["pretrain"] == {"updates": 5000, "learning_rate": 1e-4}
         assert cfg["model"]["mean_kmps"] == 3 and cfg["model"]["std_kmps"] == 1 and cfg["model"]["omega_0"] == 30
         acq, fd, training = cfg["acquisition"], cfg["forward"], cfg["training"]
-        # Sec. III-A: 13 shots at 300 m, sources 30 m deep, receivers on the surface every 15 m.
-        assert acq["num_shots"] == 13 and acq["source_spacing_index"] * 15 == 300
-        assert acq["source_depth_index"] * 15 == 30 and acq["receiver_depth_index"] == 0 and acq["receiver_stride"] == 1
+        # Sec. III-A: 13 shots at 300 m, receivers every 15 m; depths follow the original IFWI code
+        # (sources 15 m, receivers 30 m) like all earlier 13-shot runs, not the papers' text.
+        assert acq["num_shots"] == 13 and acq["source_spacing_index"] * 15 == 300 and acq["receiver_stride"] == 1
+        assert acq["source_depth_index"] == 1 and acq["receiver_depth_index"] == 2
         assert fd["frequency_hz"] == 8 and fd["dt_s"] == .0019 and fd["nt"] == 1000 and fd["free_surface"] is True
         assert training["learning_rate"] == 1e-4 and training["epochs"] == 1000 and "shots_per_update" not in training
     assert lr["model"].pop("low_rank") == {"rank_z": 50, "rank_x": 100, "hidden": [128, 128, 128], "coordinates": "index",
@@ -146,3 +147,6 @@ def test_lrpaper13_configs_follow_the_paper_and_differ_only_in_the_network():
     assert lr["model"].pop("neurons") is None and ifwi["model"].pop("neurons") == [2, 128, 128, 128, 128, 1]
     lr["experiment_name"] = ifwi["experiment_name"]
     assert lr == ifwi
+    paper13 = yaml.safe_load((folder / "paper13_ifwi.yaml").read_text(encoding="utf-8"))
+    for section in ("data", "acquisition", "forward", "training"):
+        assert ifwi[section] == paper13[section]  # comparable with the earlier 13-shot runs

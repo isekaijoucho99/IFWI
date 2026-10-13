@@ -1,7 +1,6 @@
 # LR-IFWI paper protocol (Chen et al. 2025, TGRS 63, 5918816, Sec. II-E and III-A/B):
 # absolute velocity m = mean + std * network (mu = 3, xi = 1 km/s), Stage-1 pretraining on
-# the Gaussian smooth initial model, 13 shots at 300 m (sources 30 m deep, receivers on
-# the surface), 8 Hz, dt 1.9 ms, 1000 samples, all shots per update, Adam lr 1e-4,
+# the Gaussian smooth initial model, 13 shots at 300 m, 8 Hz, dt 1.9 ms, 1000 samples, all shots per update, Adam lr 1e-4,
 # 1000 epochs (smooth initial model). LR-IFWI arm: rank 50/100, two 3 x 128 sine factor
 # MLPs, omega_0 30, integer index coordinates (Eq. 6), random core C. Only experiment_name
 # and the model section differ from lrpaper13_ifwi.
@@ -47,8 +46,11 @@ acquisition:
   source_start_index: 20
   source_spacing_index: 20
   source_end_margin: 10
-  source_depth_index: 2    # Sec. III-A: sources at 30 m
-  receiver_depth_index: 0  # Sec. III-A: receivers on the (free) surface
+  # Original IFWI code geometry, as in all earlier runs (docs/original_notes.md). The IFWI and
+  # LR-IFWI papers state sources at 30 m and receivers on the surface; the authors' code uses
+  # 15 m / 30 m, and LR-IFWI ran IFWI from that code.
+  source_depth_index: 1
+  receiver_depth_index: 2
   receiver_stride: 1
 forward:
   dt_s: 0.0019
