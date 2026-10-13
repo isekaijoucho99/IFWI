@@ -133,10 +133,20 @@ def test_validation_and_resume_compatibility():
     leftover["model"]["neurons"] = [2, 8, 1]
     with pytest.raises(ValueError, match="neurons must be null"):
         api().validate_config(leftover)
+    # Absolute (LR-IFWI paper mode) is allowed; a residual model must keep the zero core.
     absolute = copy.deepcopy(cfg)
     absolute["parameterization"] = "absolute"
-    with pytest.raises(ValueError, match="residual"):
-        api().validate_config(absolute)
+    absolute["model"]["low_rank"].update(coordinates="index", core_init="random")
+    api().validate_config(absolute)
+    random_residual = copy.deepcopy(cfg)
+    random_residual["model"]["low_rank"]["core_init"] = "random"
+    with pytest.raises(ValueError, match="core_init zero"):
+        api().validate_config(random_residual)
+    for key, value in (("coordinates", "grid"), ("core_init", "normal")):
+        bad = copy.deepcopy(absolute)
+        bad["model"]["low_rank"][key] = value
+        with pytest.raises(ValueError):
+            api().validate_config(bad)
     shallow = lr_config(fourier=SMALL_FR)
     shallow["model"]["low_rank"]["hidden"] = [8]
     with pytest.raises(ValueError, match="hidden-to-hidden"):

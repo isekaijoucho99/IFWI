@@ -5,7 +5,12 @@ and a trainable core C [rank_z, rank_x]. Each Psi is an original ``ifwi_modules.
 with one input, ``hidden`` sine layers and a linear output (paper: 3 x 128, sine,
 omega_0 = 30; ranks 50 (depth, n1 = 94) and 100 (lateral, n2 = 288)).
 
-Differences from the paper, all for the residual setting:
+Paper-faithful mode (absolute parameterization, see residual_ifwi_experiment): the runner
+represents m = mean + std * output_gain * U C V^T (paper: mu = 3, xi = 1 km/s, gain 1),
+pretrains on m_init (initialization.pretrain) and uses the optional settings
+``coordinates: index`` (Eq. 6: x1 = 1..n1, x2 = 1..n2) and ``core_init: random``.
+
+Differences from the paper in the residual setting (the defaults):
 * The paper's Stage 1 pretraining on m_init is replaced by the fixed background.
 * C starts at zero instead of random, so step 0 equals v_init exactly. Only C gets
   a gradient on the first update (dL/dU = G V C^T = 0), as only the last IRN layer
@@ -32,6 +37,8 @@ import torch
 from ifwi_modules import IRN
 
 LOW_RANK_KEYS = ("rank_z", "rank_x", "hidden", "coord_scale", "output_gain")
+# Optional; absent keys keep the residual defaults so earlier configs and checkpoints are unchanged.
+LOW_RANK_OPTIONAL = {"coordinates": "km", "core_init": "zero"}
 
 
 def default_low_rank():
@@ -47,8 +54,10 @@ def _positive_number(value, label):
 def validate_low_rank(setting):
     if setting is None:
         return
-    if not isinstance(setting, dict) or set(setting) != set(LOW_RANK_KEYS):
-        raise ValueError(f"model.low_rank must be null or contain exactly {list(LOW_RANK_KEYS)}")
+    if (not isinstance(setting, dict) or not set(LOW_RANK_KEYS) <= set(setting)
+            or set(setting) - set(LOW_RANK_KEYS) - set(LOW_RANK_OPTIONAL)):
+        raise ValueError(f"model.low_rank must be null or contain {list(LOW_RANK_KEYS)} "
+                         f"plus optionally {list(LOW_RANK_OPTIONAL)}")
     for key in ("rank_z", "rank_x"):
         if type(setting[key]) is not int or setting[key] < 1:
             raise ValueError(f"low_rank.{key} must be a positive integer")
@@ -57,9 +66,16 @@ def validate_low_rank(setting):
         raise ValueError("low_rank.hidden must be a nonempty list of positive integers")
     for key in ("coord_scale", "output_gain"):
         _positive_number(setting[key], key)
+    if setting.get("coordinates", "km") not in ("km", "index"):
+        raise ValueError("low_rank.coordinates must be 'km' or 'index'")
+    if setting.get("core_init", "zero") not in ("zero", "random"):
+        raise ValueError("low_rank.core_init must be 'zero' or 'random'")
 
 
-def _axis(n, dx_m, scale):
+def _axis(n, dx_m, scale, coordinates="km"):
+    if coordinates == "index":
+        # Paper Eq. 6: integer indices 1..n, times scale (1 in the paper).
+        return torch.from_numpy((np.arange(1, n + 1, dtype=np.float64) * scale).astype(np.float32))[:, None]
     # Same float64 km construction as the 2-D runner coordinates, then scaled and cast.
     return torch.from_numpy((np.arange(n) * dx_m / 1000 * scale).astype(np.float32))[:, None]
 
@@ -71,13 +87,21 @@ class LowRankResidual(torch.nn.Module):
         super().__init__()
         validate_low_rank(setting)
         self.setting = dict(setting)
-        self.register_buffer("z_coords", _axis(nz, dx_m, setting["coord_scale"]))
-        self.register_buffer("x_coords", _axis(nx, dx_m, setting["coord_scale"]))
+        coordinates = setting.get("coordinates", "km")
+        self.register_buffer("z_coords", _axis(nz, dx_m, setting["coord_scale"], coordinates))
+        self.register_buffer("x_coords", _axis(nx, dx_m, setting["coord_scale"], coordinates))
         self.net_z = IRN(neuron=[1, *setting["hidden"], setting["rank_z"]], omega_0=omega_0, bias=True,
                          activation="sine", dropout=False, outermost_linear=True)
         self.net_x = IRN(neuron=[1, *setting["hidden"], setting["rank_x"]], omega_0=omega_0, bias=True,
                          activation="sine", dropout=False, outermost_linear=True)
         self.core = torch.nn.Parameter(torch.zeros(setting["rank_z"], setting["rank_x"]))
+        if setting.get("core_init", "zero") == "random":
+            # Paper: "core matrix C (with random initialization)", distribution unstated. Ours:
+            # U(+-1/sqrt(rank_x)), the torch.nn.Linear default bound for a rank_x -> rank_z map.
+            # Drawn after both factor IRNs, so their seed-matched weights are unchanged.
+            with torch.no_grad():
+                bound = 1 / math.sqrt(setting["rank_x"])
+                self.core.uniform_(-bound, bound)
         self.output_gain = float(setting["output_gain"])
         self.fourier_layers, self.omega_layers = {}, {}
         for name, net in (("z", self.net_z), ("x", self.net_x)):

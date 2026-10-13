@@ -66,7 +66,8 @@ def validate_config(config):
     if not isinstance(config, dict) or set(config) != set(template):
         raise ValueError("Configuration must contain exactly the stage-1 sections")
     for name in ("data", "initialization", "model", "acquisition", "forward", "training"):
-        allowed_optional = {"training": {"shots_per_update", "full_eval_interval"}, "model": {"fourier", "trainable_omega", "low_rank"}}.get(name, set())
+        allowed_optional = {"training": {"shots_per_update", "full_eval_interval"}, "model": {"fourier", "trainable_omega", "low_rank"},
+                            "initialization": {"pretrain"}}.get(name, set())
         if (not isinstance(config[name], dict) or not set(template[name]).issubset(config[name])
                 or set(config[name]) - set(template[name]) - allowed_optional):
             raise ValueError(f"Unknown/missing stage-1 settings in {name}")
@@ -94,14 +95,23 @@ def validate_config(config):
     _positive(init["gaussian_truncate"], "gaussian_truncate")
     if init["gaussian_mode"] not in ("reflect", "nearest", "mirror", "wrap", "constant"):
         raise ValueError("Unsupported Gaussian boundary mode")
+    pretrain = init.get("pretrain")
+    if pretrain is not None:
+        if not isinstance(pretrain, dict) or set(pretrain) != {"updates", "learning_rate"}:
+            raise ValueError("initialization.pretrain must be null or contain exactly updates and learning_rate")
+        _positive(pretrain["updates"], "pretrain.updates", integer=True)
+        _positive(pretrain["learning_rate"], "pretrain.learning_rate")
+        if config["parameterization"] != "absolute":
+            raise ValueError("initialization.pretrain applies to the absolute parameterization; "
+                             "the residual background already fixes the starting velocity")
     neurons, low_rank = model["neurons"], model.get("low_rank")
     validate_low_rank(low_rank)
     if low_rank is not None:
         # The factor networks replace the 2-D SIREN; a leftover neurons list would be silently unused.
         if neurons is not None:
             raise ValueError("model.neurons must be null when model.low_rank is set")
-        if config["parameterization"] != "residual":
-            raise ValueError("model.low_rank is implemented for the residual parameterization only")
+        if config["parameterization"] == "residual" and low_rank.get("core_init", "zero") != "zero":
+            raise ValueError("A residual low-rank model needs core_init zero so that step 0 equals the background")
         hidden_layers = len(low_rank["hidden"])
     else:
         if not isinstance(neurons, list) or len(neurons) < 3 or neurons[0] != 2 or neurons[-1] != 1:
@@ -167,9 +177,8 @@ class VelocityParameterization(torch.nn.Module):
         self.std_kmps, self.mean_kmps = std_kmps, mean_kmps
         self.parameterization = parameterization
         if low_rank is not None:
-            # Zero core C: step 0 equals the background, as the zero last layer does below.
-            if parameterization != "residual":
-                raise ValueError("low_rank is implemented for the residual parameterization only")
+            # Residual: zero core C, so step 0 equals the background, as the zero last layer does below.
+            # Absolute (LR-IFWI paper): m = mean + std * output_gain * U C V^T in km/s.
             from experiments.low_rank_modules import LowRankResidual
             self.net = None
             self.low_rank = LowRankResidual(*initial.shape, dx_m, low_rank, omega_0,
@@ -411,6 +420,7 @@ def _resume_configuration(config):
     result["model"].setdefault("fourier", None)
     result["model"].setdefault("trainable_omega", None)
     result["model"].setdefault("low_rank", None)
+    result["initialization"].setdefault("pretrain", None)
     return result
 
 
@@ -426,6 +436,37 @@ def _save_checkpoint(path, model, optimizer, config, completed, history, provena
     os.replace(temporary, path)
 
 
+def pretrain_to_initial(model, background_mps, setting, trainable_omega, mean_kmps, std_kmps, emit=print):
+    """LR-IFWI Stage 1 (Chen et al. 2025, Sec. II-E): fit the network to the initial model.
+
+    Loss mean((m_hat - (m_init/1000 - mean)/std)^2) on the standardized output, Adam with
+    setting['learning_rate']; the paper gives neither updates nor lr, so configs follow the
+    original IFWI pretrain script (pretrain_marmousi.py: Adam 1e-4, 5000 updates, keep the
+    lowest-loss state). Loss is evaluated at 0..updates completed updates. Truth is not used.
+    Returns (history, selected_update) and leaves the selected state loaded.
+    """
+    target = (torch.as_tensor(background_mps, dtype=torch.float32, device=model.fixed_init_mps.device) / 1000
+              - mean_kmps) / std_kmps
+    optimizer = torch.optim.Adam(parameter_groups(model, setting["learning_rate"], trainable_omega))
+    best_loss, best_update, best_state, history = math.inf, 0, None, []
+    for update in range(setting["updates"] + 1):
+        optimizer.zero_grad(set_to_none=True)
+        loss = ((model()[0] / 1000 - mean_kmps) / std_kmps - target).square().mean()
+        require_finite(loss, "pretraining loss")
+        value = float(loss.detach())
+        history.append({"completed_updates": update, "normalized_mse": value,
+                        "rmse_vs_initial_mps": math.sqrt(value) * 1000 * std_kmps})
+        if value < best_loss:
+            best_loss, best_update, best_state = value, update, copy.deepcopy(model.state_dict())
+        if update % 500 == 0 or update == setting["updates"]:
+            emit(f"Pretraining {update}/{setting['updates']}: RMSE to initial model {history[-1]['rmse_vs_initial_mps']:.3f} m/s")
+        if update < setting["updates"]:
+            loss.backward()
+            optimizer.step()
+    model.load_state_dict(best_state)
+    return history, best_update
+
+
 def run_experiment(config, output_parent, device="cpu", resume=None, save_figures=True):
     config = copy.deepcopy(config)
     validate_config(config)
@@ -435,6 +476,7 @@ def run_experiment(config, output_parent, device="cpu", resume=None, save_figure
     fourier = config["model"].get("fourier")
     trainable_omega = config["model"].get("trainable_omega")
     low_rank = config["model"].get("low_rank")
+    pretrain = config["initialization"].get("pretrain")
     if str(device).startswith("cuda") and not torch.cuda.is_available():
         raise ValueError("CUDA requested but unavailable")
     truth, background, provenance = load_velocity_data(config, ROOT)
@@ -458,7 +500,10 @@ def run_experiment(config, output_parent, device="cpu", resume=None, save_figure
     _json(out / "status.json", {"state": "preparing", "pid": os.getpid(), "completed_updates": 0})
     _json(out / "comparison_notes.json", {
         "parameterization": config["parameterization"],
-        "initialization": ("original random absolute SIREN, mean/std km/s" if config["parameterization"] != "residual"
+        "initialization": (("absolute " + ("SIREN" if low_rank is None else "low-rank U C V^T") + ", mean/std km/s, "
+                            + ("random" if pretrain is None else
+                               f"pretrained on the Gaussian initial model ({pretrain['updates']} Adam updates, lr {pretrain['learning_rate']}, lowest-loss state)"))
+                           if config["parameterization"] != "residual"
                            else "fixed sampled-grid Gaussian + " + ("zero last layer" if low_rank is None else "zero low-rank core C")),
         "controlled_components": ["original IRN architecture" if fourier is None and low_rank is None
                                   else "original IRN sine layers" + ("" if low_rank is None else " inside both 1-D factor networks"),
@@ -467,9 +512,10 @@ def run_experiment(config, output_parent, device="cpu", resume=None, save_figure
                                       + ([] if fourier is None else [f"Fourier reparameterized hidden layers (W = Lambda B, lambda_init={fourier['lambda_init']})"])
                                       + ([] if trainable_omega is None else [f"per-layer trainable sine omega (init omega_0, Adam lr {trainable_omega['learning_rate']})"])
                                       + ([] if low_rank is None else [
-                                          f"low-rank residual U C V^T (rank_z={low_rank['rank_z']}, rank_x={low_rank['rank_x']}, "
+                                          f"low-rank {config['parameterization']} U C V^T (rank_z={low_rank['rank_z']}, rank_x={low_rank['rank_x']}, "
                                           f"1-D factor IRNs hidden={low_rank['hidden']}, coord_scale={low_rank['coord_scale']}, "
-                                          f"output_gain={low_rank['output_gain']}, zero core instead of zero last layer)"]),
+                                          f"coordinates={low_rank.get('coordinates', 'km')}, core_init={low_rank.get('core_init', 'zero')}, "
+                                          f"output_gain={low_rank['output_gain']})"]),
         "attribution": "Residual vs random absolute changes initialization and parameterization jointly; it does not isolate residual parameterization.",
         "historical_baseline_budget": 4001, "this_run_budget": config["training"]["epochs"],
         "runner_differences": "No unused TV coordinate derivatives, no NaN/Inf masking; original clipping effectively inactive; explicit final postupdate waveform evaluation.",
@@ -522,6 +568,21 @@ def run_experiment(config, output_parent, device="cpu", resume=None, save_figure
         problem = build_forward_problem(truth, config, device)
         cfg_model = config["model"]
         model = model_from_config(background, config).to(device)
+        if pretrain is not None and not saved:
+            # LR-IFWI Stage 1; a resumed run restores the trained weights instead.
+            pretrain_history, best_update = pretrain_to_initial(model, background, pretrain, trainable_omega,
+                                                                cfg_model["mean_kmps"], cfg_model["std_kmps"], emit)
+            with (out / "pretraining_history.csv").open("w", encoding="utf-8", newline="") as stream:
+                writer = csv.DictWriter(stream, fieldnames=list(pretrain_history[0]))
+                writer.writeheader()
+                writer.writerows(pretrain_history)
+            with torch.no_grad():
+                pretrained = model().cpu().numpy()[0]
+            _json(out / "pretraining.json", {"updates": pretrain["updates"], "learning_rate": pretrain["learning_rate"],
+                "selected_update": best_update, "selection": "lowest pretraining loss (original IFWI pretrain script)",
+                "target": "Gaussian initial model, (v_init/1000 - mean_kmps)/std_kmps", "loss": "mean squared error, normalized units",
+                "rmse_vs_initial_mps": float(np.sqrt(np.mean((pretrained - background) ** 2))),
+                "logged_only_rmse_vs_truth_mps": float(np.sqrt(np.mean((pretrained - truth) ** 2)))})
         optimizer = torch.optim.Adam(parameter_groups(model, config["training"]["learning_rate"], trainable_omega))
         if saved:
             model.load_state_dict(saved["model"], strict=True)
@@ -557,7 +618,8 @@ def run_experiment(config, output_parent, device="cpu", resume=None, save_figure
             **({"coordinates_shape": list(model.coords.shape), "coordinates_order": ["x", "z"], "coordinates_units": "km"}
                if low_rank is None else
                {"coordinates_shape": {"z": list(model.low_rank.z_coords.shape), "x": list(model.low_rank.x_coords.shape)},
-                "coordinates_order": ["z", "x"], "coordinates_units": f"km x coord_scale {low_rank['coord_scale']}",
+                "coordinates_order": ["z", "x"],
+                "coordinates_units": f"{low_rank.get('coordinates', 'km')} x coord_scale {low_rank['coord_scale']}",
                 "low_rank_core_zero_at_start": bool(model.low_rank.core.detach().count_nonzero().item() == 0)}),
             "waveform_shape": list(problem["observed"].shape), "observations_detached": not problem["observed"].requires_grad,
             "fixed_initializer_requires_grad": model.fixed_init_mps.requires_grad,

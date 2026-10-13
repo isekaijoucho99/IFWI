@@ -18,12 +18,41 @@ U = Ψ_z(coord_scale · z_km) ∈ R^{nz×rank_z}，V = Ψ_x(coord_scale · x_km)
 | Eq.(4)(7) Ψ(x₁,x₂) = Ψ_ω₁(x₁) C Ψ_ω₂(x₂)ᵀ = U C Vᵀ | `experiments/low_rank_modules.py::LowRankResidual` |
 | Eq.(5) 两支 MLP，各输入一维坐标 | 两个原版 `IRN`，`neuron = [1, *hidden, rank]`，sine、ω₀ = 30、线性输出 |
 | §II-E 3 层、每层 128；r₁ = 50、r₂ = 100（94×288 Marmousi，n₁ = 94 为深度） | `hidden: [128,128,128]`、`rank_z: 50`、`rank_x: 100` |
-| Stage 1：网络先拟合 m_init | 不需要：固定背景已承担初始模型 |
+| Stage 1：网络先拟合 m_init | 残差版本省略（见下文“论文模式”的更正）；论文模式 `initialization.pretrain` 实现 |
 | 无显式正则 | 同样不加 |
 
 参数量 90 910（z 支 39 730、x 支 46 180、C 5 000），baseline 2D SIREN 为 50 049。C 的有效秩不超过 min(rank_z, rank_x) = 50；rank_x = 100 只放宽 V 的表达，不提高秩上限。
 
-## 与论文不同或论文未说明的地方
+## 论文模式（按原文步骤）
+
+此前残差版本省略 Stage 1 的理由（"固定背景已承担初始模型"）不成立：固定背景只让起始**速度**相同，不让起始**网络状态**相同。论文中 U、V 先拟合平滑初始模型，反演开始时其列已是平滑基；残差版本的 U、V 停在随机 SIREN 初始化、C = 0，早期更新是梯度在随机高频特征上的投影。13 炮残差 LR（gain 5.50）复现了 IFWI13 的失败：RMSE 518.75 → 约 701 m/s，第 623 次更新局部速度超过 CFL 上限（5582.4 m/s）后回滚停止。
+
+论文模式按 §II-E、§III-A/B 实现，配置 `lrpaper13_lr_ifwi.yaml`（LR-IFWI）与 `lrpaper13_ifwi.yaml`（论文对照用的 IFWI），二者只差 `experiment_name` 与模型部分（有测试保证）：
+
+| 论文 | 实现 |
+| --- | --- |
+| m_pred = ξ·m̂ + μ，μ = 3、ξ = 1 km/s（§II-E） | `parameterization: absolute`，低秩时 m̂ = output_gain·U C Vᵀ，output_gain = 1 |
+| 坐标 x₁ = 1…n₁、x₂ = 1…n₂（Eq. 6） | `low_rank.coordinates: index`，`coord_scale: 1` |
+| C 随机初始化 | `low_rank.core_init: random`，分布论文未给，取 U(±1/√rank_x)；在两个因子网络之后抽取，因子权重与零核时逐位相同 |
+| Stage 1：最小化 ‖Ψ − m_init‖²_F | `initialization.pretrain`：标准化输出上的 MSE、Adam；论文未给步数和学习率，取原 IFWI 预训练脚本 `pretrain_marmousi.py` 的 5000 次、1e-4、保留 loss 最低的状态 |
+| Stage 2：Adam lr 1e-4、平滑初始 1000 epoch、无显式正则 | 预训练后新建 Adam；其余同 runner |
+| IFWI 对照：sine、深度 4、128、Adam 1e-4（§III-A） | `lrpaper13_ifwi.yaml`：绝对 2D SIREN [2,128,128,128,128,1]，同样预训练 |
+| 13 炮、炮距 300 m、震源深 30 m、检波器在地表、8 Hz、1.9 ms、1000 采样 | 震源深度索引 2、检波器深度索引 0；自由表面实现为顶部无 PML 且第 0 行外补零，第 0 行检波器可正常记录（有测试） |
+
+预训练只用初始模型，真值只写入日志（`pretraining.json` 的 `logged_only_rmse_vs_truth_mps`）。输出 `pretraining_history.csv`、`pretraining.json`；`run_start_velocity.npy` 为预训练后的起点，与 `initial_velocity.npy`（高斯初始模型）不再逐位相同。续训从检查点恢复权重，不重复预训练。CPU 全尺寸预训练检查：LR 5000 次后与初始模型 RMSE 0.8 m/s、IFWI 0.5 m/s。
+
+论文未给出、由我们决定的：高斯 σ（沿用 15 格，与所有 residual 运行一致）、预训练步数与学习率、C 的分布。整数坐标配合 ω₀ = 30 时首层相位在相邻格点间相差可达 30 rad，网格点上的拟合不受影响（上面的预训练结果），但 Lemma 1 的平滑常数很大，论文所述平滑先验在此是否成立需看训练结果；`coordinates: km` 可作消融。
+
+采集几何（震源 30 m、检波器 0 m）与此前 paper13（FR-IFWI 论文：震源 15 m、检波器 30 m）不同，lrpaper13 结果只与 lrpaper13 对照比较。
+
+```bash
+python residual_ifwi.py --config experiments/configs/lrpaper13_ifwi.yaml --device cuda:0 --output-dir outputs/lrpaper13_ifwi
+python residual_ifwi.py --config experiments/configs/lrpaper13_lr_ifwi.yaml --device cuda:0 --output-dir outputs/lrpaper13_lr_ifwi
+```
+
+论文模式不需要 `low_rank_calibration`（无额外增益）。
+
+## 与论文不同或论文未说明的地方（残差版本）
 
 1. **C 零初始化（论文为随机）**。第 0 步速度严格等于 v_init。第一次更新只有 C 有梯度（∂L/∂U = G V Cᵀ = 0），之后 U、V 才开始更新，对应 2D residual SIREN 末层清零时只有末层先有梯度。不能把 U 或 V 置零，否则梯度恒为 0。
 2. **坐标**。论文写整数索引 1…n；配合 ω₀ = 30 会严重混叠，这里沿用 runner 的 km 坐标并乘 `coord_scale`。原版 IRN 首层权重为 U(±1/输入维)：2D 网络每轴 ±1/2，一维因子为 ±1。`coord_scale: 0.5` 使每个方向的首层频率范围与 baseline 相同。
