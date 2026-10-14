@@ -139,6 +139,8 @@ python residual_ifwi.py --config experiments/configs/residual_ifwi_baseline1000.
 
 LR-IFWI 的低秩残差（`model.low_rank`：v = v_init + U C Vᵀ，两支一维 SIREN 因子、核心矩阵零初始化，可与 FR、可训练 ω 同时开启）、`output_gain` 首步标定以及奇异值谱诊断，见 [LR-IFWI 文档](docs/lr_ifwi.md)。
 
+用 Muon（正交化更新）训练隐藏层、Adam 训练其余参数（`training.optimizer`，未设置时与 Adam 基线逐位相同），以及隐藏层权重、特征稳定秩诊断，见 [Muon 文档](docs/muon_ifwi.md)。
+
 ## 输出与续训
 
 逐轮进度显示在终端并写入 `progress.log`，默认生成 `result.png`。每次运行建立新目录，不覆盖已有结果。

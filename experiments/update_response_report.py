@@ -8,7 +8,12 @@ fixed G, and reports after each listed step:
 * rms_dm_mps: RMS velocity change from the run start (m/s);
 * shares of the change's energy in vertical stripes (kx > 8 and kz < 2 c/km),
   horizontal stripes (kz > 8 and kx < 2 c/km) and above 8 c/km in either direction;
-* cos(dm, -G).
+* cos(dm, -G);
+* the mean stable rank of the cumulative effective hidden-weight change (FR: lamb @ bases).
+
+The optimizer is the config's ``training.optimizer`` (Adam if unset); ``--muon-lrs`` repeats
+every Muon config once per listed Muon learning rate, e.g. to bracket the lr whose velocity
+change matches Adam's before a GPU sweep.
 
 Step 1 is exact; later steps hold G fixed, so they show the parameterization's response,
 not the true trajectory. Use it to compare step growth and stripe content between models
@@ -35,8 +40,8 @@ from experiments.low_rank_calibration import velocity_gradient
 from experiments.residual_ifwi_data import load_velocity_data
 from experiments.residual_ifwi_experiment import (ROOT, _seed, build_forward_problem, model_from_config,
     pretrain_to_initial, validate_config)
+from experiments.muon_optimizer import build_optimizer, effective_hidden_weights, optimizer_name, stable_rank
 from experiments.spectral_metrics import radial_wavenumber_cpkm
-from experiments.trainable_omega import parameter_groups
 
 SHARED = ("data", "acquisition", "forward")
 
@@ -63,7 +68,8 @@ def response(config, background, gradient, steps, emit=lambda _: None):
     if pretrain is not None:
         pretrain_to_initial(model, background, pretrain, trainable_omega,
                             config["model"]["mean_kmps"], config["model"]["std_kmps"], emit)
-    optimizer = torch.optim.Adam(parameter_groups(model, config["training"]["learning_rate"], trainable_omega))
+    optimizer = build_optimizer(model, config)
+    hidden_start = effective_hidden_weights(model)
     with torch.no_grad():
         start = model()[0].detach().double().numpy().copy()
     rows, descent = [], -gradient[0].double().numpy()
@@ -74,9 +80,12 @@ def response(config, background, gradient, steps, emit=lambda _: None):
         if step in steps:
             with torch.no_grad():
                 change = model()[0].detach().double().numpy() - start
+            ranks = [stable_rank(a - b) for a, b in zip(effective_hidden_weights(model), hidden_start)]
+            ranks = [r for r in ranks if r is not None]
             rows.append({"step": step, "rms_dm_mps": float(np.sqrt(np.mean(change ** 2))),
                          **stripe_shares(change, config["data"]["grid_spacing_m"]),
-                         "cos_dm_descent": cosine(change, descent)})
+                         "cos_dm_descent": cosine(change, descent),
+                         "hidden_change_srank_mean": float(np.mean(ranks)) if ranks else None})
     return rows
 
 
@@ -99,6 +108,7 @@ def main():
     parser.add_argument("--configs", nargs="+", type=Path, required=True)
     parser.add_argument("--sigma", type=float, help="Override initialization.sigma for every config")
     parser.add_argument("--steps", nargs="+", type=int, default=[1, 5, 20])
+    parser.add_argument("--muon-lrs", nargs="+", type=float, help="Run each Muon config once per Muon learning rate")
     parser.add_argument("--device", default="cpu", help="Device for the one FD gradient; model steps run on CPU")
     parser.add_argument("--threads", type=int, default=1)
     parser.add_argument("--output-dir", type=Path, required=True)
@@ -110,7 +120,14 @@ def main():
             cfg = yaml.safe_load(stream)
         if args.sigma is not None:
             cfg["initialization"]["sigma"] = args.sigma
-        configs.append(cfg)
+        if args.muon_lrs and optimizer_name(cfg) == "muon":
+            for lr in args.muon_lrs:
+                variant = copy.deepcopy(cfg)
+                variant["training"]["optimizer"]["learning_rate"] = lr
+                variant["experiment_name"] = f"{cfg['experiment_name']}_muonlr{lr:g}".replace(".", "p").replace("-", "m")
+                configs.append(variant)
+        else:
+            configs.append(cfg)
     torch.set_num_threads(args.threads)
     rows = report(configs, sorted(set(args.steps)), args.device)
     args.output_dir.mkdir(parents=True, exist_ok=True)
@@ -124,7 +141,8 @@ def main():
     for row in rows:
         print(f"{row['experiment_name']:28s} step {row['step']:3d}: |dm| {row['rms_dm_mps']:8.2f} m/s, "
               f"vertical {row['vertical_stripe_share']:.3f}, horizontal {row['horizontal_stripe_share']:.3f}, "
-              f"k>8 {row['high_k_share']:.3f}, cos(dm,-G) {row['cos_dm_descent']:+.3f}")
+              f"k>8 {row['high_k_share']:.3f}, cos(dm,-G) {row['cos_dm_descent']:+.3f}, "
+              f"hidden srank {row['hidden_change_srank_mean'] if row['hidden_change_srank_mean'] is None else round(row['hidden_change_srank_mean'], 1)}")
     print(f"Wrote {args.output_dir}")
 
 

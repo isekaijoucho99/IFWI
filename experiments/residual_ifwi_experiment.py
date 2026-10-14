@@ -27,6 +27,8 @@ from rnn_fd import rnn2D
 from experiments.fourier_modules import validate_fourier
 from experiments.low_rank_modules import validate_low_rank
 from experiments.trainable_omega import omega_values, parameter_groups, validate_trainable_omega
+from experiments.muon_optimizer import (build_optimizer, effective_hidden_weights, optimizer_name, stable_rank,
+    validate_optimizer)
 from experiments.residual_ifwi_data import load_velocity_data
 from experiments.residual_ifwi_report import save_plots, save_sampling_plot, velocity_metrics
 
@@ -66,7 +68,8 @@ def validate_config(config):
     if not isinstance(config, dict) or set(config) != set(template):
         raise ValueError("Configuration must contain exactly the stage-1 sections")
     for name in ("data", "initialization", "model", "acquisition", "forward", "training"):
-        allowed_optional = {"training": {"shots_per_update", "full_eval_interval"}, "model": {"fourier", "trainable_omega", "low_rank"},
+        allowed_optional = {"training": {"shots_per_update", "full_eval_interval", "optimizer"},
+                            "model": {"fourier", "trainable_omega", "low_rank"},
                             "initialization": {"pretrain"}}.get(name, set())
         if (not isinstance(config[name], dict) or not set(template[name]).issubset(config[name])
                 or set(config[name]) - set(template[name]) - allowed_optional):
@@ -124,6 +127,9 @@ def validate_config(config):
     if model.get("fourier") is not None and hidden_layers < 2:
         raise ValueError("Fourier reparameterization needs at least one hidden-to-hidden layer")
     validate_trainable_omega(model.get("trainable_omega"))
+    validate_optimizer(training.get("optimizer"))
+    if optimizer_name(config) == "muon" and hidden_layers < 2:
+        raise ValueError("Muon needs at least one hidden-to-hidden layer")
     for key in ("num_shots", "source_spacing_index", "receiver_stride"):
         _positive(acq[key], key, integer=True)
     for key in ("source_start_index", "source_end_margin", "source_depth_index", "receiver_depth_index"):
@@ -318,7 +324,11 @@ def waveform_mse(prediction, observations, total_shots=None):
 
 
 def train_update(model, problem, optimizer):
-    """One Adam update, with all shots or a uniform subset and exact accumulation."""
+    """One optimizer update, with all shots or a uniform subset and exact accumulation.
+
+    All shot batches are accumulated before the single step, so Muon orthogonalizes the
+    summed gradient (orthogonalizing per batch and adding would be a different method).
+    """
     selected_indices = None
     if problem["config"]["training"].get("shots_per_update") is not None:
         from experiments.residual_ifwi_stochastic import sample_shot_indices, select_shot_problem
@@ -346,6 +356,7 @@ def train_update(model, problem, optimizer):
     for grad in gradients:
         require_finite(grad, "SIREN parameter gradient")
     grad_norm = float(torch.stack([g.detach().square().sum() for g in gradients]).sum().sqrt())
+    hidden_before = effective_hidden_weights(model)
     optimizer_before = copy.deepcopy(optimizer.state_dict())
     try:
         optimizer.step()
@@ -363,6 +374,12 @@ def train_update(model, problem, optimizer):
         raise
     report = {"data_mse": loss_value, "gradient_norm": grad_norm,
               "parameter_update_norm": change, "velocity_before_mps": velocity_before}
+    # Stable ranks of the effective hidden weights after the step and of this step's update
+    # (None for a zero matrix, e.g. hidden updates while a residual head is still zero).
+    hidden_after = effective_hidden_weights(model)
+    report["hidden_weight_srank"] = [stable_rank(w) for w in hidden_after]
+    report["hidden_update_srank"] = [stable_rank(a - b) for a, b in zip(hidden_after, hidden_before)]
+    report["hidden_update_fro"] = [float((a - b).double().norm()) for a, b in zip(hidden_after, hidden_before)]
     omegas = omega_values(model)
     if omegas:
         report["omega_after"] = omegas
@@ -435,6 +452,7 @@ def _resume_configuration(config):
     result["model"].setdefault("trainable_omega", None)
     result["model"].setdefault("low_rank", None)
     result["initialization"].setdefault("pretrain", None)
+    result["training"]["optimizer"] = result["training"].get("optimizer") or {"name": "adam"}
     return result
 
 
@@ -529,7 +547,11 @@ def run_experiment(config, output_parent, device="cpu", resume=None, save_figure
                               f"lr {pretrain['learning_rate']}, lowest-loss state)")),
         "controlled_components": ["original IRN architecture" if fourier is None and low_rank is None
                                   else "original IRN sine layers" + ("" if low_rank is None else " inside both 1-D factor networks"),
-                                  "reference FD", "observations", "waveform MSE", "Adam", "acquisition", "update budget"],
+                                  "reference FD", "observations", "waveform MSE",
+                                  "Adam" if optimizer_name(config) == "adam" else
+                                  "Muon on hidden matrices (FR: coefficients lamb) + Adam on inputs, heads, biases, core and omega",
+                                  "acquisition", "update budget"],
+        "optimizer": config["training"].get("optimizer") or {"name": "adam"},
         "changes_vs_original_random": (["fixed spatial background", "zero final-layer initialization", "residual parameterization"] if config["parameterization"] == "residual" else [])
                                       + ([] if fourier is None else [f"Fourier reparameterized hidden layers (W = Lambda B, lambda_init={fourier['lambda_init']})"])
                                       + ([] if trainable_omega is None else [f"per-layer trainable sine omega (init omega_0, Adam lr {trainable_omega['learning_rate']})"])
@@ -607,7 +629,7 @@ def run_experiment(config, output_parent, device="cpu", resume=None, save_figure
                 "output_head_zeroed_after_pretraining": config["parameterization"] == "residual",
                 "rmse_vs_initial_mps": float(np.sqrt(np.mean((pretrained - background) ** 2))),
                 "logged_only_rmse_vs_truth_mps": float(np.sqrt(np.mean((pretrained - truth) ** 2)))})
-        optimizer = torch.optim.Adam(parameter_groups(model, config["training"]["learning_rate"], trainable_omega))
+        optimizer = build_optimizer(model, config)
         if saved:
             model.load_state_dict(saved["model"], strict=True)
             optimizer.load_state_dict(saved["optimizer"])

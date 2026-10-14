@@ -34,7 +34,7 @@ import torch
 from experiments.residual_ifwi_data import load_velocity_data
 from experiments.residual_ifwi_experiment import (ROOT, _restore_rng, _rng_state, _seed, _simulate,
     build_forward_problem, model_from_config, require_finite, validate_config, waveform_mse)
-from experiments.trainable_omega import parameter_groups
+from experiments.muon_optimizer import build_optimizer
 
 SHARED_SECTIONS = ("parameterization", "seed", "data", "initialization", "acquisition", "forward", "training")
 
@@ -70,8 +70,7 @@ def first_step_change(config, background, gradient, rng_state, device):
     """Velocity change (m/s, [nz,nx]) after one Adam step of the runner-initialized model."""
     _restore_rng(rng_state)
     model = model_from_config(background, config).to(device)
-    optimizer = torch.optim.Adam(parameter_groups(model, config["training"]["learning_rate"],
-                                                  config["model"].get("trainable_omega")))
+    optimizer = build_optimizer(model, config)
     velocity = model()
     start = velocity.detach().clone()
     if not torch.equal(start, model.fixed_init_mps):
