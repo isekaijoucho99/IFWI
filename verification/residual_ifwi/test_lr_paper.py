@@ -141,7 +141,7 @@ def test_lrpaper13_configs_follow_the_paper_and_differ_only_in_the_network():
         assert acq["source_depth_index"] == 1 and acq["receiver_depth_index"] == 2
         assert fd["frequency_hz"] == 8 and fd["dt_s"] == .0019 and fd["nt"] == 1000 and fd["free_surface"] is True
         assert training["learning_rate"] == 1e-4 and training["epochs"] == 1000 and "shots_per_update" not in training
-    assert lr["model"].pop("low_rank") == {"rank_z": 50, "rank_x": 100, "hidden": [128, 128, 128], "coordinates": "index",
+    assert lr["model"].pop("low_rank") == {"rank_z": 50, "rank_x": 100, "hidden": [128, 128, 128], "coordinates": "normalized",
                                            "coord_scale": 1.0, "core_init": "random", "output_gain": 1.0}
     assert lr["model"].pop("neurons") is None and ifwi["model"].pop("neurons") == [2, 128, 128, 128, 128, 1]
     lr["experiment_name"] = ifwi["experiment_name"]
@@ -234,3 +234,19 @@ def test_pretrained_residual_configs_differ_by_one_factor():
     assert pretrained["initialization"].pop("pretrain") == {"updates": 5000, "learning_rate": 1e-4}
     pretrained["experiment_name"] = ifwi13["experiment_name"]
     assert pretrained == ifwi13
+
+
+def test_normalized_coordinates_follow_the_siren_grid_and_validate():
+    model = paper_model({**PAPER_LR, "coordinates": "normalized"}).low_rank
+    assert torch.allclose(model.z_coords[:, 0], torch.linspace(-1, 1, 6))
+    assert torch.allclose(model.x_coords[:, 0], torch.linspace(-1, 1, 9))
+    # Same seed: factor weights do not depend on the coordinate convention.
+    index = paper_model(PAPER_LR).low_rank
+    assert all(torch.equal(a, b) for a, b in zip(model.parameters(), index.parameters()))
+    cfg = api().default_config()
+    cfg["parameterization"] = "absolute"
+    cfg["model"].update(neurons=None, low_rank={**PAPER_LR, "coordinates": "normalized"})
+    api().validate_config(cfg)
+    cfg["model"]["low_rank"]["coordinates"] = "unit"
+    with pytest.raises(ValueError, match="coordinates"):
+        api().validate_config(cfg)

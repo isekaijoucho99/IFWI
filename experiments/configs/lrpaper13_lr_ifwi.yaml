@@ -2,7 +2,7 @@
 # absolute velocity m = mean + std * network (mu = 3, xi = 1 km/s), Stage-1 pretraining on
 # the Gaussian smooth initial model, 13 shots at 300 m, 8 Hz, dt 1.9 ms, 1000 samples, all shots per update, Adam lr 1e-4,
 # 1000 epochs (smooth initial model). LR-IFWI arm: rank 50/100, two 3 x 128 sine factor
-# MLPs, omega_0 30, integer index coordinates (Eq. 6), random core C. Only experiment_name
+# MLPs, omega_0 30, SIREN-normalized coordinates, random core C. Only experiment_name
 # and the model section differ from lrpaper13_ifwi.
 # Not given by the paper: Gaussian sigma (kept at 15 cells as in all residual runs),
 # pretraining updates/lr, the distribution of the random core C.
@@ -36,7 +36,7 @@ model:
     rank_z: 50          # r1, depth (n1 = 94)
     rank_x: 100         # r2, lateral (n2 = 288)
     hidden: [128, 128, 128]
-    coordinates: index  # x1 = 1..n1, x2 = 1..n2
+    coordinates: normalized  # SIREN default grid linspace(-1, 1, n); Eq. 6 indices 1..n superseded, see docs/lr_ifwi.md
     coord_scale: 1.0
     core_init: random   # paper: random; ours: U(+-1/sqrt(rank_x))
     output_gain: 1.0    # no extra gain in the paper

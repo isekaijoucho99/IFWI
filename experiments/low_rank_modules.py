@@ -8,7 +8,11 @@ omega_0 = 30; ranks 50 (depth, n1 = 94) and 100 (lateral, n2 = 288)).
 Paper-faithful mode (absolute parameterization, see residual_ifwi_experiment): the runner
 represents m = mean + std * output_gain * U C V^T (paper: mu = 3, xi = 1 km/s, gain 1),
 pretrains on m_init (initialization.pretrain) and uses the optional settings
-``coordinates: index`` (Eq. 6: x1 = 1..n1, x2 = 1..n2) and ``core_init: random``.
+``coordinates: normalized`` and ``core_init: random``. Eq. 6 writes x1 = 1..n1, x2 = 1..n2
+(``coordinates: index``), but the paper also states SIREN's default settings, whose grid is
+linspace(-1, 1, n). Literal indices up to 288 make a 1e-4 Adam step on a first-layer weight
+move its phase by up to 30 * 1e-4 * 288 = 0.86 rad: the first update is already striped
+and pretraining with FR is unstable; normalized coordinates behave like the 2-D SIREN.
 
 Differences from the paper in the residual setting (the defaults):
 * The paper's Stage 1 pretraining on m_init is replaced by the fixed background.
@@ -66,13 +70,16 @@ def validate_low_rank(setting):
         raise ValueError("low_rank.hidden must be a nonempty list of positive integers")
     for key in ("coord_scale", "output_gain"):
         _positive_number(setting[key], key)
-    if setting.get("coordinates", "km") not in ("km", "index"):
-        raise ValueError("low_rank.coordinates must be 'km' or 'index'")
+    if setting.get("coordinates", "km") not in ("km", "index", "normalized"):
+        raise ValueError("low_rank.coordinates must be 'km', 'index' or 'normalized'")
     if setting.get("core_init", "zero") not in ("zero", "random"):
         raise ValueError("low_rank.core_init must be 'zero' or 'random'")
 
 
 def _axis(n, dx_m, scale, coordinates="km"):
+    if coordinates == "normalized":
+        # SIREN default grid (get_mgrid): linspace(-1, 1, n), times scale (1 in the paper mode).
+        return torch.from_numpy((np.linspace(-1., 1., n) * scale).astype(np.float32))[:, None]
     if coordinates == "index":
         # Paper Eq. 6: integer indices 1..n, times scale (1 in the paper).
         return torch.from_numpy((np.arange(1, n + 1, dtype=np.float64) * scale).astype(np.float32))[:, None]

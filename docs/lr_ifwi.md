@@ -34,7 +34,7 @@ U = Ψ_z(coord_scale · z_km) ∈ R^{nz×rank_z}，V = Ψ_x(coord_scale · x_km)
 | 论文 | 实现 |
 | --- | --- |
 | m_pred = ξ·m̂ + μ，μ = 3、ξ = 1 km/s（§II-E） | `parameterization: absolute`，低秩时 m̂ = output_gain·U C Vᵀ，output_gain = 1 |
-| 坐标 x₁ = 1…n₁、x₂ = 1…n₂（Eq. 6） | `low_rank.coordinates: index`，`coord_scale: 1` |
+| 坐标 x₁ = 1…n₁、x₂ = 1…n₂（Eq. 6）；§III-A“严格采用 SIREN 默认设置” | `low_rank.coordinates: normalized`（SIREN 默认网格 linspace(−1, 1, n)），`coord_scale: 1`；字面整数坐标 `index` 保留但不再使用，原因见下文“条纹与不稳定的来源” |
 | C 随机初始化 | `low_rank.core_init: random`，分布论文未给，取 U(±1/√rank_x)；在两个因子网络之后抽取，因子权重与零核时逐位相同 |
 | Stage 1：最小化 ‖Ψ − m_init‖²_F | `initialization.pretrain`：标准化输出上的 MSE、Adam；论文未给步数和学习率，取原 IFWI 预训练脚本 `pretrain_marmousi.py` 的 5000 次、1e-4、保留 loss 最低的状态 |
 | Stage 2：Adam lr 1e-4、平滑初始 1000 epoch、无显式正则 | 预训练后新建 Adam；其余同 runner |
@@ -43,7 +43,7 @@ U = Ψ_z(coord_scale · z_km) ∈ R^{nz×rank_z}，V = Ψ_x(coord_scale · x_km)
 
 预训练只用初始模型，真值只写入日志（`pretraining.json` 的 `logged_only_rmse_vs_truth_mps`）。输出 `pretraining_history.csv`、`pretraining.json`；`run_start_velocity.npy` 为预训练后的起点，与 `initial_velocity.npy`（高斯初始模型）不再逐位相同。续训从检查点恢复权重，不重复预训练。CPU 全尺寸预训练检查：LR 5000 次后与初始模型 RMSE 0.8 m/s、IFWI 0.5 m/s。
 
-论文未给出、由我们决定的：高斯 σ（沿用 15 格，与所有 residual 运行一致）、预训练步数与学习率、C 的分布。整数坐标配合 ω₀ = 30 时首层相位在相邻格点间相差可达 30 rad，网格点上的拟合不受影响（上面的预训练结果），但 Lemma 1 的平滑常数很大，论文所述平滑先验在此是否成立需看训练结果；`coordinates: km` 可作消融。
+论文未给出、由我们决定的：高斯 σ（沿用 15 格，与所有 residual 运行一致）、预训练步数与学习率、C 的分布。坐标约定见下文“条纹与不稳定的来源”：字面整数坐标使第一步更新即出现条纹，改用 SIREN 默认的归一化坐标。
 
 采集深度：IFWI 与 LR-IFWI 论文正文均写震源 30 m、检波器在地表（FR-IFWI 写震源 15 m、检波器在地表），但 IFWI 作者公开代码用震源 15 m、检波器 30 m（[原代码说明](original_notes.md)），LR-IFWI 又称 IFWI 按其源码运行。论文实际所用几何无法确认，故 lrpaper13 沿用代码几何，与此前全部 13 炮运行一致（数据、采集、正演、训练各节与 `paper13_ifwi.yaml` 相同，有测试），可直接对照 IFWI13 / FR13。运行器也支持检波器放在第 0 行（自由表面下第 0 行不被置零，有测试），需要时可单独做几何对照。
 
@@ -63,7 +63,7 @@ python residual_ifwi.py --config experiments/configs/lrpaper13_lr_ifwi.yaml --de
 | `paper13_pretrained_ifwi.yaml` | 对 `paper13_ifwi`（IFWI13）：只加预训练；对 `lrpaper13_ifwi`：只差参数化（清零输出层） |
 | `paper13_pretrained_lr_ifwi.yaml` | 对 `lrpaper13_lr_ifwi`：只差参数化（清零 C） |
 
-低秩这组采用论文模式的模型设置（整数坐标、预训练时随机 C、增益 1），因此与此前残差 `paper13_lr_ifwi`（km×0.5 坐标、零 C、增益 5.50）同时差预训练、坐标与增益，不是单因素对照；那组的增益是在无预训练时标定的，预训练后已无意义。
+低秩这组采用论文模式的模型设置（归一化坐标、预训练时随机 C、增益 1），因此与此前残差 `paper13_lr_ifwi`（km×0.5 坐标、零 C、增益 5.50）同时差预训练、坐标与增益，不是单因素对照；那组的增益是在无预训练时标定的，预训练后已无意义。
 
 ```bash
 python residual_ifwi.py --config experiments/configs/paper13_pretrained_ifwi.yaml --device cuda:0 --output-dir outputs/paper13_pretrained_ifwi
@@ -86,7 +86,7 @@ python residual_ifwi.py --config experiments/configs/lrpaper13_fr_ifwi.yaml --de
 python residual_ifwi.py --config experiments/configs/lrpaper13_lr_fr_ifwi.yaml --device cuda:0 --output-dir outputs/lrpaper13_lr_fr_ifwi
 ```
 
-CPU 全尺寸预训练检查（5000 次，lr 1e-4，与初始模型的 RMSE，m/s）：
+CPU 全尺寸预训练检查（5000 次，lr 1e-4，与初始模型的 RMSE，m/s；低秩各行为整数坐标，归一化坐标的结果见下文）：
 
 | 模型 | 最低 | 100 次后最大 | 1000/2000/3000/4000/5000 次 |
 | --- | ---: | ---: | --- |
@@ -98,6 +98,48 @@ CPU 全尺寸预训练检查（5000 次，lr 1e-4，与初始模型的 RMSE，m/
 | 二维 | 0.5 | — | 1.7 / 1.0 / 0.7 / 2.1 / 0.5 |
 
 低秩与 FR 组合在 lr 1e-4 下预训练不稳定（ω 固定时同样），可能是 FR 约 6 倍的有效步长经 U C Vᵀ 的双线性乘积放大。预训练保留 loss 最低的状态，起点不受影响；Stage 2 没有这种保护，可能出现 loss 尖峰或局部速度越过 CFL 上限后回滚停止。这是该组合在统一学习率下的结果，属于对照的一部分；若需要它的可用版本，应另设学习率变体，而不是改动这一格。
+
+## 条纹与不稳定的来源（2026-10-14 诊断）
+
+σ = 15 残差 LR + FR + ω（增益 1.21）1000 次后 RMSE 689.8 m/s，第 100 次起即有贯穿全深度的竖条纹；σ = 22 的残差 LR、LR + FR 同样有条纹，此前残差 LR 两次越过 CFL 上限。U C Vᵀ 的乘法、轴序与单位均已核对无误；问题来自两处实现选择。用 `experiments/update_response_report.py`（固定初始梯度 G，比较各模型的速度更新；第 1 步精确，之后 G 固定）在 13 炮、σ = 15 下得到：
+
+| 模型（Adam，网络 lr 1e-4） | 第 1 步 RMS Δv（m/s） | 第 20 步 | 说明 |
+| --- | ---: | ---: | --- |
+| 残差二维 SIREN（IFWI13） | 6.6 | 202 | 近似线性增长 |
+| 残差 LR，零 C，增益 5.50 | 6.6 | **3703** | 增益只对齐了第 1 步 |
+| 残差二维 FR + ω（FR13） | 1.3 | 216 | |
+| 残差 LR + FR + ω，增益 1.21 | 1.3 | **978** | |
+| 论文模式二维 SIREN | 106 | 1054 | |
+| 论文模式 LR，整数坐标 | 139（竖条纹占 4.3 %） | 1323 | |
+| 论文模式 LR，归一化坐标 | 116（无竖条纹） | 1008 | 与二维相当 |
+| 论文模式 FR + ω（二维） | 158 | 1280 | |
+| 论文模式 LR + FR + ω，归一化坐标 | 326 | 2957（横条纹 6.9 %） | FR 放大在两个因子中叠加 |
+
+1. **残差版“零 C + 增益”（我们的改编）步长超线性增长**：C 为零时只有 C 能动；C 变大后 ∂v/∂U、∂v/∂V 随之变大，而 Adam 每个参数每步仍移动约 lr，增益又放大全部灵敏度，固定梯度下 20 步放大约 560 倍（二维约 30 倍）。增益标定只匹配第一步。参数被推离初值后隐藏层产生高频特征，可分离结构把它们复制到整条深度或横向，形成条纹；这也解释了早期过冲和 CFL 越界。因此不再推荐残差 LR（`paper13_lr_ifwi`、`paper13_lr_fr_ifwi`、`residual_lr_ifwi_baseline1000`），配置保留作记录。
+2. **论文模式的字面整数坐标**：输入最大 288，1e-4 的首层权重变化使相位最多改变 30 × 1e-4 × 288 ≈ 0.86 rad（km × 0.5 坐标下约 0.0065 rad），第一步即出现条纹，加 FR 后预训练不稳定。论文同时写“严格采用 SIREN 默认设置”，SIREN 默认网格为 linspace(−1, 1, n)；改用 `coordinates: normalized` 后论文模式 LR 与二维 SIREN 的更新规模和增长基本一致，且无竖条纹。预训练 5000 次（与初始模型 RMSE，m/s）：
+
+| 预训练 | 坐标 | 最低 | 1000/2000/3000/4000/5000 次 |
+| --- | --- | ---: | --- |
+| 低秩 | 整数 | 0.82 | 3.0 / 1.8 / 1.2 / 2.2 / 2.1 |
+| 低秩 | 归一化 | 0.41 | 1.5 / 18.8 / 0.9 / 0.5 / 0.4 |
+| 低秩 + FR + ω | 整数 | 2.54 | 133.8 / 140.6 / 135.1 / 139.0 / 646.8 |
+| 低秩 + FR + ω | 归一化 | 0.88 | 0.9 / 2.3 / 1.4 / 1.2 / 0.9 |
+
+`lrpaper13_lr_ifwi`、`lrpaper13_lr_fr_ifwi`、`paper13_pretrained_lr_ifwi` 现均为 `coordinates: normalized`；此前用整数坐标运行的结果（如第 291 次越界的 `paper13_pretrained_lr_ifwi`）以其运行目录的 `config.json` 为准。LR + FR + ω 在归一化坐标下首步仍约为二维的 3 倍、20 步后有 6.9 % 横条纹，这是两个因子网络中 FR 步长放大的叠加，不是实现错误；若它在训练中仍不稳定，再单独设其学习率或 α 变体。
+
+### 下一步（13 炮，σ = 15，代码几何）
+
+论文模式 2×2，只差网络（有测试）：
+
+1. `lrpaper13_ifwi`：论文的 IFWI（绝对表示、预训练）。此前从未运行，先作为门槛：RMSE 应下降。其更新规模（首步约 106 m/s）远大于残差 IFWI13（6.6 m/s），可能像 FR13 一样越过残差 IFWI13 卡住的区域。
+2. `lrpaper13_lr_ifwi`：与 1 只差低秩结构。
+3. `lrpaper13_fr_ifwi`、`lrpaper13_lr_fr_ifwi`：FR + ω 两格。
+
+换模型设置前先跑：
+
+```bash
+python -m experiments.update_response_report --configs experiments/configs/lrpaper13_ifwi.yaml experiments/configs/lrpaper13_lr_ifwi.yaml experiments/configs/lrpaper13_fr_ifwi.yaml experiments/configs/lrpaper13_lr_fr_ifwi.yaml --steps 1 5 20 --output-dir outputs/update_response
+```
 
 ## 与论文不同或论文未说明的地方（残差版本）
 

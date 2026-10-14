@@ -2,7 +2,7 @@
 # pretrained on the Gaussian initial model exactly as in lrpaper13_lr_ifwi (LR-IFWI Stage 1),
 # then C is zeroed and the run continues as residual v = v_init + 1000 * std * U C V^T, starting
 # exactly at v_init with pretrained factor networks. Differs from lrpaper13_lr_ifwi only in
-# parameterization (and experiment_name). Unlike the residual paper13_lr_ifwi it uses index
+# parameterization (and experiment_name). Unlike the residual paper13_lr_ifwi it uses normalized
 # coordinates, a random core for pretraining and gain 1 (paper-mode model settings).
 experiment_name: paper13_pretrained_lr_ifwi
 parameterization: residual
@@ -34,7 +34,7 @@ model:
     rank_z: 50          # r1, depth (n1 = 94)
     rank_x: 100         # r2, lateral (n2 = 288)
     hidden: [128, 128, 128]
-    coordinates: index  # x1 = 1..n1, x2 = 1..n2
+    coordinates: normalized  # SIREN default grid linspace(-1, 1, n); Eq. 6 indices 1..n superseded, see docs/lr_ifwi.md
     coord_scale: 1.0
     core_init: random   # paper: random; ours: U(+-1/sqrt(rank_x))
     output_gain: 1.0    # no extra gain in the paper
