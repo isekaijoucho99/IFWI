@@ -1,6 +1,8 @@
 # Muon：用正交化更新训练 IFWI 的隐藏层
 
-对应论文：McGinnis, Hölzl, Shit, Bieder, Friedrich, Mühlau, Menze, Rueckert & Wiestler, *Optimizing Rank for High-Fidelity Implicit Neural Representations*, ICML 2026, PMLR 306（项目页 rank-inrs.github.io）。优化器为 Muon（Jordan et al., 2024，github.com/KellerJordan/Muon）。**本分支的 Muon 运行尚未在 GPU 上训练。**
+对应论文：McGinnis, Hölzl, Shit, Bieder, Friedrich, Mühlau, Menze, Rueckert & Wiestler, *Optimizing Rank for High-Fidelity Implicit Neural Representations*, ICML 2026, PMLR 306（项目页 rank-inrs.github.io）。优化器为 Muon（Jordan et al., 2024，github.com/KellerJordan/Muon）。
+
+> **GPU 结果（2026-10-15，13 炮、seed 3、1000 次）**：IFWI13 由 Adam 的 749.0 降到 519.9 m/s（仍在下降，但未低于初始模型 518.8）；FR13 由 Adam 的 375.3 变差到 470.9 m/s，数据残差为 Adam 的 180 倍，速度场有颗粒感、loss 振荡。FR + Muon 不再继续；分析与后续改进（多尺度频率延拓）见 [多尺度文档](multiscale_ifwi.md)。
 
 ## 论文给出的依据与边界
 

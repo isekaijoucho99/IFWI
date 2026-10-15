@@ -55,6 +55,8 @@ python residual_ifwi.py --config experiments/configs/paper13_fr_ifwi.yaml --devi
 
 > **初始模型**：13 炮协议下 σ = 15 的高斯初始模型使第一步梯度在各尺度上背离真值，所有不带 FR 的 13 炮运行都失败。后续 13 炮实验改用 σ = 22（`--sigma 22`），见 [初始模型与第一步梯度方向](initial_model.md)。
 
+> **2026-10-15**：FR13 终态的频谱复核（深层低频"变差"来自薄层与背景误差的抵消；约一半 MSE 在 k ≥ 10 c/km，即 8 Hz 数据的分辨率下限）以及针对早期梯度方向错误的多尺度频率延拓，见 [多尺度文档](multiscale_ifwi.md)。
+
 ## 分频带误差诊断
 
 背景已含真值约 0.8 c/km 以下的长波长，整体 RMSE 的改善几乎都来自中高波数。`experiments/spectral_metrics.py` 用正交 2D DCT-II 计算径向波数 k（cycles/km）各频带的速度 RMSE，各频带平方和严格等于总 RMSE²，并给出相对背景的比值（< 1 表示该频带改善）。默认频带：0–1、1–3、3–8、8–16、>16 c/km（15 m 网格 Nyquist 为 33.3 c/km）。
