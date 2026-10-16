@@ -1,6 +1,6 @@
 # 多尺度频率延拓：先拟合低频数据，再拟合全频带
 
-本文件记录 2026-10-15 对 Muon 四组结果和 FR-IFWI 频谱诊断的复核，以及据此加入的改进：训练目标的多尺度频率延拓（Bunks et al., 1995）。**多尺度配置尚未在 GPU 上训练。**
+本文件记录 2026-10-15 对 Muon 四组结果和 FR-IFWI 频谱诊断的复核，以及据此加入的改进：训练目标的多尺度频率延拓（Bunks et al., 1995）。2026-10-16 的 GPU 结果与随后加入的学习率安排见[第 6 节](#6-gpu-结果2026-10-16与学习率安排)：多尺度把 IFWI13 从 749.0 降到 397.0 m/s，但 FR13 从 375.3 变差到 404.0 m/s。
 
 ## 1. 复核结论
 
@@ -103,7 +103,7 @@ training:
 | IFWI13 + 多尺度（CPU） | 100 | **510.3** | 1.325 | 0.874 | 0.981 | 0.0159 |
 
 - **FR13**：早期的大幅上升消失了（100 次时 521 vs 620）。低频误差下降（R 0.79–0.85，基线为 1.59–1.70），中、高频基本不动。全频带波形 MSE 下降得比基线慢，这是预期的：此阶段只拟合 ≤ 3 Hz。
-- **IFWI13**：RMSE 低于初始模型（510），中、高频改善，但低频仍比背景差（50 次 R 1.55，100 次 1.33）。按深度看，普通 SIREN 把浅部需要的减速几乎原样加到了所有深度（100 次时浅层平均 −114、深层 −83 m/s），而 FR 的修正主要在浅部（−70 m/s），深部按另一方向变化（+88 m/s）。这与普通 SIREN 末层输入特征的稳定秩只有约 1.6（FR 约 16）一致：它能独立调整的空间模式太少，数据约束只在浅部时，深部被一并带动。所以 13 炮下 IFWI 的失败不只是周波跳跃，多尺度未必能单独救回它。
+- **IFWI13**：RMSE 低于初始模型（510），中、高频改善，但低频仍比背景差（50 次 R 1.55，100 次 1.33）。按深度看，普通 SIREN 把浅部需要的减速几乎原样加到了所有深度（100 次时浅层平均 −114、深层 −83 m/s），而 FR 的修正主要在浅部（−70 m/s），深部按另一方向变化（+88 m/s）。这与普通 SIREN 末层输入特征的稳定秩只有约 1.6（FR 约 16）一致：它能独立调整的空间模式太少，数据约束只在浅部时，深部被一并带动。当时据此推断"多尺度未必能单独救回 IFWI13"；**GPU 结果否定了这一推断**（第 6 节：1000 次后 397.0 m/s），前 100 次的低频偏差在后续阶段被纠正。
 - **第 100 次时的梯度方向**（`gradient_report`）：两个运行在 5 Hz 和全频带目标下，0–1 c/km 余弦都已为正（FR：+0.12 / +0.15；IFWI：+0.12 / +0.05），说明已离开第 0 步那种方向错误的区域。FR 在 3 Hz 目标下 0–1 c/km 余弦已变为 −0.15，同时低频 R 从 50 次的 0.79 回升到 0.85。此时 0–4 Hz 的数据残差只剩该频带能量的 1.4%，继续留在 3 Hz 收益不大，因此阶段长度改为 100/100/800。
 
 这些只是前 100 次的趋势；全频带阶段能否保住低频改善，并在 1000 次内低于 375 m/s，要看 GPU 运行。
@@ -128,7 +128,118 @@ python -m experiments.gradient_report --states initial outputs/paper13_fr_ifwi/R
 ## 5. 测试
 
 ```bash
-python -m pytest verification/residual_ifwi/test_frequency_continuation.py -q
+python -m pytest verification/residual_ifwi/test_frequency_continuation.py verification/residual_ifwi/test_lr_schedule.py -q
 ```
 
 覆盖：低通零相位、通带保持、阻带抑制、可微，补零后无回绕；阶段映射与配置校验；能量归一化使零预测的低通目标等于全频带 MSE；多尺度运行按阶段记录 `max_hz`/`objective`，`data_mse` 与全频带运行逐位相同，跨阶段续训逐位一致，换 schedule 续训被拒绝；`gradient_report` 的目标值与训练记录一致；两份配置相对基础配置只多 schedule。
+
+`test_lr_schedule.py` 覆盖：学习率因子（每阶段 warmup、余弦衰减、衰减结束后保持）；配置校验；运行器按因子设置每个参数组（网络与 ω）、`history` 记录 `lr_factor`、跨阶段续训逐位一致、改动 schedule 的续训被拒绝；未设置时不记录、不缩放；四份配置相对基础配置只改学习率安排与 `report_estimates`（短阶段配置另改阶段长度）。
+
+## 6. GPU 结果（2026-10-16）与学习率安排
+
+### 6.1 结果（13 炮、seed 3、1000 次更新，各自对照全频带基线）
+
+| 运行 | 速度 RMSE（m/s） | SSIM | 全频带波形 MSE |
+| --- | ---: | ---: | ---: |
+| FR13（全频带基线） | **375.3** | **0.662** | 2.31e-5 |
+| FR13 + 多尺度 | 404.0 | 0.588 | 9.36e-5 |
+| IFWI13（全频带基线） | 749.0 | 0.185 | 9.29e-3 |
+| IFWI13 + 多尺度 | **397.0** | **0.650** | 8.26e-5 |
+
+IFWI13 被救回，曲线平滑，支持 1.3 节"全频带梯度方向错误（周波跳跃）"的判断；第 3 节"多尺度未必能单独救回 IFWI13"的推断是错的。FR13 反而变差，原因如下。
+
+### 6.2 FR13 多尺度为什么变差
+
+**1. 一次晚期尖峰。** 第 671–700 次波形 MSE 涨到约 430 倍，RMSE 从 400.7 升到 478.7，到第 1000 次只回到 404.0（尖峰前 401.5）。按"超过前 20 个状态最小值 5 倍"检出的尖峰：
+
+| 运行 | 尖峰起点：MSE 倍数 |
+| --- | --- |
+| FR13 基线 | 391：5.3；520：14；702：25；921：30 |
+| FR13 + 多尺度 | 333：5.2；427：7.9；538：11；**671：427**；702：17；886：9.3 |
+| IFWI13 + 多尺度 | 645：8.6；872：15 |
+
+尖峰周期出现、间隔和幅度逐次增大。这是固定学习率下 Adam 接近极小值时的典型现象（Cohen et al., 2022, *Adaptive Gradient Methods at the Edge of Stability*）：Adam 每步的参数位移约等于 lr，不随梯度变小而变小，会周期性越过尖锐方向的稳定步长；β₂ = 0.999 的二阶矩估计在平稳期缓慢变化，使下一次越界来得更晚、更猛。按尖峰前的下降速度（第 600→680 次约 −0.04 m/s/次）外推，没有这次尖峰时第 1000 次约 390 m/s，即尖峰约占与基线差距的一半。
+
+**2. 尖峰之前已经落后。**
+
+| 更新次数 | 300 | 400 | 500 | 600 | 680 |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| FR13 基线 RMSE | 466.2 | 425.7 | 408.8 | 398.6 | 391.1 |
+| FR13 + 多尺度 RMSE | 429.2 | 416.6 | 409.7 | 404.5 | 401.5 |
+
+前 450 次多尺度领先，之后下降变慢；SSIM 从第 400 次起一直低于基线（400 次 0.580 vs 0.595，600 次 0.594 vs 0.632），图上是细颗粒纹理。
+
+**3. 阶段切换冲击。** 第 201 次切到全频带时两组 MSE 都立即跳升（FR RMSE 480 → 约 500，IFWI 476 → 约 488），约 50 次后恢复：全频带目标更尖锐、梯度更大，而 Adam 状态还是按 5 Hz 阶段调好的。
+
+**4. 低通阶段的细尺度注入。** σ = 15 初始模型处的 3 Hz 梯度，97% 的能量在震源所在的第 1 行（15 m 深），91% 在 k > 8 c/km（全频带梯度为 78% 与 74%），这是震源印记。网络和 Adam 把它变成低通数据看不见、之后也纠正不了的细尺度结构，FR 受影响更大：CPU 上 3 Hz 阶段 100 次后，速度改变量在 k ≥ 4 c/km 的 RMS，FR 为 121 m/s，IFWI 为 64 m/s（k < 2.15 c/km 部分分别为 181、156）。GPU 快照中 FR 第 100 次已有斑块状纹理，IFWI 平滑；FR 的 3/5 Hz 目标曲线有尖峰，IFWI 平滑下降。FR 拟合 3 Hz 数据很快：CPU 上低频 R 在第 50 次最好（0.79），第 100 次回升到 0.85，此时 3 Hz 梯度在 0–1 c/km 的余弦已是 −0.15。
+
+### 6.3 试过、未采用
+
+| 做法 | CPU 结果 | 结论 |
+| --- | --- | --- |
+| 低通阶段所有学习率 ×0.2（另有 20 次 warmup） | 第 47 次 3 Hz 目标 0.0044（未改 0.0008）；固定梯度下更新的高/低波数 RMS 比 0.56（未改 0.66） | 只是整体变慢，更新的频谱几乎不变 |
+| 低通阶段梯度高斯平滑，σ = 1500/(4·f) = 125/75 m（另有 20 次 warmup） | 第 100 次 RMSE 545.2（未平滑 520.7），低频 R 1.36（0.85），3 Hz 目标 0.0020（0.0002）；k ≥ 10 c/km 注入 +1 m/s（+4） | 抑制了细尺度注入，但把震源行的大幅值摊到深处，3 Hz 拟合停滞 |
+| 屏蔽前 3 行（震源、检波器）梯度（固定梯度近似） | 更新的高/低波数 RMS 比 0.71（未屏蔽 0.66） | 细尺度主要来自网络 + Adam 的响应，不只来自震源行 |
+
+这三种做法没有留在代码中。
+
+### 6.4 改进方向与代码
+
+验证分工：本机只跑单元测试（每项数秒），训练对比全部在 GPU 上做。下表按证据强弱排序，每一项都是配置开关，未设置时与原代码逐位相同（已在提交 f59d519 与本改动之间，用五份配置的小规模运行核对最终速度、逐步历史和 comparison_notes）。
+
+| # | 方向 | 针对的现象（证据） | 代码 / 配置键 |
+| --- | --- | --- | --- |
+| 1 | 学习率安排：每个频率阶段开头 warmup，全频带阶段余弦衰减 | 尖峰周期出现且越来越大；FR 多尺度第 671 次一次损失约 75 m/s；第 201 次切换冲击 | `experiments/lr_schedule.py`，`training.lr_schedule` |
+| 2 | FR 的低通阶段缩短（50/50 次） | FR 拟合 3 Hz 很快，第 50 次低频最好，之后注入细尺度；CPU 上短阶段在第 96 次到达 GPU 原多尺度第 200 次的状态（RMSE 481 vs 480，波形 MSE 0.0116 vs 0.0109），全频带阶段多出 100 次 | 配置：阶段长度 |
+| 3 | 普通 SIREN + 多尺度这条路 | IFWI13 + 多尺度已到 397.0 m/s，与 FR 基线差 22 m/s，且曲线平滑 | 配置 |
+| 4 | Adam β₂ = 0.99 | 尖峰来自二阶矩估计跟不上步长变化；β₂ 小则反应快 | `training.optimizer: {name: adam, betas: [0.9, 0.99]}` |
+| 5 | FR 基的尺度 α：0.01 → 0.005 | Adam 下 FR 隐藏层步长约为普通 SIREN 的 6 倍，且与 α 成正比；初始权重与 α 无关（已核对逐位相同） | 配置：`model.fourier.alpha` |
+| 6 | 晚到时间增益 (t/t_end)^p（从第 301 次起） | FR13 终点残差 83% 在 1.0 s 之后，晚到部分的相对残差是早到的 20–30 倍，而普通 MSE 由早到强能量主导 | `experiments/training_options.py`，`training.time_gain` |
+| 7 | EMA 与最低数据残差状态（不改训练，只多输出） | 晚期尖峰和细尺度振荡；原 IFWI 代码也按 loss 选模型 | `training.report_estimates`，输出 `final_velocity_ema.npy`、`lowest_misfit_velocity.npy` 与 `metrics.json` 的 `estimates` |
+
+没有采用：第 6.3 节的三种做法；全变差（TV）正则——真值的 TV（0.214 km/s/格）高于 FR13 终态（0.141），TV 惩罚只会让模型更平滑，与真值差得更远，无噪声合成数据下没有依据；改 ω 学习率——49 炮上 FR 与 FR + ω 只差 0.3 m/s。
+
+`report_estimates` 中，EMA 从 `ema_start` 起对每次更新后的速度做指数平均；最低残差状态在每次更新前的全炮评价与最终评价中取最小（随机抽炮时只用全炮评价）。两者都不用真值，主指标仍是最后一次迭代（`final`）。
+
+### 6.5 GPU 实验
+
+所有新配置都带 `report_estimates`（EMA 衰减 0.99，从第 501 次起），每次运行同时给出最后迭代、EMA 与最低残差三个结果。
+
+第一轮（四次运行）：
+
+| 配置 | 相对基础配置的改动 | 对照 | 回答的问题 |
+| --- | --- | --- | --- |
+| `paper13_fr_ifwi_lrsched` | FR13 + 学习率安排（warmup 20，第 201–1000 次衰减到 0.1） | FR13（375.3） | 学习率安排对全频带 FR 的作用 |
+| `paper13_fr_ifwi_multiscale_lrsched` | FR13 多尺度 + 同一学习率安排 | FR13 多尺度（404.0）；与上一行比较多尺度的作用 | 学习率安排能否消除晚期尖峰与切换冲击 |
+| `paper13_fr_ifwi_multiscale_short_lrsched` | 低通阶段 50/50 次 + 学习率安排（第 101–1000 次衰减） | 上一行 | 缩短低通阶段的作用 |
+| `paper13_ifwi_multiscale_lrsched` | IFWI13 多尺度 + 学习率安排 | IFWI13 多尺度（397.0） | 普通 SIREN 路线能走多远 |
+
+第二轮（各只改一项，基于 `paper13_fr_ifwi_lrsched`；若第一轮最好的是别的配置，把同一项加到它上面）：
+
+| 配置 | 改动 |
+| --- | --- |
+| `paper13_fr_ifwi_lrsched_beta2` | Adam β = (0.9, 0.99) |
+| `paper13_fr_ifwi_lrsched_alpha005` | FR α = 0.005 |
+| `paper13_fr_ifwi_lrsched_tgain` | 第 301 次起残差乘 t/t_end |
+
+单种子下几 m/s 的差别不足以下结论；选出的组合再做 2–3 个种子。
+
+```bash
+python residual_ifwi.py --config experiments/configs/paper13_fr_ifwi_lrsched.yaml --device cuda:0 --output-dir outputs/round1/fr_lrsched
+python residual_ifwi.py --config experiments/configs/paper13_fr_ifwi_multiscale_lrsched.yaml --device cuda:0 --output-dir outputs/round1/fr_ms_lrsched
+python residual_ifwi.py --config experiments/configs/paper13_fr_ifwi_multiscale_short_lrsched.yaml --device cuda:0 --output-dir outputs/round1/fr_ms_short_lrsched
+python residual_ifwi.py --config experiments/configs/paper13_ifwi_multiscale_lrsched.yaml --device cuda:0 --output-dir outputs/round1/ifwi_ms_lrsched
+python residual_ifwi.py --config experiments/configs/paper13_fr_ifwi_lrsched_beta2.yaml --device cuda:0 --output-dir outputs/round2/fr_lrsched_beta2
+python residual_ifwi.py --config experiments/configs/paper13_fr_ifwi_lrsched_alpha005.yaml --device cuda:0 --output-dir outputs/round2/fr_lrsched_alpha005
+python residual_ifwi.py --config experiments/configs/paper13_fr_ifwi_lrsched_tgain.yaml --device cuda:0 --output-dir outputs/round2/fr_lrsched_tgain
+```
+
+回传时除终态指标和曲线外，请附上 `metrics.json`（含 `estimates`）和 `history.json`：后者有每次更新的 `lr_factor`、`objective`、`gradient_norm`、`omega_after`，可以确认尖峰是否消失、发生在哪一层面。
+
+### 6.6 测试
+
+```bash
+python -m pytest verification/residual_ifwi/test_lr_schedule.py verification/residual_ifwi/test_training_options.py -q
+```
+
+覆盖：学习率因子（每阶段 warmup、余弦衰减）及其在每个参数组上的应用、续训逐位一致；Adam betas/eps 的校验与构造；时间增益的权重、能量归一化、与频率阶段组合、开始前与普通运行逐位相同、续训一致；EMA 与最低残差状态的数值（与逐次快照手算一致）、不改变训练、续训恢复；七份新配置相对基础配置只改各自那一项。

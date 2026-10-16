@@ -28,6 +28,9 @@ from experiments.fourier_modules import validate_fourier
 from experiments.frequency_continuation import (energy_scales, lowpass, stage_boundaries, stage_cutoff,
     validate_frequency_schedule)
 from experiments.low_rank_modules import validate_low_rank
+from experiments.lr_schedule import lr_factor, validate_lr_schedule
+from experiments.training_options import (IterateEstimates, gain_scale, time_gain, time_power, validate_report_estimates,
+    validate_time_gain)
 from experiments.trainable_omega import omega_values, parameter_groups, validate_trainable_omega
 from experiments.muon_optimizer import (build_optimizer, effective_hidden_weights, optimizer_name, stable_rank,
     validate_optimizer)
@@ -70,7 +73,8 @@ def validate_config(config):
     if not isinstance(config, dict) or set(config) != set(template):
         raise ValueError("Configuration must contain exactly the stage-1 sections")
     for name in ("data", "initialization", "model", "acquisition", "forward", "training"):
-        allowed_optional = {"training": {"shots_per_update", "full_eval_interval", "optimizer", "frequency_schedule"},
+        allowed_optional = {"training": {"shots_per_update", "full_eval_interval", "optimizer", "frequency_schedule",
+                                         "lr_schedule", "time_gain", "report_estimates"},
                             "model": {"fourier", "trainable_omega", "low_rank"},
                             "initialization": {"pretrain"}}.get(name, set())
         if (not isinstance(config[name], dict) or not set(template[name]).issubset(config[name])
@@ -154,6 +158,9 @@ def validate_config(config):
     if fd["frequency_hz"] >= .5 / fd["dt_s"]:
         raise ValueError("Source frequency must be below the temporal Nyquist frequency")
     validate_frequency_schedule(training.get("frequency_schedule"), fd["dt_s"])
+    validate_lr_schedule(training.get("lr_schedule"))
+    validate_time_gain(training.get("time_gain"))
+    validate_report_estimates(training.get("report_estimates"))
     for key in ("epochs", "checkpoint_interval"):
         _positive(training[key], key, integer=True)
     _positive(training["learning_rate"], "learning_rate")
@@ -326,22 +333,27 @@ def waveform_mse(prediction, observations, total_shots=None):
     return (prediction - observations).square().sum() / b / (total_shots or s) / t / r
 
 
-def training_objective(prediction, observations, total_shots, max_hz, problem):
-    """Waveform MSE, or for a frequency-continuation stage the energy-normalized low-pass MSE."""
-    if max_hz is None:
+def training_objective(prediction, observations, total_shots, max_hz, problem, power=None):
+    """Waveform MSE; for a frequency-continuation stage and/or a late-arrival time gain t^power,
+    the energy-normalized MSE of the low-passed and gained records."""
+    if max_hz is None and power is None:
         return waveform_mse(prediction, observations, total_shots)
     dt_s = problem["config"]["forward"]["dt_s"]
-    return problem["frequency_scales"][float(max_hz)] * waveform_mse(
-        lowpass(prediction, max_hz, dt_s), lowpass(observations, max_hz, dt_s), total_shots)
+    prediction, observations = lowpass(prediction, max_hz, dt_s), lowpass(observations, max_hz, dt_s)
+    if power is None:
+        return problem["frequency_scales"][float(max_hz)] * waveform_mse(prediction, observations, total_shots)
+    scale = problem["gain_scales"][(None if max_hz is None else float(max_hz), float(power))]
+    return scale * waveform_mse(time_gain(prediction, power, dt_s), time_gain(observations, power, dt_s), total_shots)
 
 
-def train_update(model, problem, optimizer, max_hz=None):
+def train_update(model, problem, optimizer, max_hz=None, power=None):
     """One optimizer update, with all shots or a uniform subset and exact accumulation.
 
     All shot batches are accumulated before the single step, so Muon orthogonalizes the
     summed gradient (orthogonalizing per batch and adding would be a different method).
-    In a low-pass stage (max_hz) the step follows that stage's objective; data_mse stays the
-    full-band waveform MSE of the same forward pass, comparable with every other run.
+    In a low-pass stage (max_hz) and/or with a time gain (power) the step follows that
+    objective; data_mse stays the plain full-band waveform MSE of the same forward pass,
+    comparable with every other run.
     """
     selected_indices = None
     if problem["config"]["training"].get("shots_per_update") is not None:
@@ -358,15 +370,15 @@ def train_update(model, problem, optimizer, max_hz=None):
             velocity_before = velocity.detach().cpu().numpy()[0].copy()
         predicted = _simulate(item["solver"], velocity, problem["wavelet"])
         observations = problem["observed"][:, item["first"]:item["last"]]
-        if max_hz is None:
+        if max_hz is None and power is None:
             loss = waveform_mse(predicted, observations, problem["observed"].shape[1])
             require_finite(loss, "waveform MSE")
             loss.backward()
         else:
             with torch.no_grad():
                 loss = waveform_mse(predicted, observations, problem["observed"].shape[1])
-            objective = training_objective(predicted, observations, problem["observed"].shape[1], max_hz, problem)
-            require_finite(objective, "low-pass waveform objective")
+            objective = training_objective(predicted, observations, problem["observed"].shape[1], max_hz, problem, power)
+            require_finite(objective, "low-pass/gained waveform objective")
             objective.backward()
             objective_value += float(objective.detach())
             del objective
@@ -399,6 +411,8 @@ def train_update(model, problem, optimizer, max_hz=None):
               "parameter_update_norm": change, "velocity_before_mps": velocity_before}
     if max_hz is not None:
         report.update(max_hz=float(max_hz), objective=objective_value)
+    if power is not None:
+        report.update(time_gain_power=float(power), objective=objective_value)
     # Stable ranks of the effective hidden weights after the step and of this step's update
     # (None for a zero matrix, e.g. hidden updates while a residual head is still zero).
     hidden_after = effective_hidden_weights(model)
@@ -424,6 +438,18 @@ def evaluate_data_mse(model, problem):
         loss = waveform_mse(prediction, problem["observed"][:, item["first"]:item["last"]], problem["observed"].shape[1])
         require_finite(loss, "evaluated waveform MSE")
         total += float(loss)
+    return total
+
+
+@torch.no_grad()
+def evaluate_velocity_mse(velocity_mps, problem):
+    """All-shot full-band waveform MSE of a [nz,nx] velocity array (m/s)."""
+    velocity = torch.as_tensor(np.asarray(velocity_mps, dtype=np.float32), device=problem["observed"].device)[None]
+    check_velocity(velocity, problem["config"])
+    total = 0.
+    for item in problem["propagators"]:
+        prediction = _simulate(item["solver"], velocity, problem["wavelet"])
+        total += float(waveform_mse(prediction, problem["observed"][:, item["first"]:item["last"]], problem["observed"].shape[1]))
     return total
 
 
@@ -474,6 +500,9 @@ def _resume_configuration(config):
     result["training"].pop("full_eval_interval", None)
     result["training"].setdefault("shots_per_update", None)
     result["training"].setdefault("frequency_schedule", None)
+    result["training"].setdefault("lr_schedule", None)
+    result["training"].setdefault("time_gain", None)
+    result["training"].setdefault("report_estimates", None)
     result["model"].setdefault("fourier", None)
     result["model"].setdefault("trainable_omega", None)
     result["model"].setdefault("low_rank", None)
@@ -482,13 +511,16 @@ def _resume_configuration(config):
     return result
 
 
-def _save_checkpoint(path, model, optimizer, config, completed, history, provenance, sources, full_evaluation_history=None):
+def _save_checkpoint(path, model, optimizer, config, completed, history, provenance, sources, full_evaluation_history=None,
+                     estimates=None):
     payload = {"schema": SCHEMA, "model": model.state_dict(), "optimizer": optimizer.state_dict(),
                "config": config, "completed_updates": completed, "history": history,
                "provenance": provenance, "original_source_hashes": sources,
                "fixed_init_units": "m/s", "rng": _rng_state()}
     if full_evaluation_history is not None:
         payload["full_evaluation_history"] = full_evaluation_history
+    if estimates is not None:
+        payload["estimates"] = estimates.state_dict()
     temporary = path.with_suffix(path.suffix + ".tmp")
     torch.save(payload, temporary)
     os.replace(temporary, path)
@@ -541,6 +573,9 @@ def run_experiment(config, output_parent, device="cpu", resume=None, save_figure
     low_rank = config["model"].get("low_rank")
     pretrain = config["initialization"].get("pretrain")
     schedule = config["training"].get("frequency_schedule")
+    lr_setting = config["training"].get("lr_schedule")
+    gain_setting = config["training"].get("time_gain")
+    estimates_setting = config["training"].get("report_estimates")
     if str(device).startswith("cuda") and not torch.cuda.is_available():
         raise ValueError("CUDA requested but unavailable")
     truth, background, provenance = load_velocity_data(config, ROOT)
@@ -590,8 +625,19 @@ def run_experiment(config, output_parent, device="cpu", resume=None, save_figure
                                       + ([] if schedule is None else [
                                           "frequency continuation: energy-normalized zero-phase low-pass misfit stages "
                                           + ", ".join(f"<= {s['max_hz']:g} Hz x {s['updates']}" for s in schedule[:-1])
-                                          + ", then the full band"]),
+                                          + ", then the full band"])
+                                      + ([] if lr_setting is None else [
+                                          f"learning-rate factor per update: warmup {lr_setting['warmup_updates']} updates per stage, "
+                                          f"cosine decay to x{lr_setting['final_factor']:g} "
+                                          f"over updates {lr_setting['decay_start']}-{lr_setting['decay_start'] + lr_setting['decay_updates'] - 1}"])
+                                      + ([] if gain_setting is None else [
+                                          f"late-arrival time gain (t/t_end)^{gain_setting['power']:g} on the misfit from update {gain_setting['start_update']} "
+                                          "(energy-normalized; data_mse stays the plain full-band MSE)"]),
         **({} if schedule is None else {"frequency_schedule": schedule}),
+        **({} if lr_setting is None else {"lr_schedule": lr_setting}),
+        **({} if gain_setting is None else {"time_gain": gain_setting}),
+        **({} if estimates_setting is None else {"report_estimates": estimates_setting,
+                                                 "report_estimates_note": "EMA and lowest-misfit velocities are extra truth-free estimates; training and the last iterate are unchanged"}),
         "attribution": "Residual vs random absolute changes initialization and parameterization jointly; it does not isolate residual parameterization.",
         "historical_baseline_budget": 4001, "this_run_budget": config["training"]["epochs"],
         "runner_differences": "No unused TV coordinate derivatives, no NaN/Inf masking; original clipping effectively inactive; explicit final postupdate waveform evaluation.",
@@ -602,7 +648,8 @@ def run_experiment(config, output_parent, device="cpu", resume=None, save_figure
                         "experiments/residual_ifwi_stochastic.py", "experiments/residual_ifwi_data.py",
                         "experiments/residual_ifwi_report.py", "experiments/fourier_modules.py",
                         "experiments/trainable_omega.py", "experiments/low_rank_modules.py",
-                        "experiments/muon_optimizer.py", "experiments/frequency_continuation.py")
+                        "experiments/muon_optimizer.py", "experiments/frequency_continuation.py",
+                        "experiments/lr_schedule.py", "experiments/training_options.py")
         _json(out / "experiment_source_hashes.json", {
             name: hashlib.sha256((ROOT / name).read_bytes()).hexdigest() for name in runner_names})
         _json(out / "sampling_protocol.json", {
@@ -631,7 +678,7 @@ def run_experiment(config, output_parent, device="cpu", resume=None, save_figure
         "gpu": torch.cuda.get_device_name(device) if str(device).startswith("cuda") else None})
     started = time.perf_counter()
     history, full_history, completed = [], [], 0
-    model = optimizer = problem = None
+    model = optimizer = problem = estimates = None
     log = (out / "progress.log").open("w", encoding="utf-8", buffering=1)
 
     def emit(message):
@@ -643,6 +690,11 @@ def run_experiment(config, output_parent, device="cpu", resume=None, save_figure
         emit(f"Preparing reference FD: grid={truth.shape}, shots={config['acquisition']['num_shots']}, nt={config['forward']['nt']}, output={out}")
         preparation_started = time.perf_counter()
         problem = build_forward_problem(truth, config, device)
+        if gain_setting is not None:
+            cutoffs = [None] + [float(s["max_hz"]) for s in (schedule or [])[:-1]]
+            power = float(gain_setting["power"])
+            problem["gain_scales"] = {(c, power): gain_scale(problem["observed"], c, power, config["forward"]["dt_s"])
+                                      for c in cutoffs}
         if schedule is not None:
             problem["frequency_scales"] = energy_scales(problem["observed"], schedule, config["forward"]["dt_s"])
             _json(out / "frequency_schedule.json", {
@@ -672,9 +724,14 @@ def run_experiment(config, output_parent, device="cpu", resume=None, save_figure
                 "rmse_vs_initial_mps": float(np.sqrt(np.mean((pretrained - background) ** 2))),
                 "logged_only_rmse_vs_truth_mps": float(np.sqrt(np.mean((pretrained - truth) ** 2)))})
         optimizer = build_optimizer(model, config)
+        # Configured learning rates, read before any saved (already scaled) state is loaded.
+        base_lrs = [group["lr"] for group in optimizer.param_groups]
+        estimates = IterateEstimates(estimates_setting) if estimates_setting is not None else None
         if saved:
             model.load_state_dict(saved["model"], strict=True)
             optimizer.load_state_dict(saved["optimizer"])
+            if estimates is not None:
+                estimates.load_state_dict(saved["estimates"])
             completed, history = saved["completed_updates"], saved["history"]
             full_history = saved.get("full_evaluation_history", [])
             _restore_rng(saved["rng"])
@@ -695,6 +752,8 @@ def run_experiment(config, output_parent, device="cpu", resume=None, save_figure
             if not full_history or full_history[-1]["evaluated_updates"] != completed:
                 full_history.append(initial_full_entry)
             _json(out / "full_evaluation_history.json", full_history)
+            if estimates is not None:
+                estimates.observe_evaluation(initial_full_entry["data_mse"], completed, run_initial)
         background_metrics = velocity_metrics(background, truth)
         for name, array in (("true_velocity", truth), ("initial_velocity", background), ("run_start_velocity", run_initial)):
             np.save(out / f"{name}.npy", array)
@@ -716,7 +775,8 @@ def run_experiment(config, output_parent, device="cpu", resume=None, save_figure
             "trainable_parameters": sum(p.numel() for p in model.parameters()), "initial_metrics": initial_metrics})
         # A complete initial checkpoint also makes preparation/first-step failures resumable.
         if stochastic:
-            _save_checkpoint(out / "checkpoint.pt", model, optimizer, config, completed, history, provenance, sources, full_history)
+            _save_checkpoint(out / "checkpoint.pt", model, optimizer, config, completed, history, provenance, sources, full_history,
+                             estimates)
         preparation_seconds = time.perf_counter() - preparation_started
         if str(device).startswith("cuda"):
             torch.cuda.synchronize(device)
@@ -731,14 +791,22 @@ def run_experiment(config, output_parent, device="cpu", resume=None, save_figure
                 model_before, optimizer_before = copy.deepcopy(model.state_dict()), copy.deepcopy(optimizer.state_dict())
                 rng_before = _rng_state()
                 prior_completed, prior_history_length = completed, len(history)
-                max_hz = stage_cutoff(schedule, update)
+                max_hz, power = stage_cutoff(schedule, update), time_power(gain_setting, update)
                 if schedule is not None and (update == resumed_from_updates + 1 or max_hz != stage_cutoff(schedule, update - 1)):
                     emit(f"Frequency stage from update {update}: " + ("full band" if max_hz is None else f"low-pass <= {max_hz:g} Hz"))
+                if power is not None and (update == resumed_from_updates + 1 or time_power(gain_setting, update - 1) is None):
+                    emit(f"Time gain (t/t_end)^{power:g} on the misfit from update {update}")
                 try:
-                    diagnostics = train_update(model, problem, optimizer, max_hz)
+                    if lr_setting is not None:
+                        factor = lr_factor(lr_setting, schedule, update)
+                        for group, base in zip(optimizer.param_groups, base_lrs):
+                            group["lr"] = base * factor
+                    diagnostics = train_update(model, problem, optimizer, max_hz, power)
                     velocity_before = diagnostics.pop("velocity_before_mps")
                     entry = {"update": update, "evaluated_updates": update - 1, **diagnostics,
                              **velocity_metrics(velocity_before, truth), "step_seconds": time.perf_counter() - step_started}
+                    if lr_setting is not None:
+                        entry["lr_factor"] = factor
                     history.append(entry)
                     completed = update
                 except BaseException:
@@ -748,6 +816,11 @@ def run_experiment(config, output_parent, device="cpu", resume=None, save_figure
                     completed = prior_completed
                     del history[prior_history_length:]
                     raise
+                if estimates is not None:
+                    if not stochastic:          # sampled-shot MSEs are not comparable across updates
+                        estimates.observe_evaluation(entry["data_mse"], update - 1, velocity_before)
+                    with torch.no_grad():
+                        estimates.observe_update(update, model().cpu().numpy()[0])
                 # Logging failures after this commit still save a consistent advanced state.
                 history_file.write(json.dumps(entry, allow_nan=False) + "\n")
                 _json(out / "status.json", {"state": "running", "pid": os.getpid(), "completed_updates": completed,
@@ -755,6 +828,9 @@ def run_experiment(config, output_parent, device="cpu", resume=None, save_figure
                     "last_loss_evaluated_updates": completed - 1, "elapsed_training_seconds": time.perf_counter() - training_started})
                 emit(f"Update {update}/{config['training']['epochs']}: MSE={entry['data_mse']:.7g} RMSE(before)={entry['rmse_mps']:.3f} m/s grad={entry['gradient_norm']:.4g} step={entry['step_seconds']:.2f}s"
                      + (f" objective(<={entry['max_hz']:g}Hz)={entry['objective']:.7g}" if "max_hz" in entry else "")
+                     + (f" gain=t^{entry['time_gain_power']:g}" if "time_gain_power" in entry else "")
+                     + (f" objective={entry['objective']:.7g}" if "objective" in entry and "max_hz" not in entry else "")
+                     + (f" lr_factor={entry['lr_factor']:.4g}" if "lr_factor" in entry else "")
                      + (f" omega={[round(w, 3) for w in entry['omega_after']]}" if "omega_after" in entry else ""))
                 if stochastic and (update % full_eval_interval == 0 or update == config["training"]["epochs"]):
                     full_losses = evaluate_windows(model, problem)
@@ -765,10 +841,14 @@ def run_experiment(config, output_parent, device="cpu", resume=None, save_figure
                                   "loss_scope": "all_available_shots", "timing": "postupdate_evaluation"}
                     full_history.append(full_entry)
                     _json(out / "full_evaluation_history.json", full_history)
+                    if estimates is not None:
+                        estimates.observe_evaluation(full_entry["data_mse"], completed, evaluated_velocity)
                     emit(f"Full evaluation {completed}: all-shot MSE={full_entry['data_mse']:.7g} RMSE={full_entry['rmse_mps']:.3f} m/s SSIM={full_entry['ssim']:.5f}")
                 if update % config["training"]["checkpoint_interval"] == 0 or update == config["training"]["epochs"]:
-                    _save_checkpoint(out / "checkpoint.pt", model, optimizer, config, completed, history, provenance, sources, full_history if stochastic else None)
-                    _save_checkpoint(out / "checkpoints" / f"update_{update:04d}.pt", model, optimizer, config, completed, history, provenance, sources, full_history if stochastic else None)
+                    _save_checkpoint(out / "checkpoint.pt", model, optimizer, config, completed, history, provenance, sources, full_history if stochastic else None,
+                                     estimates)
+                    _save_checkpoint(out / "checkpoints" / f"update_{update:04d}.pt", model, optimizer, config, completed, history, provenance, sources, full_history if stochastic else None,
+                                     estimates)
                     with torch.no_grad():
                         snapshot = model().cpu().numpy()[0]
                     np.save(out / "checkpoints" / f"velocity_{update:04d}.npy", snapshot)
@@ -802,7 +882,28 @@ def run_experiment(config, output_parent, device="cpu", resume=None, save_figure
                 writer.writeheader()
                 writer.writerows(history)
         peak = torch.cuda.max_memory_allocated(device) / 2**30 if str(device).startswith("cuda") else 0.
+        estimates_metrics = None
+        if estimates is not None:
+            # Extra truth-free estimates; "final" (the last iterate) stays the reported result.
+            estimates.observe_evaluation(final_mse, completed, final)
+            estimates_metrics = {"setting": estimates_setting}
+            if estimates.ema is not None:
+                ema = estimates.ema.astype(np.float32)
+                np.save(out / "final_velocity_ema.npy", ema)
+                estimates_metrics["ema"] = {"averaged_updates": estimates.ema_updates, **velocity_metrics(ema, truth),
+                                            "data_mse": evaluate_velocity_mse(ema, problem)}
+            lowest = estimates.best_velocity.astype(np.float32)
+            np.save(out / "lowest_misfit_velocity.npy", lowest)
+            estimates_metrics["lowest_misfit"] = {
+                "completed_updates": estimates.best_updates, "data_mse": estimates.best_mse, **velocity_metrics(lowest, truth),
+                "scope": ("all-shot evaluations (sampled-shot training MSEs excluded)" if stochastic
+                          else "every pre-update all-shot evaluation and the final post-update evaluation")}
+            for name in ("ema", "lowest_misfit"):
+                if name in estimates_metrics:
+                    emit(f"Estimate {name}: RMSE={estimates_metrics[name]['rmse_mps']:.3f} m/s SSIM={estimates_metrics[name]['ssim']:.5f} "
+                         f"MSE={estimates_metrics[name]['data_mse']:.7g}")
         metrics = {"initial": initial_metrics, "final": final_metrics, "completed_updates": completed,
+            **({} if estimates_metrics is None else {"estimates": estimates_metrics}),
             "fixed_background": background_metrics, "initial_metric_field": "run_start_velocity.npy",
             "resumed_from_updates": resumed_from_updates,
             "metric_velocity_units": "m/s", "ssim_data_range_mps": max(float(truth.max() - truth.min()), 1. if truth.max() == truth.min() else 0.),
@@ -821,7 +922,8 @@ def run_experiment(config, output_parent, device="cpu", resume=None, save_figure
         return out
     except BaseException as error:
         if model is not None and optimizer is not None:
-            _save_checkpoint(out / "interrupted.pt", model, optimizer, config, completed, history, provenance, sources, full_history if stochastic else None)
+            _save_checkpoint(out / "interrupted.pt", model, optimizer, config, completed, history, provenance, sources, full_history if stochastic else None,
+                             estimates)
         _json(out / "status.json", {"state": "interrupted" if isinstance(error, KeyboardInterrupt) else "failed",
             "completed_updates": completed, "error": f"{type(error).__name__}: {error}"})
         raise

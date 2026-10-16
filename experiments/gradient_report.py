@@ -8,7 +8,9 @@ Reported for each state and objective:
 * cos(-G, v_true - v) on the whole grid, in radial wavenumber bands (orthonormal DCT) and in
   depth regions [0, 30 %), [30 %, 65 %), [65 %, 100 %] of the deepest node: does steepest
   descent from this state point toward the truth, and where? Truth is used only here;
-* the share of |G|^2 per depth region (where the objective is sensitive);
+* the share of |G|^2 per depth region (where the objective is sensitive) and per wavenumber
+  band (how much of it is fine-scale footprint: at the sigma 15 initial model 97 % of the
+  3 Hz gradient energy sits in the source row, mostly above 8 c/km);
 * once per state, the full-band data residual |r|^2/|d|^2 in record quarters and in bands of
   the source frequency f0 (0-f0/2, f0/2-f0, f0-1.5f0, 1.5f0-2.5f0, above): which part of
   the records the state still does not explain.
@@ -108,6 +110,9 @@ def alignment(gradient, truth, velocity, spacing_m):
     for name, mask in depth_masks(descent.shape, spacing_m).items():
         row[f"cos_{name}"] = cosine(descent[mask], target[mask])
         row[f"grad_energy_{name}"] = float(energy[mask].sum() / energy.sum()) if energy.sum() > 0 else None
+    for low, high in BANDS_CPKM:
+        part = band_pass(descent, spacing_m, low, high)
+        row[f"grad_energy_{band_label(low, high)}"] = float(np.square(part).sum() / energy.sum()) if energy.sum() > 0 else None
     return row
 
 

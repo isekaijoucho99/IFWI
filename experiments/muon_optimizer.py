@@ -110,8 +110,16 @@ def validate_optimizer(setting):
     if not isinstance(setting, dict) or setting.get("name") not in ("adam", "muon"):
         raise ValueError("training.optimizer must be null, {name: adam} or a muon setting")
     if setting["name"] == "adam":
-        if set(setting) != {"name"}:
-            raise ValueError("training.optimizer {name: adam} takes no other keys (Adam uses training.learning_rate)")
+        # Optional Adam betas/eps (PyTorch defaults when absent); the learning rate stays training.learning_rate.
+        if not set(setting) <= {"name", "betas", "eps"}:
+            raise ValueError("training.optimizer for adam takes only optional betas and eps (lr is training.learning_rate)")
+        betas = setting.get("betas", [.9, .999])
+        if (not isinstance(betas, (list, tuple)) or len(betas) != 2
+                or any(isinstance(b, bool) or not isinstance(b, (int, float)) or not 0 <= b < 1 for b in betas)):
+            raise ValueError("adam betas must be two numbers in [0, 1)")
+        eps = setting.get("eps", 1e-8)
+        if isinstance(eps, bool) or not isinstance(eps, (int, float)) or not math.isfinite(eps) or eps <= 0:
+            raise ValueError("adam eps must be positive")
         return
     if set(setting) != set(MUON_KEYS):
         raise ValueError(f"training.optimizer for muon must contain exactly {list(MUON_KEYS)}")
@@ -164,7 +172,9 @@ def build_optimizer(model, config):
     setting = config["training"].get("optimizer") or {"name": "adam"}
     groups = parameter_groups(model, config["training"]["learning_rate"], config["model"].get("trainable_omega"))
     if setting["name"] == "adam":
-        return torch.optim.Adam(groups)
+        options = {**({"betas": tuple(setting["betas"])} if "betas" in setting else {}),
+                   **({"eps": setting["eps"]} if "eps" in setting else {})}
+        return torch.optim.Adam(groups, **options)
     hidden = hidden_matrices(model)
     ids = {id(p) for p in hidden}
     auxiliary = [{**g, "params": [p for p in g["params"] if id(p) not in ids]} for g in groups]

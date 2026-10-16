@@ -169,6 +169,8 @@ def test_gradient_report_matches_the_training_objective_and_reads_run_directorie
         assert all(-1 <= v <= 1 for k, v in row.items() if k.startswith("cos_") and v is not None)
         shares = [row[f"grad_energy_{n}"] for n in ("shallow", "middle", "deep")]
         assert sum(shares) == pytest.approx(1.)
+        bands = [v for k, v in row.items() if k.startswith("grad_energy_") and k.endswith("cpkm")]
+        assert len(bands) == 4 and sum(bands) == pytest.approx(1.)          # wavenumber bands partition |G|^2
     for row in residuals:
         assert all(v >= 0 for k, v in row.items() if k.startswith("rel_") and v is not None)
     # A gradient pointing straight at the truth has every cosine = 1.
