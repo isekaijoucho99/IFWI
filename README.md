@@ -137,6 +137,12 @@ python residual_ifwi.py --config experiments/configs/residual_ifwi_baseline1000.
 
 在此 baseline 上加入 FR-IFWI 的 Fourier 重参数化隐藏层（`model.fourier`，未设置时与 baseline 完全相同），可训练激活频率（`model.trainable_omega`）、按论文协议的 13 炮对照配置（`paper13_ifwi.yaml` / `paper13_fr_ifwi.yaml`）以及分频带误差诊断，见 [FR-IFWI 文档](docs/fr_ifwi.md)。
 
+LR-IFWI 的低秩残差（`model.low_rank`：v = v_init + U C Vᵀ，两支一维 SIREN 因子、核心矩阵零初始化，可与 FR、可训练 ω 同时开启）、`output_gain` 首步标定以及奇异值谱诊断，见 [LR-IFWI 文档](docs/lr_ifwi.md)。
+
+用 Muon（正交化更新）训练隐藏层、Adam 训练其余参数（`training.optimizer`，未设置时与 Adam 基线逐位相同），以及隐藏层权重、特征稳定秩诊断，见 [Muon 文档](docs/muon_ifwi.md)。
+
+训练目标的多尺度频率延拓（`training.frequency_schedule`：先拟合低通记录、最后全频带，未设置时与原代码相同）、任意保存状态的物理速度梯度诊断（`experiments/gradient_report.py`），以及对 Muon 四组结果和 FR 频谱诊断的复核，见 [多尺度文档](docs/multiscale_ifwi.md)。多尺度 GPU 结果的分析，以及随后加入的学习率安排（`training.lr_schedule`）、Adam betas、晚到时间增益（`training.time_gain`）、EMA / 最低残差估计（`training.report_estimates`）和两轮 GPU 试验配置，见同一文档第 6 节。
+
 ## 输出与续训
 
 逐轮进度显示在终端并写入 `progress.log`，默认生成 `result.png`。每次运行建立新目录，不覆盖已有结果。

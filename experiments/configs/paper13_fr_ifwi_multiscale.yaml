@@ -1,0 +1,67 @@
+# FR13 + multiscale frequency continuation: identical to paper13_fr_ifwi.yaml except
+# training.frequency_schedule (and the experiment name).
+# FR-IFWI paper protocol (Kang et al. 2025, Sec. 3.1/3.2): 13 shots at 300 m, source 15 m deep,
+# receivers every grid point, 8 Hz, dt 1.9 ms, 1000 samples, all shots per update, smooth
+# Gaussian initial model, 1000 updates (Table 1). Not given by the paper: optimizer/lr, Gaussian
+# sigma, network size; these keep the residual stage-1 values (Adam 1e-4, sigma 15, 4x128).
+experiment_name: paper13_fr_ifwi_multiscale
+parameterization: residual
+seed: 3
+data:
+  model_file: vel_marmousi_376x1151.csv
+  model_units: m/s
+  csv_header: legacy
+  downsample: 4
+  crop_shape: null
+  grid_spacing_m: 15.0
+initialization:
+  sigma: 15.0
+  gaussian_mode: reflect
+  gaussian_truncate: 4.0
+model:
+  neurons: [2, 128, 128, 128, 128, 1]
+  omega_0: 30.0
+  mean_kmps: 3.0
+  std_kmps: 1.0
+  # FR hidden layers (W = Lambda B); values from FR-INR 2d_image_fitting.py (sine).
+  fourier:
+    high_freq_num: 128
+    low_freq_num: 128
+    phi_num: 32
+    alpha: 0.01
+    lambda_init: fr_inr
+  # Per-layer trainable sine omega (FR-IFWI Sec. 3.2), init omega_0; lr is ours (paper gives none).
+  trainable_omega:
+    learning_rate: 0.01
+acquisition:
+  num_shots: 13
+  source_x_indices: null
+  source_start_index: 20
+  source_spacing_index: 20
+  source_end_margin: 10
+  source_depth_index: 1
+  receiver_depth_index: 2
+  receiver_stride: 1
+forward:
+  dt_s: 0.0019
+  nt: 1000
+  frequency_hz: 8.0
+  npad: 15
+  order: 2
+  free_surface: true
+  pml_reflection: 0.000001
+training:
+  epochs: 1000
+  learning_rate: 0.0001
+  checkpoint_interval: 50
+  shot_batch_size: null
+  # Frequency continuation (Bunks et al., 1995): low-passed records first, full band last.
+  # At the sigma 15 initial model the full-band gradient points away from the truth below
+  # 1 c/km (cosine -0.58); the <= 3 Hz gradient points toward it (+0.58) and is positive in
+  # every depth region. CPU check (docs/multiscale_ifwi.md): 100 updates at 3 Hz cut that
+  # objective by 94-98 %, after which the 5 Hz and full-band gradients point toward the truth
+  # too; 5 Hz bridges to the full band. Same 1000-update budget as the base configuration.
+  frequency_schedule:
+    - {max_hz: 3.0, updates: 100}
+    - {max_hz: 5.0, updates: 100}
+    - {max_hz: null}

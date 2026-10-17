@@ -1,0 +1,75 @@
+# Round 2 on paper13_fr_ifwi_lrsched: late-arrival time gain t/t_end on the misfit from update 301 (after the
+# early full-band phase of FR13); identical otherwise. At the FR13 endpoint 83 % of the residual is after 1.0 s.
+# Control: FR13 (full band from the start) + the same learning-rate schedule; identical to
+# paper13_fr_ifwi.yaml except training.lr_schedule (and the experiment name).
+# FR-IFWI paper protocol (Kang et al. 2025, Sec. 3.1/3.2): 13 shots at 300 m, source 15 m deep,
+# receivers every grid point, 8 Hz, dt 1.9 ms, 1000 samples, all shots per update, smooth
+# Gaussian initial model, 1000 updates (Table 1). Not given by the paper: optimizer/lr, Gaussian
+# sigma, network size; these keep the residual stage-1 values (Adam 1e-4, sigma 15, 4x128).
+experiment_name: paper13_fr_ifwi_lrsched_tgain
+parameterization: residual
+seed: 3
+data:
+  model_file: vel_marmousi_376x1151.csv
+  model_units: m/s
+  csv_header: legacy
+  downsample: 4
+  crop_shape: null
+  grid_spacing_m: 15.0
+initialization:
+  sigma: 15.0
+  gaussian_mode: reflect
+  gaussian_truncate: 4.0
+model:
+  neurons: [2, 128, 128, 128, 128, 1]
+  omega_0: 30.0
+  mean_kmps: 3.0
+  std_kmps: 1.0
+  # FR hidden layers (W = Lambda B); values from FR-INR 2d_image_fitting.py (sine).
+  fourier:
+    high_freq_num: 128
+    low_freq_num: 128
+    phi_num: 32
+    alpha: 0.01
+    lambda_init: fr_inr
+  # Per-layer trainable sine omega (FR-IFWI Sec. 3.2), init omega_0; lr is ours (paper gives none).
+  trainable_omega:
+    learning_rate: 0.01
+acquisition:
+  num_shots: 13
+  source_x_indices: null
+  source_start_index: 20
+  source_spacing_index: 20
+  source_end_margin: 10
+  source_depth_index: 1
+  receiver_depth_index: 2
+  receiver_stride: 1
+forward:
+  dt_s: 0.0019
+  nt: 1000
+  frequency_hz: 8.0
+  npad: 15
+  order: 2
+  free_surface: true
+  pml_reflection: 0.000001
+training:
+  epochs: 1000
+  learning_rate: 0.0001
+  checkpoint_interval: 50
+  shot_batch_size: null
+  # Learning-rate factor per update (experiments/lr_schedule.py): 20-update linear warmup at the
+  # start of training and of every frequency stage, cosine decay to x0.1 over updates 201-1000.
+  lr_schedule:
+    warmup_updates: 20
+    decay_start: 201
+    decay_updates: 800
+    final_factor: 0.1
+  # Extra truth-free estimates, training unchanged (experiments/training_options.py): EMA of the
+  # velocity from update 501 (decay 0.99) and the lowest-data-misfit state, next to the last iterate.
+  report_estimates:
+    ema_decay: 0.99
+    ema_start: 501
+  # Residual weighted by (t / t_end)^power from start_update on (energy-normalized; data_mse stays plain).
+  time_gain:
+    power: 1.0
+    start_update: 301

@@ -1,0 +1,55 @@
+# paper13_ifwi with the 2-D SIREN residual replaced by the LR-IFWI low-rank residual (no FR,
+# fixed omega). Only experiment_name and the model section differ from paper13_ifwi.
+# Calibrate output_gain against paper13_ifwi before training (see docs/lr_ifwi.md).
+experiment_name: paper13_lr_ifwi
+parameterization: residual
+seed: 3
+data:
+  model_file: vel_marmousi_376x1151.csv
+  model_units: m/s
+  csv_header: legacy
+  downsample: 4
+  crop_shape: null
+  grid_spacing_m: 15.0
+initialization:
+  sigma: 15.0
+  gaussian_mode: reflect
+  gaussian_truncate: 4.0
+model:
+  # The 2-D SIREN is replaced by the low-rank factor networks below.
+  neurons: null
+  omega_0: 30.0
+  mean_kmps: 3.0
+  std_kmps: 1.0
+  # Residual = output_gain * U C V^T (LR-IFWI, Chen et al. 2025): paper ranks (depth 50,
+  # lateral 100) and 3 x 128 sine factor MLPs; zero core C, so step 0 equals v_init.
+  # coord_scale 0.5 matches the 2-input SIREN per-axis first-layer frequency range.
+  # output_gain is uncalibrated: run experiments/low_rank_calibration.py first.
+  low_rank:
+    rank_z: 50
+    rank_x: 100
+    hidden: [128, 128, 128]
+    coord_scale: 0.5
+    output_gain: 1.0
+acquisition:
+  num_shots: 13
+  source_x_indices: null
+  source_start_index: 20
+  source_spacing_index: 20
+  source_end_margin: 10
+  source_depth_index: 1
+  receiver_depth_index: 2
+  receiver_stride: 1
+forward:
+  dt_s: 0.0019
+  nt: 1000
+  frequency_hz: 8.0
+  npad: 15
+  order: 2
+  free_surface: true
+  pml_reflection: 0.000001
+training:
+  epochs: 1000
+  learning_rate: 0.0001
+  checkpoint_interval: 50
+  shot_batch_size: null
