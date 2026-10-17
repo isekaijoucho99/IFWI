@@ -41,9 +41,10 @@ def velocity_metrics(prediction_mps: np.ndarray, truth_mps: np.ndarray) -> dict:
     result = {
         "rmse_mps": float(np.sqrt(np.mean(np.square(difference)))),
         "mae_mps": float(np.mean(np.abs(difference))),
+        "r2": float(1 - np.sum(difference**2)/np.sum((truth-truth.mean())**2)) if np.ptp(truth)>0 else None,
         "ssim": float(structural_similarity(truth, prediction, data_range=data_range, win_size=window)),
     }
-    if not all(np.isfinite(value) for value in result.values()):
+    if not all(value is None or np.isfinite(value) for value in result.values()):
         raise ValueError("Velocity metrics are not finite")
     return result
 
