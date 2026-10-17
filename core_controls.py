@@ -29,7 +29,10 @@ def small_output(model, rms_mps):
             'max_abs_mps': float(delta.abs().max()), 'bias': 0.}
 
 
-def prefit_background(model, updates, lr, emit=lambda message: None, checkpoint=None, saved=None):
+def prefit_background(model, updates, lr, emit=lambda message: None, checkpoint=None, saved=None, keep_state=False):
+    """Fit the direct network to the background (best state kept). keep_state additionally returns the
+    final Adam state under 'optimizer_state' (popped by the runner), so the inversion can continue with
+    the pretraining moments instead of a reset; the moments belong to the last prefit step."""
     if model.parameterization != 'absolute': raise ValueError('Prefit control must be absolute IFWI')
     sync(model); started = time.perf_counter()
     opt = torch.optim.Adam(model.parameters(), lr=lr)
@@ -64,10 +67,13 @@ def prefit_background(model, updates, lr, emit=lambda message: None, checkpoint=
         loss.backward(); opt.step()
     model.load_state_dict(best_state)
     sync(model)
-    return {'target':'fixed_background_only', 'updates':updates,'learning_rate':lr,
+    report={'target':'fixed_background_only', 'updates':updates,'learning_rate':lr,
             'best_update':best_update, 'rmse_vs_background_mps':math.sqrt(best_loss)*scale,
             'seconds':prior_seconds+time.perf_counter()-started, 'history':history,
-            'optimizer_reset_for_inversion':True}
+            'optimizer_reset_for_inversion':not keep_state}
+    if keep_state:
+        report['optimizer_state']=copy.deepcopy(opt.state_dict())
+    return report
 
 
 def training_state(model, optimizer, completed, timing):

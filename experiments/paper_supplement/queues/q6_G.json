@@ -1,0 +1,6 @@
+[
+  "specs/G1_direct_warmup20_s3.json",
+  "specs/G2_direct_keepadam_s3.json",
+  "specs/G3_direct_lr1em05_s3.json",
+  "specs/G1F_directFR_warmup20_s3.json"
+]

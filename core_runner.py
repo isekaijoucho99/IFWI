@@ -1,9 +1,22 @@
-"""Sequential-plan runner using unchanged 2313716 model, FD and Adam update.
+"""Spec-driven runner for the paper's experiments (docs/paper_supplement.md).
 
+Started as the robustness-batch runner (2313716 model, FD and Adam update; previous commit).
 Snapshots include config, source hashes, optimizer and RNG. Resume into a new
 attempt directory; retain previous attempt. Per-state times include required
 preparation, updates, diagnostic and periodic checkpoint costs, excluding idle
 time between attempts. No truth-based stopping or inversion model selection.
+
+Supplement additions, all off unless the spec asks for them (an unchanged E2/E3/E4 spec runs
+the same arithmetic as before):
+* training.frequency_schedule (multiscale, energy-normalized low-pass stages; E2-MS),
+  training.lr_schedule (warmup / cosine decay) and training.optimizer Adam betas/eps;
+* spec.model.kind: "siren" (default), "grid" (grid FWI, Adam on dv in m/s) or
+  "fourier_features" (input Fourier features + ReLU MLP, zero head);
+* spec.background: {"kind": "linear_depth", "top_mps", "gradient_per_s"} replaces the
+  Gaussian background with a depth-only one;
+* control prefit_background with keep_optimizer_state: start the inversion with the
+  pretraining Adam moments instead of a reset;
+* --shared-dir for the shared clean/noisy observations, --epochs for short checks.
 """
 import os
 for _key in ('OMP_NUM_THREADS','MKL_NUM_THREADS','OPENBLAS_NUM_THREADS'): os.environ[_key]='1'
@@ -22,11 +35,18 @@ from robust_observations import shared_observations, array_hash
 from experiments import residual_ifwi_experiment as e
 from experiments.residual_ifwi_data import load_velocity_data
 from experiments.residual_ifwi_report import velocity_metrics, save_plots
-from experiments.trainable_omega import parameter_groups, omega_values
+from experiments.trainable_omega import omega_values
+from experiments.muon_optimizer import build_optimizer
+from experiments.frequency_continuation import energy_scales, stage_cutoff
+from experiments.lr_schedule import lr_factor
 from core_controls import small_output, prefit_background, training_state, restore_training_state, sync, layer_snapshot, layer_changes
+from core_models import FourierFeatureVelocity, GridVelocity, linear_depth_background
 
 ROOT=Path(__file__).resolve().parent
-SCHEMA='robustness_overthrust_noise_v1'
+SCHEMA='paper_supplement_v1'
+SPEC_KEYS={'name','experiment','control','robustness','model','background','protocol'}
+SOURCE_FILES=('core_runner.py','core_controls.py','core_models.py','robust_observations.py',
+              'ifwi_modules.py','rnn_fd.py','generator.py','plot_functions.py')
 
 
 def atomic_json(path, value):
@@ -48,17 +68,63 @@ def atomic_torch(path,payload):
 
 
 def source_hashes():
-    return {str(p.relative_to(ROOT)).replace('\\','/'):hashlib.sha256(p.read_bytes()).hexdigest()
-            for p in sorted(ROOT.rglob('*.py'))}
+    # Explicit files: the repository root also holds .venv/ and outputs/, which must not be hashed.
+    files=[ROOT/name for name in SOURCE_FILES]+sorted((ROOT/'experiments').glob('*.py'))
+    return {str(p.relative_to(ROOT)).replace('\\','/'):hashlib.sha256(p.read_bytes()).hexdigest() for p in files}
 
 
-def run(spec, out, device='cuda:0', resume=None, save_figures=True):
+def git_head():
+    try:
+        import subprocess
+        return subprocess.run(['git','rev-parse','HEAD'],cwd=ROOT,capture_output=True,text=True,check=True).stdout.strip()
+    except Exception:
+        return None
+
+
+def check_spec(spec):
+    unknown=set(spec)-SPEC_KEYS
+    if unknown or not {'name','experiment','control','robustness'}<=set(spec):
+        raise ValueError(f'Spec needs name, experiment, control, robustness; unknown keys {sorted(unknown)}')
+    training=spec['experiment']['training']
+    for key in ('time_gain','report_estimates','shots_per_update'):
+        if training.get(key) is not None:
+            raise ValueError(f'core_runner does not support training.{key}; use residual_ifwi.py')
+    kind=spec.get('model',{}).get('kind','siren')
+    if kind not in ('siren','grid','fourier_features'):
+        raise ValueError('spec.model.kind must be siren, grid or fourier_features')
+    if kind!='siren' and spec['experiment']['parameterization']!='residual':
+        raise ValueError('Grid and Fourier-feature models are residual (v0 + update)')
+    if kind=='grid' and spec['control']['kind']!='zero_output':
+        raise ValueError('Grid FWI starts at dv = 0 (control zero_output)')
+    background=spec.get('background')
+    if background is not None and (background.get('kind')!='linear_depth' or set(background)!={'kind','top_mps','gradient_per_s'}):
+        raise ValueError('spec.background must be {kind: linear_depth, top_mps, gradient_per_s}')
+
+
+def build_model(spec, cfg, background):
+    cm=cfg['model']; kind=spec.get('model',{}).get('kind','siren')
+    if kind=='grid':
+        return GridVelocity(background)
+    if kind=='fourier_features':
+        options=spec['model']
+        return FourierFeatureVelocity(background,cfg['data']['grid_spacing_m'],options['scale_cpkm'],
+            options.get('features',128),tuple(options.get('hidden',(128,128,128,128))),options.get('seed',cfg['seed']))
+    return e.VelocityParameterization(background,cfg['data']['grid_spacing_m'],cm['neurons'],cm['omega_0'],
+        cm['mean_kmps'],cm['std_kmps'],cfg['parameterization'],cm.get('fourier'),cm.get('trainable_omega') is not None)
+
+
+def run(spec, out, device='cuda:0', resume=None, save_figures=True, shared_dir=None):
+    check_spec(spec)
     cfg=copy.deepcopy(spec['experiment']); control=spec['control']
     e.validate_config(cfg)
+    schedule=cfg['training'].get('frequency_schedule'); lr_setting=cfg['training'].get('lr_schedule')
+    shared_dir=Path(shared_dir) if shared_dir else ROOT/'outputs'/'shared'
     if cfg['training'].get('shots_per_update') is not None:
         raise ValueError('This core protocol uses every shot in each update')
     if control['kind'] not in ('zero_output','prefit_background','small_output'):
         raise ValueError('Unknown initialization control')
+    if control.get('keep_optimizer_state') and control['kind']!='prefit_background':
+        raise ValueError('keep_optimizer_state applies only to prefit_background')
     if (control['kind']=='prefit_background') != (cfg['parameterization']=='absolute'):
         raise ValueError('Prefit applies only to direct absolute IFWI')
     torch.set_num_threads(1)
@@ -73,7 +139,7 @@ def run(spec, out, device='cuda:0', resume=None, save_figures=True):
     atomic_json(out/'environment.json',{'python':platform.python_version(),'torch':str(torch.__version__),
         'numpy':np.__version__,'cuda':torch.version.cuda,'device':device,'pid':os.getpid(),
         'gpu':torch.cuda.get_device_name(device) if device.startswith('cuda') else None,
-        'base_commit':'231371619edc71d1b3ab7ca386954f73b56304a7','threads':1,
+        'base_commit':git_head(),'threads':1,
         'float32_matmul_precision':torch.get_float32_matmul_precision(),
         'allow_tf32_matmul':torch.backends.cuda.matmul.allow_tf32})
     atomic_json(out/'status.json',{'state':'preparing','pid':os.getpid(),'completed_updates':0})
@@ -98,6 +164,11 @@ def run(spec, out, device='cuda:0', resume=None, save_figures=True):
     try:
         e._seed(cfg['seed'])
         truth,background,provenance=load_velocity_data(cfg,ROOT)
+        if spec.get('background') is not None:
+            override=spec['background']
+            background=linear_depth_background(truth.shape,cfg['data']['grid_spacing_m'],override['top_mps'],override['gradient_per_s'])
+            provenance={**provenance,'background_override':{**override,'array_hash':array_hash(background),
+                'note':'replaces the Gaussian background; no truth used'}}
         atomic_json(out/'initial_model_provenance.json',provenance)
         if resume:
             saved=torch.load(resume,map_location='cpu',weights_only=False)
@@ -116,7 +187,7 @@ def run(spec, out, device='cuda:0', resume=None, save_figures=True):
                   'acquisition':cfg['acquisition'],'forward':cfg['forward'],
                   'grid_spacing_m':cfg['data']['grid_spacing_m'],
                   'shot_batch_size':cfg['training']['shot_batch_size']}
-        shared=ROOT.parent/'shared'/robustness['condition']
+        shared=shared_dir/robustness['condition']
         observed,observation_info=shared_observations(problem['observed'].cpu().numpy(),
             robustness['noise_sigma'],robustness['noise_seed'],shared,identity)
         problem['observed']=torch.from_numpy(observed).to(device)
@@ -124,12 +195,14 @@ def run(spec, out, device='cuda:0', resume=None, save_figures=True):
         atomic_json(out/'shared_observations.json',{'directory':str(shared.resolve()),
             'clean':'clean_observed.npy','noise':'noise.npy','observed':'observed.npy'})
         emit(f"OBSERVATIONS sigma={robustness['noise_sigma']} dtype={observed.dtype} shared_hash={observation_info['observed_hash']}")
-        cm=cfg['model']; omega=cm.get('trainable_omega')
-        model=e.VelocityParameterization(background,cfg['data']['grid_spacing_m'],cm['neurons'],cm['omega_0'],
-            cm['mean_kmps'],cm['std_kmps'],cfg['parameterization'],cm.get('fourier'),omega is not None).to(device)
-        control_report={}
+        if schedule is not None:
+            # Energy normalization from the observations this run trains on (noisy ones for noise conditions).
+            problem['frequency_scales']=energy_scales(problem['observed'],schedule,cfg['forward']['dt_s'])
+            atomic_json(out/'frequency_scales.json',{str(k):v for k,v in problem['frequency_scales'].items()})
+        model=build_model(spec,cfg,background).to(device)
+        control_report={}; prefit_optimizer_state=None
         if saved and saved['phase']=='inversion':
-            opt=torch.optim.Adam(parameter_groups(model,cfg['training']['learning_rate'],omega))
+            opt=build_optimizer(model,cfg); base_lrs=[g['lr'] for g in opt.param_groups]
             completed,timing=restore_training_state(saved,model,opt)
             history=saved['history']; evaluations=saved['evaluations']; control_report=saved['control_report']
         else:
@@ -140,11 +213,18 @@ def run(spec, out, device='cuda:0', resume=None, save_figures=True):
                     payload.update(schema=SCHEMA,spec=spec,sources=sources,provenance=provenance,
                                    preparation_elapsed_seconds=time.perf_counter()-started+(saved.get('preparation_elapsed_seconds',0.) if saved else 0.))
                     atomic_torch(out/'prefit_checkpoint.pt',payload)
-                control_report=prefit_background(model,control['updates'],control['learning_rate'],emit,save_prefit,saved)
+                control_report=prefit_background(model,control['updates'],control['learning_rate'],emit,save_prefit,saved,
+                                                 keep_state=bool(control.get('keep_optimizer_state')))
+                prefit_optimizer_state=control_report.pop('optimizer_state',None)
                 timing['prefit_seconds']=control_report['seconds']
                 if saved: timing['preparation_seconds']+=saved.get('preparation_elapsed_seconds',saved['seconds'])
                 atomic_torch(out/'prefit_selected_model.pt',{'model':model.state_dict(),'control_report':control_report})
-            opt=torch.optim.Adam(parameter_groups(model,cfg['training']['learning_rate'],omega))
+            opt=build_optimizer(model,cfg); base_lrs=[g['lr'] for g in opt.param_groups]
+            if prefit_optimizer_state is not None:
+                # Continue with the pretraining moments; only the learning rate changes to the inversion one.
+                opt.load_state_dict(prefit_optimizer_state)
+                for group,base in zip(opt.param_groups,base_lrs): group['lr']=base
+                control_report['inversion_started_with_prefit_adam_moments']=True
         phase='preparing'
         atomic_json(out/'initialization_control.json',control_report)
         with torch.no_grad(): initial=model().cpu().numpy()[0].copy()
@@ -162,7 +242,7 @@ def run(spec, out, device='cuda:0', resume=None, save_figures=True):
             'ssim_window':7,'ssim_data_range_mps':float(truth.max()-truth.min()),'evaluation_region':'entire grid; no mask'})
         # B.T B is small (128x128); save every eigenvalue, including the tied-column null mode.
         spectra=[]
-        for index,wrapped in enumerate(model.net.linear):
+        for index,wrapped in enumerate(model.net.linear if getattr(model,'net',None) is not None else []):
             layer=getattr(wrapped,'layer',wrapped)
             if hasattr(layer,'bases'):
                 b=layer.bases.detach().double(); eigen=torch.linalg.eigvalsh(b.T@b).cpu().numpy()
@@ -187,10 +267,15 @@ def run(spec, out, device='cuda:0', resume=None, save_figures=True):
                 before_time=timing['preparation_seconds']+train_prior+step_started-train_started
                 rollback=training_state(model,opt,completed,timing); rollback_history_length=len(history)
                 diagnostic=(update<=5 or update%50==0)
-                ds=time.perf_counter(); old=layer_snapshot(model) if diagnostic else None
+                layered=getattr(model,'net',None) is not None
+                max_hz=stage_cutoff(schedule,update)
+                if lr_setting is not None:
+                    factor=lr_factor(lr_setting,schedule,update)
+                    for group,base in zip(opt.param_groups,base_lrs): group['lr']=base*factor
+                ds=time.perf_counter(); old=layer_snapshot(model) if diagnostic and layered else None
                 sync(model); diagnostic_seconds=time.perf_counter()-ds
                 compute_start=time.perf_counter()
-                report=e.train_update(model,problem,opt)
+                report=e.train_update(model,problem,opt,max_hz)
                 sync(model); compute_seconds=time.perf_counter()-compute_start
                 completed=update
                 pre=report.pop('velocity_before_mps')
@@ -198,7 +283,7 @@ def run(spec, out, device='cuda:0', resume=None, save_figures=True):
                 with torch.no_grad(): post=model().cpu().numpy()[0].copy()
                 pre_metrics=velocity_metrics(pre,truth); post_metrics=velocity_metrics(post,truth)
                 if diagnostic:
-                    diag={'update':update,'interval_updates':1,'layer_changes':layer_changes(model,old),
+                    diag={'update':update,'interval_updates':1,'layer_changes':layer_changes(model,old) if layered else [],
                         'gradient_norms':{n:float(p.grad.detach().norm()) for n,p in model.named_parameters() if p.grad is not None},
                         'omega':omega_values(model)}
                     mechanisms.write(json.dumps(diag,allow_nan=False)+'\n')
@@ -211,7 +296,8 @@ def run(spec, out, device='cuda:0', resume=None, save_figures=True):
                     'shots_per_update':cfg['acquisition']['num_shots'],'cumulative_shots':update*cfg['acquisition']['num_shots'],
                     'velocity_delta_rms_mps':float(np.sqrt(np.mean((post-pre).astype('float64')**2))),
                     'compute_update_seconds':compute_seconds,'diagnostic_seconds':diagnostic_seconds,
-                    'step_seconds':time.perf_counter()-step_started}
+                    'step_seconds':time.perf_counter()-step_started,
+                    **({'lr_factor':factor} if lr_setting is not None else {})}
                 history.append(row); rollback=None
                 stream.write(json.dumps(row,allow_nan=False)+'\n')
                 atomic_json(out/'status.json',{'state':'running','pid':os.getpid(),'completed_updates':completed,
@@ -260,5 +346,11 @@ def run(spec, out, device='cuda:0', resume=None, save_figures=True):
 if __name__=='__main__':
     parser=argparse.ArgumentParser(); parser.add_argument('--spec',required=True); parser.add_argument('--out',required=True)
     parser.add_argument('--resume'); parser.add_argument('--device',default='cuda:0'); parser.add_argument('--no-plots',action='store_true')
+    parser.add_argument('--shared-dir',help='shared observations root (default outputs/shared in the repository)')
+    parser.add_argument('--epochs',type=int,help='override the update budget, e.g. 5 for a first-step check')
     args=parser.parse_args()
-    run(json.loads(Path(args.spec).read_text(encoding='utf-8')),args.out,args.device,args.resume,not args.no_plots)
+    spec=json.loads(Path(args.spec).read_text(encoding='utf-8'))
+    if args.epochs is not None:
+        spec['experiment']['training']['epochs']=args.epochs
+        spec['experiment']['training']['checkpoint_interval']=min(spec['experiment']['training']['checkpoint_interval'],args.epochs)
+    run(spec,args.out,args.device,args.resume,not args.no_plots,args.shared_dir)

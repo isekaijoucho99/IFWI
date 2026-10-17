@@ -1,0 +1,15 @@
+[
+  "specs/C_screen_grid_lr3.json",
+  "specs/C_screen_grid_lr10.json",
+  "specs/C_screen_grid_lr30.json",
+  "specs/D_screen_E2_lr3em05.json",
+  "specs/D_screen_E2_lr1em04.json",
+  "specs/D_screen_E2_lr3em04.json",
+  "specs/D_screen_E3_lr3em05.json",
+  "specs/D_screen_E3_lr1em04.json",
+  "specs/D_screen_E3_lr3em04.json",
+  "specs/D_screen_E2_sv300_lr1em04.json",
+  "specs/H_screen_ff_scale1.json",
+  "specs/H_screen_ff_scale3.json",
+  "specs/H_screen_ff_scale10.json"
+]

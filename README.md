@@ -143,6 +143,8 @@ LR-IFWI 的低秩残差（`model.low_rank`：v = v_init + U C Vᵀ，两支一�
 
 训练目标的多尺度频率延拓（`training.frequency_schedule`：先拟合低通记录、最后全频带，未设置时与原代码相同）、任意保存状态的物理速度梯度诊断（`experiments/gradient_report.py`），以及对 Muon 四组结果和 FR 频谱诊断的复核，见 [多尺度文档](docs/multiscale_ifwi.md)。多尺度 GPU 结果的分析，以及随后加入的学习率安排（`training.lr_schedule`）、Adam betas、晚到时间增益（`training.time_gain`）、EMA / 最低残差估计（`training.report_estimates`）和两轮 GPU 试验配置，见同一文档第 6 节。
 
+论文审稿后的补充实验（A–K：多种子同队列计时、带噪 E2-MS、网格 FWI、学习率筛选、直接表示 + Fourier、首步诊断、Adam 重置对照、输入 Fourier 特征、Overthrust 梯度方向、学习率安排复核、线性背景）用 `core_runner.py` + `paper_queue.py` 运行，spec 与队列见 [补充实验文档](docs/paper_supplement.md)。
+
 ## 输出与续训
 
 逐轮进度显示在终端并写入 `progress.log`，默认生成 `result.png`。每次运行建立新目录，不覆盖已有结果。
