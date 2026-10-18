@@ -1,5 +1,8 @@
 [
+  "specs/A_E3_s3.json",
+  "specs/A_E2MS_s3.json",
   "specs/S1_E3_encoded_s3.json",
   "specs/S2_E2MS_coarse_s3.json",
+  "specs/S4_E2MS_encoded_s3.json",
   "specs/S3_E2MS_coarse_encoded_s3.json"
 ]

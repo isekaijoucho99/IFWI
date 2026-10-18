@@ -57,11 +57,11 @@
       "frequency_schedule": [
         {
           "max_hz": 3.0,
-          "updates": 300
+          "updates": 100
         },
         {
           "max_hz": 5.0,
-          "updates": 300
+          "updates": 100
         },
         {
           "max_hz": null

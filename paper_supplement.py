@@ -176,12 +176,15 @@ def build_specs(selection=None):
     coarse = {"factor": 2, "source_depth_index": 1, "receiver_depth_index": 1}
     x1 = experiment("E3")
     x1["training"]["epochs"] = 3000
-    x3 = experiment("E2MS")
-    x3["training"]["epochs"] = 3000
-    x3["training"]["frequency_schedule"] = [{"max_hz": 3.0, "updates": 300}, {"max_hz": 5.0, "updates": 300}, {"max_hz": None}]
-    q["q8_speed"] = [spec("S1_E3_encoded_s3", x1, speedup={"source_encoding": encoding}),
-                     spec("S2_E2MS_coarse_s3", experiment("E2MS"), speedup={"coarse_lowpass": coarse}),
-                     spec("S3_E2MS_coarse_encoded_s3", x3, speedup={"coarse_lowpass": coarse, "source_encoding": encoding})]
+    long_ms = experiment("E2MS")
+    long_ms["training"]["epochs"] = 3000            # same 100/100 low-pass stages; without lr decay the
+    q["q8_speed"] = [                                # budget only sets where the trajectory stops
+        spec("A_E3_s3", experiment("E3")),            # same-queue baselines for timing
+        spec("A_E2MS_s3", experiment("E2MS")),
+        spec("S1_E3_encoded_s3", x1, speedup={"source_encoding": encoding}),
+        spec("S2_E2MS_coarse_s3", experiment("E2MS"), speedup={"coarse_lowpass": coarse}),
+        spec("S4_E2MS_encoded_s3", long_ms, speedup={"source_encoding": encoding}),
+        spec("S3_E2MS_coarse_encoded_s3", long_ms, speedup={"coarse_lowpass": coarse, "source_encoding": encoding})]
     # Formal runs that depend on a screening selection.
     if "C_grid_lr" in selection:
         lr, formal = float(selection["C_grid_lr"]), []
