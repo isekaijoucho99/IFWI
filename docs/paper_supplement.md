@@ -70,3 +70,21 @@ python -m experiments.gradient_report --states initial --config experiments/pape
 每次运行的输出与原批次相同：逐步 `history.json`（data_mse、gradient_norm、velocity_delta_rms_mps、omega、cumulative_seconds、各阶段的 max_hz/objective、lr_factor）、`mechanisms.jsonl`（前 5 步与每 50 步的逐层 ΔW 和梯度范数）、每 50 步的速度场与全炮全频波形 MSE（`evaluation_history.json`）、计时分项、环境信息与提交号。`core_runner.py --epochs 5` 可以对任何 spec 只跑前 5 步做快速检查。
 
 **未在本机验证**：新旧运行器对同一 E2/E3/E4 spec 是否逐位一致。建议在 GPU 上先跑 `core_runner.py --spec experiments/paper_supplement/specs/A_E3_s3.json --epochs 5 ...`，并与论文 E3（core_missing3 批次）`history.json` 的前 5 行对照 data_mse 和 RMSE。
+
+## 加速实验（`q8_speed`）
+
+正演和反传占每次更新 99% 以上的时间，网络本身的计算可以忽略，所以这三组实验都在减少每次更新的模拟量（`core_speed.py`，原正演文件不改）。
+
+| 运行 | 内容 | 对照 |
+|---|---|---|
+| `S1_E3_encoded_s3` | E3 + 震源编码：13 炮按每次更新重抽的 ±1 权重叠成 1 个超级炮，每次只模拟一炮；3000 次更新 | E3（593 次、57.3 min 达标） |
+| `S2_E2MS_coarse_s3` | E2-MS，3/5 Hz 阶段在 30 m 网格上模拟（网络按隔点取值，dt 加倍，观测取隔道、隔样点）；100/100/800 | E2-MS（101 min） |
+| `S3_E2MS_coarse_encoded_s3` | 两者结合：粗网格低频阶段 + 全程震源编码；300/300/2400，共 3000 次 | E2-MS、S2 |
+
+- 编码前提是所有炮共用同一排检波器（本例满足）。编码预测与逐炮预测加权求和的相对误差为 1e-6（线性性检查）；炮间串扰相当于梯度噪声，所以给了更多更新次数，比较时以达标时间 t* 为准。
+- 粗网格阶段的震源只能放在 30 m 深（原为 15 m），自由表面虚反射使低频振幅约差 2 倍；在背景模型上用最小二乘估计一个固定的子波振幅因子校正（记录在 `coarse_lowpass.json`）。
+- 日志中：编码时 `data_mse` 是编码超级炮的失配；粗网格阶段 `data_mse` 记的是该阶段目标函数。可比的全炮全频波形 MSE 和 RMSE 看每 50 次的 `evaluation_history.json`；其评价时间计入累计时间。
+
+```bash
+python paper_queue.py experiments/paper_supplement/queues/q8_speed.json --out-root outputs/paper_supplement --shared-dir SHARED --wait-idle
+```

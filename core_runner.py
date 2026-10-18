@@ -41,10 +41,11 @@ from experiments.frequency_continuation import energy_scales, stage_cutoff
 from experiments.lr_schedule import lr_factor
 from core_controls import small_output, prefit_background, training_state, restore_training_state, sync, layer_snapshot, layer_changes
 from core_models import FourierFeatureVelocity, GridVelocity, linear_depth_background
+from core_speed import CoarseView, SourceEncoder, coarse_problem, validate_speedup
 
 ROOT=Path(__file__).resolve().parent
 SCHEMA='paper_supplement_v1'
-SPEC_KEYS={'name','experiment','control','robustness','model','background','protocol'}
+SPEC_KEYS={'name','experiment','control','robustness','model','background','protocol','speedup'}
 SOURCE_FILES=('core_runner.py','core_controls.py','core_models.py','robust_observations.py',
               'ifwi_modules.py','rnn_fd.py','generator.py','plot_functions.py')
 
@@ -96,6 +97,7 @@ def check_spec(spec):
         raise ValueError('Grid and Fourier-feature models are residual (v0 + update)')
     if kind=='grid' and spec['control']['kind']!='zero_output':
         raise ValueError('Grid FWI starts at dv = 0 (control zero_output)')
+    validate_speedup(spec.get('speedup'),spec['experiment'])
     background=spec.get('background')
     if background is not None and (background.get('kind')!='linear_depth' or set(background)!={'kind','top_mps','gradient_per_s'}):
         raise ValueError('spec.background must be {kind: linear_depth, top_mps, gradient_per_s}')
@@ -200,6 +202,18 @@ def run(spec, out, device='cuda:0', resume=None, save_figures=True, shared_dir=N
             problem['frequency_scales']=energy_scales(problem['observed'],schedule,cfg['forward']['dt_s'])
             atomic_json(out/'frequency_scales.json',{str(k):v for k,v in problem['frequency_scales'].items()})
         model=build_model(spec,cfg,background).to(device)
+        speedup=spec.get("speedup") or {}; coarse={}; encoders={}; coarse_model=None
+        if speedup.get('coarse_lowpass'):
+            option=speedup['coarse_lowpass']
+            coarse=coarse_problem(problem,background,option['factor'],option['source_depth_index'],option['receiver_depth_index'],schedule)
+            coarse_model=CoarseView(model,option['factor'])
+            atomic_json(out/'coarse_lowpass.json',{**option,'source_scale':coarse['source_scale'],'grid':[coarse['geometry']['nz'],coarse['geometry']['nx']],
+                'dt_s':coarse['config']['forward']['dt_s'],'nt':coarse['config']['forward']['nt']})
+            emit(f"COARSE low-pass stages: grid={coarse['geometry']['nz']}x{coarse['geometry']['nx']} source scale={coarse['source_scale']:.4f}")
+        if speedup.get('source_encoding'):
+            option=speedup['source_encoding']
+            encoders={'fine':SourceEncoder(problem,option['supershots'],option['seed'])}
+            if coarse: encoders['coarse']=SourceEncoder(coarse,option['supershots'],option['seed'])
         control_report={}; prefit_optimizer_state=None
         if saved and saved['phase']=='inversion':
             opt=build_optimizer(model,cfg); base_lrs=[g['lr'] for g in opt.param_groups]
@@ -275,7 +289,16 @@ def run(spec, out, device='cuda:0', resume=None, save_figures=True, shared_dir=N
                 ds=time.perf_counter(); old=layer_snapshot(model) if diagnostic and layered else None
                 sync(model); diagnostic_seconds=time.perf_counter()-ds
                 compute_start=time.perf_counter()
-                report=e.train_update(model,problem,opt,max_hz)
+                use_coarse=bool(coarse) and max_hz is not None
+                step_problem,step_model=(coarse,coarse_model) if use_coarse else (problem,model)
+                if encoders: step_problem=encoders['coarse' if use_coarse else 'fine'].problem(update)
+                if use_coarse:
+                    with torch.no_grad(): fine_before=model().cpu().numpy()[0].copy()
+                report=e.train_update(step_model,step_problem,opt,max_hz)
+                if use_coarse:
+                    # Full-band misfit on the coarse grid is meaningless (dispersion); log the stage objective.
+                    report['velocity_before_mps']=fine_before; report['data_mse']=report['objective']
+                if speedup: report['speedup']={'coarse':use_coarse,'encoded':bool(encoders)}
                 sync(model); compute_seconds=time.perf_counter()-compute_start
                 completed=update
                 pre=report.pop('velocity_before_mps')

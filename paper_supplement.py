@@ -82,13 +82,16 @@ def experiment(method, condition="clean", seed=3, name=None):
     return cfg
 
 
-def spec(name, cfg, control=ZERO, condition="clean", model=None, background=None, protocol="paper_supplement_v1"):
+def spec(name, cfg, control=ZERO, condition="clean", model=None, background=None, protocol="paper_supplement_v1",
+         speedup=None):
     cfg = copy.deepcopy(cfg)
     cfg["experiment_name"] = name
     result = {"name": name, "experiment": cfg, "control": copy.deepcopy(control),
               "robustness": copy.deepcopy(CONDITIONS[condition][1]), "protocol": protocol}
     if model is not None:
         result["model"] = copy.deepcopy(model)
+    if speedup is not None:
+        result["speedup"] = copy.deepcopy(speedup)
     if background is not None:
         result["background"] = copy.deepcopy(background)
         result["robustness"]["condition"] += "_lineardepth"   # observations are shared per background
@@ -168,6 +171,17 @@ def build_specs(selection=None):
                  spec("J_E4_sigma4_beta2_s3", j2, condition="sigma4")]
     # K (optional): depth-only linear background, no truth involved.
     q["q7_K"] = [spec(f"K_{m}_lineardepth_s3", experiment(m), background=LINEAR_BACKGROUND) for m in ("E2MS", "E3", "E4")]
+    # Speed: source encoding (one simultaneous-source simulation per update) and coarse low-pass stages.
+    encoding = {"supershots": 1, "seed": 3}
+    coarse = {"factor": 2, "source_depth_index": 1, "receiver_depth_index": 1}
+    x1 = experiment("E3")
+    x1["training"]["epochs"] = 3000
+    x3 = experiment("E2MS")
+    x3["training"]["epochs"] = 3000
+    x3["training"]["frequency_schedule"] = [{"max_hz": 3.0, "updates": 300}, {"max_hz": 5.0, "updates": 300}, {"max_hz": None}]
+    q["q8_speed"] = [spec("S1_E3_encoded_s3", x1, speedup={"source_encoding": encoding}),
+                     spec("S2_E2MS_coarse_s3", experiment("E2MS"), speedup={"coarse_lowpass": coarse}),
+                     spec("S3_E2MS_coarse_encoded_s3", x3, speedup={"coarse_lowpass": coarse, "source_encoding": encoding})]
     # Formal runs that depend on a screening selection.
     if "C_grid_lr" in selection:
         lr, formal = float(selection["C_grid_lr"]), []
