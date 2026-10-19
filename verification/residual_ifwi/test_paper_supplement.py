@@ -191,6 +191,25 @@ def test_traveltime_warp_keeps_ranges_and_starts_at_background(tmp_path):
         runner().check_spec({**item, "model": {"kind": "siren", "coordinate_warp": {"kind": "traveltime", "axes": "x"}}})
 
 
+def test_extend_continues_a_finished_run_exactly(tmp_path):
+    straight = tiny_spec(tmp_path, "straight", "E3", training={"epochs": 5})
+    _, full = run(tmp_path, straight)
+    short = tiny_spec(tmp_path, "short", "E3", training={"epochs": 3})
+    out, _ = run(tmp_path, short)
+    longer = copy.deepcopy(torch.load(out / "checkpoint.pt", weights_only=False)["spec"])
+    longer["experiment"]["training"]["epochs"] = 5
+    extended = runner().run(longer, tmp_path / "extended", "cpu", resume=out / "checkpoint.pt", save_figures=False,
+                            shared_dir=tmp_path / "shared", extend=True)
+    rows = json.loads((extended / "history.json").read_text())
+    keys = ("data_mse", "rmse_mps", "gradient_norm")
+    assert [[r[k] for k in keys] for r in rows] == [[r[k] for k in keys] for r in full]
+    assert json.loads((extended / "extend.json").read_text())["from_updates"] == 3
+    with pytest.raises(ValueError, match="Extend"):
+        bad = copy.deepcopy(longer); bad["experiment"]["training"]["learning_rate"] = 1e-3
+        runner().run(bad, tmp_path / "bad", "cpu", resume=out / "checkpoint.pt", save_figures=False,
+                     shared_dir=tmp_path / "shared", extend=True)
+
+
 def test_queue_dry_run_lists_every_spec(tmp_path, capsys):
     queue = importlib.import_module("paper_queue")
     folder = tmp_path / "supplement"

@@ -48,6 +48,15 @@ from core_speed import CoarseView, SourceEncoder, coarse_problem, validate_speed
 ROOT=Path(__file__).resolve().parent
 SCHEMA='paper_supplement_v1'
 SPEC_KEYS={'name','experiment','control','robustness','model','background','protocol','speedup'}
+EXTENDABLE_SCHEMAS=(SCHEMA,'robustness_overthrust_noise_v1')
+
+
+def budget_free(spec):
+    spec=copy.deepcopy(spec); training=spec['experiment']['training']
+    training.pop('epochs',None); training.pop('checkpoint_interval',None)
+    return spec
+
+
 SOURCE_FILES=('core_runner.py','core_controls.py','core_models.py','core_speed.py','robust_observations.py',
               'ifwi_modules.py','rnn_fd.py','generator.py','plot_functions.py')
 
@@ -129,7 +138,7 @@ def build_model(spec, cfg, background):
     return model
 
 
-def run(spec, out, device='cuda:0', resume=None, save_figures=True, shared_dir=None):
+def run(spec, out, device='cuda:0', resume=None, save_figures=True, shared_dir=None, extend=False):
     check_spec(spec)
     cfg=copy.deepcopy(spec['experiment']); control=spec['control']
     e.validate_config(cfg)
@@ -188,7 +197,18 @@ def run(spec, out, device='cuda:0', resume=None, save_figures=True, shared_dir=N
         atomic_json(out/'initial_model_provenance.json',provenance)
         if resume:
             saved=torch.load(resume,map_location='cpu',weights_only=False)
-            if saved.get('schema')!=SCHEMA or saved['spec']!=spec or saved['sources']!=sources or saved['provenance']!=provenance:
+            if extend:
+                # Longer budget for a finished run: only epochs/checkpoint_interval may change; source edits
+                # since the original run are recorded (the core arithmetic is unchanged, see the first-5 check).
+                if saved.get('schema') not in EXTENDABLE_SCHEMAS or budget_free(saved['spec'])!=budget_free(spec) or saved['provenance']!=provenance:
+                    raise ValueError('Extend: schema/config/data identity mismatch beyond the update budget')
+                if saved['phase']!='inversion' or saved['completed_updates']>=spec['experiment']['training']['epochs']:
+                    raise ValueError('Extend needs a finished inversion checkpoint and a larger budget')
+                changed=sorted(k for k in set(saved['sources'])|set(sources) if saved['sources'].get(k)!=sources.get(k))
+                atomic_json(out/'extend.json',{'from_checkpoint':str(Path(resume).resolve()),'original_schema':saved['schema'],
+                    'from_updates':saved['completed_updates'],'to_updates':spec['experiment']['training']['epochs'],
+                    'source_files_changed_since_original':changed})
+            elif saved.get('schema')!=SCHEMA or saved['spec']!=spec or saved['sources']!=sources or saved['provenance']!=provenance:
                 raise ValueError('Resume source/config/data identity mismatch')
             timing_path=Path(str(resume)+'.timing.json')
             if saved['phase']=='inversion' and timing_path.exists():
@@ -384,11 +404,21 @@ def run(spec, out, device='cuda:0', resume=None, save_figures=True, shared_dir=N
 
 
 if __name__=='__main__':
-    parser=argparse.ArgumentParser(); parser.add_argument('--spec',required=True); parser.add_argument('--out',required=True)
+    parser=argparse.ArgumentParser(); parser.add_argument('--spec'); parser.add_argument('--out',required=True)
     parser.add_argument('--resume'); parser.add_argument('--device',default='cuda:0'); parser.add_argument('--no-plots',action='store_true')
+    parser.add_argument('--extend',help='finished checkpoint.pt to continue to --epochs updates (spec read from it)')
     parser.add_argument('--shared-dir',help='shared observations root (default outputs/shared in the repository)')
     parser.add_argument('--epochs',type=int,help='override the update budget, e.g. 5 for a first-step check')
     args=parser.parse_args()
+    if args.extend:
+        if args.epochs is None or args.resume:
+            parser.error('--extend needs --epochs and no --resume')
+        spec=torch.load(args.extend,map_location='cpu',weights_only=False)['spec']
+        spec['experiment']['training']['epochs']=args.epochs
+        run(spec,args.out,args.device,args.extend,not args.no_plots,args.shared_dir,extend=True)
+        raise SystemExit(0)
+    if not args.spec:
+        parser.error('--spec is required unless --extend is given')
     spec=json.loads(Path(args.spec).read_text(encoding='utf-8'))
     if args.epochs is not None:
         spec['experiment']['training']['epochs']=args.epochs

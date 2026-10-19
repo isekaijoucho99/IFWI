@@ -195,6 +195,9 @@ def build_specs(selection=None):
         spec("W_E2_warpz_s3", experiment("E2"), model=tz),
         spec("W_E3_overthrust_s3", experiment("E3", "overthrust"), condition="overthrust"),
         spec("W_E3_warpz_overthrust_s3", experiment("E3", "overthrust"), condition="overthrust", model=tz)]
+    # The complete method (E4 with a 5 m/s RMS output layer, "Ours" in the paper) on Overthrust and noisy Marmousi.
+    q["q10_ours"] = [spec(f"O_E4small5_{c}_s3", experiment("E4", c), control=SMALL5, condition=c)
+                     for c in ("overthrust", "sigma2", "sigma4")]
     # Formal runs that depend on a screening selection.
     if "C_grid_lr" in selection:
         lr, formal = float(selection["C_grid_lr"]), []

@@ -125,3 +125,33 @@ python -m experiments.warp_fit --case marmousi --method E3 --axes none z xz --ta
 ```
 
 Overthrust 需要先 `prepare-data` 生成 CSV，再用 `--case overthrust`。结果在 `outputs/warp_fit/<case>_<method>/summary.json`。
+
+## 完整方法 Ours 的补充条件（`q10_ours`）
+
+论文中的 Ours = E4（可训练 ω）+ 5 m/s RMS 输出初始化（`A_E4small5_*` 的同一配置），此前只在干净 Marmousi 上跑过。本队列在 Overthrust、σ=2（−6 dB）、σ=4（−12 dB）各跑一次 seed 3，观测与稳健性批次共用（按哈希核对）。表 III 中原有的 Ours-ZF/Ours-Z 来自另一会话，比较时间时注明。
+
+```bash
+python paper_queue.py experiments/paper_supplement/queues/q10_ours.json --out-root outputs/paper_supplement --shared-dir SHARED --wait-idle
+```
+
+## 续跑未收敛的基线到 4000 步（IFWI、FR-IFWI、Res-IFWI）
+
+直接从原运行的最终 checkpoint 接着跑，前 1000 步不重算；新结果写到新目录，原目录不动。无学习率衰减，所以续跑与一次跑满 4000 步算术相同（`test_extend_continues_a_finished_run_exactly` 在 CPU 上逐位核对 3+2 步 = 5 步）。
+
+IFWI（论文 Direct_prefit_v0，core_missing3 批次）与 FR-IFWI（E_directFR_prefit_s3）用 `core_runner.py --extend`：spec 从 checkpoint 读出，只允许改更新预算；此后修改过的源文件列在新目录的 `extend.json`。
+
+```bash
+python core_runner.py --extend F:\project\IFWI\outputs\core_missing3_20261016\runs\02_direct_prefit_sigma15\attempt_01\checkpoint.pt --epochs 4000 --out outputs\paper_supplement\X_direct_prefit_to4000 --shared-dir SHARED
+```
+
+```bash
+python core_runner.py --extend F:\project\IFWI\outputs\paper_supplement_AK_0d9ef20_20261018_014331\runs\E_directFR_prefit_s3\attempt_01\checkpoint.pt --epochs 4000 --out outputs\paper_supplement\X_directFR_prefit_to4000 --shared-dir SHARED
+```
+
+Res-IFWI（论文 E2_residual，paper13_fresh_pair 批次）来自 `residual_ifwi.py`，它本身支持加长预算续跑：
+
+```bash
+python residual_ifwi.py --config F:\project\IFWI\.worktrees\offline-diagnostics-561c068-review\outputs\paper13_fresh_pair_20261012\01_paper13_ifwi\residual_seed3_20261012_091341_8f26bf\config.json --epochs 4000 --resume F:\project\IFWI\.worktrees\offline-diagnostics-561c068-review\outputs\paper13_fresh_pair_20261012\01_paper13_ifwi\residual_seed3_20261012_091341_8f26bf\checkpoint.pt --output-dir outputs\paper_supplement\X_E2_to4000
+```
+
+建议先各用 `--epochs 1001` 试一步，确认 checkpoint 能读入、身份校验通过、第 1001 步的 RMSE 与原轨迹衔接，再改成 4000。三组各约 5 小时。
