@@ -12,6 +12,8 @@ the same arithmetic as before):
   training.lr_schedule (warmup / cosine decay) and training.optimizer Adam betas/eps;
 * spec.model.kind: "siren" (default), "grid" (grid FWI, Adam on dv in m/s) or
   "fourier_features" (input Fourier features + ReLU MLP, zero head);
+* spec.model.coordinate_warp: {"kind": "traveltime", "axes": "z" | "xz"} feeds the SIREN
+  traveltime-through-v0 coordinates instead of (x, z) (core_models.traveltime_coordinates);
 * spec.background: {"kind": "linear_depth", "top_mps", "gradient_per_s"} replaces the
   Gaussian background with a depth-only one;
 * control prefit_background with keep_optimizer_state: start the inversion with the
@@ -40,13 +42,13 @@ from experiments.muon_optimizer import build_optimizer
 from experiments.frequency_continuation import energy_scales, stage_cutoff
 from experiments.lr_schedule import lr_factor
 from core_controls import small_output, prefit_background, training_state, restore_training_state, sync, layer_snapshot, layer_changes
-from core_models import FourierFeatureVelocity, GridVelocity, linear_depth_background
+from core_models import FourierFeatureVelocity, GridVelocity, linear_depth_background, traveltime_coordinates, warp_coordinates, warp_report, WARP_AXES
 from core_speed import CoarseView, SourceEncoder, coarse_problem, validate_speedup
 
 ROOT=Path(__file__).resolve().parent
 SCHEMA='paper_supplement_v1'
 SPEC_KEYS={'name','experiment','control','robustness','model','background','protocol','speedup'}
-SOURCE_FILES=('core_runner.py','core_controls.py','core_models.py','robust_observations.py',
+SOURCE_FILES=('core_runner.py','core_controls.py','core_models.py','core_speed.py','robust_observations.py',
               'ifwi_modules.py','rnn_fd.py','generator.py','plot_functions.py')
 
 
@@ -95,6 +97,12 @@ def check_spec(spec):
         raise ValueError('spec.model.kind must be siren, grid or fourier_features')
     if kind!='siren' and spec['experiment']['parameterization']!='residual':
         raise ValueError('Grid and Fourier-feature models are residual (v0 + update)')
+    warp=spec.get('model',{}).get('coordinate_warp')
+    if kind=='siren' and set(spec.get('model',{}))-{'kind','coordinate_warp'}:
+        raise ValueError('spec.model for siren takes only kind and coordinate_warp')
+    if warp is not None and (kind!='siren' or spec['experiment']['model'].get('low_rank') is not None
+                             or warp.get('kind')!='traveltime' or set(warp)!={'kind','axes'} or warp['axes'] not in WARP_AXES):
+        raise ValueError(f'coordinate_warp is {{kind: traveltime, axes: {WARP_AXES}}} on a 2-D SIREN')
     if kind=='grid' and spec['control']['kind']!='zero_output':
         raise ValueError('Grid FWI starts at dv = 0 (control zero_output)')
     validate_speedup(spec.get('speedup'),spec['experiment'])
@@ -111,8 +119,14 @@ def build_model(spec, cfg, background):
         options=spec['model']
         return FourierFeatureVelocity(background,cfg['data']['grid_spacing_m'],options['scale_cpkm'],
             options.get('features',128),tuple(options.get('hidden',(128,128,128,128))),options.get('seed',cfg['seed']))
-    return e.VelocityParameterization(background,cfg['data']['grid_spacing_m'],cm['neurons'],cm['omega_0'],
+    model=e.VelocityParameterization(background,cfg['data']['grid_spacing_m'],cm['neurons'],cm['omega_0'],
         cm['mean_kmps'],cm['std_kmps'],cfg['parameterization'],cm.get('fourier'),cm.get('trainable_omega') is not None)
+    warp=spec.get('model',{}).get('coordinate_warp')
+    if warp is not None:
+        coords=traveltime_coordinates(background,cfg['data']['grid_spacing_m'],warp['axes'])
+        warp_coordinates(model,coords)
+        model.coordinate_warp_report={**warp,**warp_report(background,cfg['data']['grid_spacing_m'],coords)}
+    return model
 
 
 def run(spec, out, device='cuda:0', resume=None, save_figures=True, shared_dir=None):
@@ -202,6 +216,9 @@ def run(spec, out, device='cuda:0', resume=None, save_figures=True, shared_dir=N
             problem['frequency_scales']=energy_scales(problem['observed'],schedule,cfg['forward']['dt_s'])
             atomic_json(out/'frequency_scales.json',{str(k):v for k,v in problem['frequency_scales'].items()})
         model=build_model(spec,cfg,background).to(device)
+        if getattr(model,'coordinate_warp_report',None) is not None:
+            atomic_json(out/'coordinate_warp.json',model.coordinate_warp_report)
+            emit(f"WARP traveltime axes={model.coordinate_warp_report['axes']} stretch_z={model.coordinate_warp_report['stretch_z']['min']:.2f}-{model.coordinate_warp_report['stretch_z']['max']:.2f}")
         speedup=spec.get("speedup") or {}; coarse={}; encoders={}; coarse_model=None
         if speedup.get('coarse_lowpass'):
             option=speedup['coarse_lowpass']

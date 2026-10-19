@@ -34,8 +34,9 @@ def strip(cfg):
 
 def test_every_spec_validates_and_differs_from_its_base_only_where_intended():
     queues = ps().build_specs({"C_grid_lr": 10.0, "D_E2_lr": 3e-5, "D_E3_lr": 1e-4, "H_scale": 3.0})
-    specs = {s["name"]: s for items in queues.values() for s in items}
-    assert len(specs) == sum(len(items) for items in queues.values())          # unique names
+    specs = {}
+    for item in (s for items in queues.values() for s in items):
+        assert specs.setdefault(item["name"], item) == item                     # shared baselines are identical
     for item in specs.values():
         runner().check_spec(item)
         api().validate_config(item["experiment"])
@@ -172,6 +173,22 @@ def test_core_runner_prefit_keep_adam_and_linear_background(tmp_path):
         runner().check_spec({**linear, "background": {"kind": "linear_depth", "top_mps": 1500.}})
     with pytest.raises(ValueError, match="does not support"):
         runner().check_spec(tiny_spec(tmp_path, "gain", training={"time_gain": {"power": 1., "start_update": 1}}))
+
+
+def test_traveltime_warp_keeps_ranges_and_starts_at_background(tmp_path):
+    models = importlib.import_module("core_models")
+    v0 = np.linspace(1500, 4500, 20, dtype=np.float32)[:, None] + np.zeros((20, 30), np.float32)
+    coords = models.traveltime_coordinates(v0, 15., "z")
+    assert np.allclose(coords[..., 0][0], np.arange(30) * .015)               # x unchanged
+    assert np.isclose(coords[-1, :, 1].mean(), 19 * .015, rtol=1e-5)          # mean depth range kept
+    stretch = np.diff(coords[:, 0, 1]) / .015
+    assert stretch[0] > 1 > stretch[-1]                                        # finer where slow
+    item = tiny_spec(tmp_path, "warp", "E3", model={"kind": "siren", "coordinate_warp": {"kind": "traveltime", "axes": "xz"}})
+    out, history = run(tmp_path, item)
+    assert np.array_equal(np.load(out / "run_start_velocity.npy"), np.load(out / "initial_velocity.npy"))
+    assert json.loads((out / "coordinate_warp.json").read_text())["axes"] == "xz" and len(history) == 3
+    with pytest.raises(ValueError, match="coordinate_warp"):
+        runner().check_spec({**item, "model": {"kind": "siren", "coordinate_warp": {"kind": "traveltime", "axes": "x"}}})
 
 
 def test_queue_dry_run_lists_every_spec(tmp_path, capsys):

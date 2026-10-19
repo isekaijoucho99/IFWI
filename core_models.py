@@ -13,6 +13,16 @@ buffer ``fixed_init_mps``, ``parameterization == "residual"`` and empty omega/Fo
 
 linear_depth_background builds a background that depends on depth only, v0(z) = top + g z, from
 explicit constants (no truth involved).
+
+traveltime_coordinates / warp_coordinates: the SIREN input (x, z) is replaced by coordinates
+measured in traveltime through the background, z' = c_z * int_0^z dz/v0 (and optionally
+x' = c_x * int_0^x dx/v0 along each row). A coordinate network has the same spectral bias
+everywhere in its input space, so after the warp the bias is uniform in local wavelengths of
+v0 instead of in metres: finer where v0 is slow, smoother where it is fast, like the data
+resolution. c_z and c_x keep the mean coordinate range of each axis unchanged, so the global
+bandwidth (omega_0 times the coordinate range) stays that of the unwarped network and only the
+spatial distribution changes. Only v0 is used, never the truth; the network, its seed-matched
+initialization and the zero output layer are unchanged, so step 0 is still exactly v0.
 """
 from __future__ import annotations
 
@@ -79,6 +89,65 @@ class FourierFeatureVelocity(torch.nn.Module):
 
     def forward(self):
         return self.fixed_init_mps + 1000. * self.raw_output()
+
+
+WARP_AXES = ("z", "xz")
+
+
+def _slowness_integral(slowness, step_km, axis):
+    """Trapezoidal cumulative integral of slowness along an axis, 0 at the first sample (s)."""
+    pairs = .5 * (np.take(slowness, range(1, slowness.shape[axis]), axis=axis)
+                  + np.take(slowness, range(0, slowness.shape[axis] - 1), axis=axis)) * step_km
+    zero = np.zeros_like(np.take(slowness, [0], axis=axis))
+    return np.concatenate((zero, np.cumsum(pairs, axis=axis)), axis=axis)
+
+
+def traveltime_coordinates(background_mps, dx_m, axes="z"):
+    """[nz, nx, 2] (x', z') in km: traveltime through v0, scaled to the original mean axis ranges."""
+    if axes not in WARP_AXES:
+        raise ValueError(f"coordinate_warp.axes must be one of {WARP_AXES}")
+    v0 = np.asarray(background_mps, dtype=np.float64)
+    if v0.ndim != 2 or not np.isfinite(v0).all() or v0.min() <= 0:
+        raise ValueError("background must be a finite positive [nz,nx] model")
+    nz, nx = v0.shape
+    step = dx_m / 1000
+    x, z = np.meshgrid(np.arange(nx) * step, np.arange(nz) * step)
+    slowness = 1000. / v0                                       # s/km
+    tz = _slowness_integral(slowness, step, 0)
+    z_warp = tz * (z[-1, 0] / tz[-1].mean())
+    x_warp = x
+    if axes == "xz":
+        tx = _slowness_integral(slowness, step, 1)
+        x_warp = tx * (x[0, -1] / tx[:, -1].mean())
+    coords = np.stack((x_warp, z_warp), axis=-1)
+    if not (np.diff(coords[..., 1], axis=0) > 0).all() or not (np.diff(coords[..., 0], axis=1) > 0).all():
+        raise ValueError("Warped coordinates must increase monotonically")
+    return coords.astype(np.float32)
+
+
+def warp_report(background_mps, dx_m, coords):
+    """Local stretch d z'/dz (and d x'/dx): > 1 means finer network detail than unwarped."""
+    step = dx_m / 1000
+    stretch_z = np.diff(coords[..., 1].astype(np.float64), axis=0) / step
+    stretch_x = np.diff(coords[..., 0].astype(np.float64), axis=1) / step
+    rows = np.linspace(0, stretch_z.shape[0] - 1, 5).round().astype(int)
+    return {"stretch_z": {"min": float(stretch_z.min()), "max": float(stretch_z.max()),
+                          "row_means": {int(r): float(stretch_z[r].mean()) for r in rows}},
+            "stretch_x": {"min": float(stretch_x.min()), "max": float(stretch_x.max())},
+            "coordinate_range_km": {"x": [float(coords[..., 0].min()), float(coords[..., 0].max())],
+                                    "z": [float(coords[..., 1].min()), float(coords[..., 1].max())]},
+            "background_mps": [float(np.min(background_mps)), float(np.max(background_mps))]}
+
+
+def warp_coordinates(model, coords):
+    """Replace the SIREN input grid of a VelocityParameterization (2-D network) in place."""
+    if getattr(model, "coords", None) is None or getattr(model, "low_rank", None) is not None:
+        raise ValueError("coordinate_warp needs a 2-D coordinate network (not low-rank or grid)")
+    new = torch.as_tensor(coords, dtype=model.coords.dtype, device=model.coords.device)[None]
+    if new.shape != model.coords.shape:
+        raise ValueError(f"warped coordinates {tuple(new.shape)} do not match {tuple(model.coords.shape)}")
+    model.coords.copy_(new)
+    return model
 
 
 def linear_depth_background(shape, dz_m, top_mps, gradient_per_s):

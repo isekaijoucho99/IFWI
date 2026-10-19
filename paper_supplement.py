@@ -185,6 +185,16 @@ def build_specs(selection=None):
         spec("S2_E2MS_coarse_s3", experiment("E2MS"), speedup={"coarse_lowpass": coarse}),
         spec("S4_E2MS_encoded_s3", long_ms, speedup={"source_encoding": encoding}),
         spec("S3_E2MS_coarse_encoded_s3", long_ms, speedup={"coarse_lowpass": coarse, "source_encoding": encoding})]
+    # W: traveltime coordinate warp (network input measured through v0), against same-queue baselines.
+    tz, txz = ({"kind": "siren", "coordinate_warp": {"kind": "traveltime", "axes": a}} for a in ("z", "xz"))
+    q["q9_warp"] = [
+        spec("A_E3_s3", experiment("E3")),
+        spec("W_E3_warpz_s3", experiment("E3"), model=tz),
+        spec("W_E3_warpxz_s3", experiment("E3"), model=txz),
+        spec("A_E2_s3", experiment("E2")),
+        spec("W_E2_warpz_s3", experiment("E2"), model=tz),
+        spec("W_E3_overthrust_s3", experiment("E3", "overthrust"), condition="overthrust"),
+        spec("W_E3_warpz_overthrust_s3", experiment("E3", "overthrust"), condition="overthrust", model=tz)]
     # Formal runs that depend on a screening selection.
     if "C_grid_lr" in selection:
         lr, formal = float(selection["C_grid_lr"]), []

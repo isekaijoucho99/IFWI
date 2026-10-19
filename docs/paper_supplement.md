@@ -95,3 +95,33 @@ E2-MS、S2、S4、S3 构成"粗网格 × 编码"的 2×2 设计。无学习率�
 ```bash
 python paper_queue.py experiments/paper_supplement/queues/q8_speed.json --out-root outputs/paper_supplement --shared-dir SHARED --wait-idle
 ```
+
+## 走时坐标变换（`q9_warp`，方向 1）
+
+SIREN 的输入从 (x, z) 改成穿过背景模型 v0 的走时坐标：z' = c_z ∫₀^z dz/v0，`axes: "xz"` 时再加 x' = c_x ∫₀^x dx/v0（逐行）。坐标网络在输入空间里各处的频谱偏置相同，变换后这种偏置在“v0 的局部波长”意义下均匀：v0 慢的浅部更细，快的深部更平滑，与数据分辨率 k_res ≈ 2f/v0 一致。c_z、c_x 保持各轴的平均坐标范围不变，因此全局带宽（ω₀ × 坐标范围）与原网络相同，只改变空间分布。只用 v0，不用真值；网络、种子对应的初始化和零输出层都不变，第 0 步仍精确等于 v0。Marmousi 高斯背景下深度方向的局部拉伸为浅部约 1.45、深部约 0.69（`coordinate_warp.json` 记录）。
+
+spec 写法：`"model": {"kind": "siren", "coordinate_warp": {"kind": "traveltime", "axes": "z"}}`，可与 E2/E3/E4、多尺度、编码等组合（低秩模型除外）。
+
+| 运行 | 内容 | 与谁只差一项 |
+|---|---|---|
+| `A_E3_s3` | E3 基线（与 q4/q8 同名同配置，已跑完会被跳过） | — |
+| `W_E3_warpz_s3` | E3 + 深度走时坐标 | E3：坐标 |
+| `W_E3_warpxz_s3` | E3 + 双向走时坐标 | E3：坐标 |
+| `A_E2_s3` | E2 基线（与 q4_A_full_extra 同名同配置） | — |
+| `W_E2_warpz_s3` | E2 + 深度走时坐标：单靠坐标能否消除 E2 的竖条纹 | E2：坐标 |
+| `W_E3_overthrust_s3` | Overthrust E3 基线（同一运行器、同一队列） | — |
+| `W_E3_warpz_overthrust_s3` | Overthrust E3 + 深度走时坐标：逆冲岩片内的纹理 | Overthrust E3：坐标 |
+
+```bash
+python paper_queue.py experiments/paper_supplement/queues/q9_warp.json --out-root outputs/paper_supplement --shared-dir SHARED --wait-idle
+```
+
+看点：除 RMSE、SSIM 外，主要看深部（下 1/3）RMSE 和超出 k_res 的扰动能量比例。预期 SSIM 和纹理改善的可能性较大；Marmousi 底部高速薄层是 RMSE 的主要来源，深部被压缩后 RMSE 可能持平甚至略升。单种子差别小于 10 m/s 不作结论，有希望的组合再补 seed 0/1。
+
+**先做的无正演检查**（CPU 每组约 2–3 分钟）：`experiments/warp_fit.py` 用论文的 Adam 设置把残差网络直接拟合到目标速度，比较 (x, z) 与走时坐标下各深度段的拟合速度和超出 k_res 的能量。目标 `resolved` 是按 k_res(q) 做空间变化平滑后的真值扰动，相当于带限数据能约束的部分；拟合结果在 k_res 以上的能量就是没有数据要求的纹理。
+
+```bash
+python -m experiments.warp_fit --case marmousi --method E3 --axes none z xz --target full resolved --steps 2000
+```
+
+Overthrust 需要先 `prepare-data` 生成 CSV，再用 `--case overthrust`。结果在 `outputs/warp_fit/<case>_<method>/summary.json`。
