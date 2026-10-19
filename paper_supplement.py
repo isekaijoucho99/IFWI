@@ -198,21 +198,18 @@ def build_specs(selection=None):
     # The complete method (E4 with a 5 m/s RMS output layer, "Ours" in the paper) on Overthrust and noisy Marmousi.
     q["q10_ours"] = [spec(f"O_E4small5_{c}_s3", experiment("E4", c), control=SMALL5, condition=c)
                      for c in ("overthrust", "sigma2", "sigma4")]
-    # Main model of the paper: Ours (E4, 5 m/s RMS output) with simultaneous-source encoding (SE).
-    # Same-session references first (Ours without SE sets the per-update time; E2-MS sets epsilon),
-    # then Ours+SE on every condition and the "without Fourier layers" ablation with SE.
+    # Main model of the paper: Ours = residual + Fourier layers (E3, fixed omega, zero output) + source
+    # encoding (SE); on clean Marmousi it is S1_E3_encoded_s3 of q8_speed. Here: the other conditions, each
+    # with its same-session E3 reference for timing, and E2 + SE (the "without Fourier layers" ablation).
     # Budget 2000: no lr decay, so it only sets where the trajectory stops (SE needs more updates).
     se = {"source_encoding": encoding}
     def long(cfg, updates=2000):
         cfg["training"]["epochs"] = updates
         return cfg
-    q["q12_ours_se"] = [
-        spec("A_E2MS_s3", experiment("E2MS")),
-        spec("A_E4small5_s3", experiment("E4"), control=SMALL5),
-        spec("M_E4small5_se_s3", long(experiment("E4")), control=SMALL5, speedup=se),
-        spec("M_E2_se_s3", long(experiment("E2")), speedup=se),
-        *[spec(f"M_E4small5_se_{c}_s3", long(experiment("E4", c)), control=SMALL5, condition=c, speedup=se)
-          for c in ("overthrust", "sigma2", "sigma4")]]
+    q["q12_ours_se"] = [spec("M_E2_se_s3", long(experiment("E2")), speedup=se)]
+    for c in ("overthrust", "sigma2", "sigma4"):
+        q["q12_ours_se"] += [spec(f"M_E3_{c}_s3", experiment("E3", c), condition=c),
+                             spec(f"M_E3_se_{c}_s3", long(experiment("E3", c)), condition=c, speedup=se)]
     # Formal runs that depend on a screening selection.
     if "C_grid_lr" in selection:
         lr, formal = float(selection["C_grid_lr"]), []

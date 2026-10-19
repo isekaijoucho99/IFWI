@@ -1,9 +1,9 @@
 [
-  "specs/A_E2MS_s3.json",
-  "specs/A_E4small5_s3.json",
-  "specs/M_E4small5_se_s3.json",
   "specs/M_E2_se_s3.json",
-  "specs/M_E4small5_se_overthrust_s3.json",
-  "specs/M_E4small5_se_sigma2_s3.json",
-  "specs/M_E4small5_se_sigma4_s3.json"
+  "specs/M_E3_overthrust_s3.json",
+  "specs/M_E3_se_overthrust_s3.json",
+  "specs/M_E3_sigma2_s3.json",
+  "specs/M_E3_se_sigma2_s3.json",
+  "specs/M_E3_sigma4_s3.json",
+  "specs/M_E3_se_sigma4_s3.json"
 ]

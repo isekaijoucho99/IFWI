@@ -1,7 +1,7 @@
 {
-  "name": "M_E4small5_se_s3",
+  "name": "M_E3_se_sigma4_s3",
   "experiment": {
-    "experiment_name": "M_E4small5_se_s3",
+    "experiment_name": "M_E3_se_sigma4_s3",
     "parameterization": "residual",
     "seed": 3,
     "data": {
@@ -35,9 +35,6 @@
         "phi_num": 32,
         "alpha": 0.01,
         "lambda_init": "fr_inr"
-      },
-      "trainable_omega": {
-        "learning_rate": 0.01
       }
     },
     "acquisition": {
@@ -67,12 +64,11 @@
     }
   },
   "control": {
-    "kind": "small_output",
-    "rms_mps": 5.0
+    "kind": "zero_output"
   },
   "robustness": {
-    "condition": "marmousi_clean",
-    "noise_sigma": 0.0,
+    "condition": "marmousi_noise_sigma4",
+    "noise_sigma": 4.0,
     "noise_seed": 3
   },
   "protocol": "paper_supplement_v1",

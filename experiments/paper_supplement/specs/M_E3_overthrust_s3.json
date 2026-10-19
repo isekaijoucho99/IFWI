@@ -1,16 +1,16 @@
 {
-  "name": "M_E4small5_se_sigma2_s3",
+  "name": "M_E3_overthrust_s3",
   "experiment": {
-    "experiment_name": "M_E4small5_se_sigma2_s3",
+    "experiment_name": "M_E3_overthrust_s3",
     "parameterization": "residual",
     "seed": 3,
     "data": {
-      "model_file": "vel_marmousi_376x1151.csv",
+      "model_file": "overthrust_94x401_mps.csv",
       "model_units": "m/s",
-      "csv_header": "legacy",
-      "downsample": 4,
+      "csv_header": "none",
+      "downsample": 1,
       "crop_shape": null,
-      "grid_spacing_m": 15.0
+      "grid_spacing_m": 20.0
     },
     "initialization": {
       "sigma": 15.0,
@@ -35,24 +35,32 @@
         "phi_num": 32,
         "alpha": 0.01,
         "lambda_init": "fr_inr"
-      },
-      "trainable_omega": {
-        "learning_rate": 0.01
       }
     },
     "acquisition": {
-      "num_shots": 13,
-      "source_x_indices": null,
+      "num_shots": 10,
+      "source_x_indices": [
+        20,
+        60,
+        100,
+        140,
+        180,
+        220,
+        260,
+        300,
+        340,
+        380
+      ],
       "source_start_index": 20,
-      "source_spacing_index": 20,
+      "source_spacing_index": 40,
       "source_end_margin": 10,
       "source_depth_index": 1,
-      "receiver_depth_index": 2,
+      "receiver_depth_index": 0,
       "receiver_stride": 1
     },
     "forward": {
-      "dt_s": 0.0019,
-      "nt": 1000,
+      "dt_s": 0.002,
+      "nt": 1500,
       "frequency_hz": 8.0,
       "npad": 15,
       "order": 2,
@@ -60,26 +68,19 @@
       "pml_reflection": 1e-06
     },
     "training": {
-      "epochs": 2000,
+      "epochs": 1000,
       "learning_rate": 0.0001,
       "checkpoint_interval": 50,
-      "shot_batch_size": null
+      "shot_batch_size": 5
     }
   },
   "control": {
-    "kind": "small_output",
-    "rms_mps": 5.0
+    "kind": "zero_output"
   },
   "robustness": {
-    "condition": "marmousi_noise_sigma2",
-    "noise_sigma": 2.0,
+    "condition": "overthrust",
+    "noise_sigma": 0.0,
     "noise_seed": 3
   },
-  "protocol": "paper_supplement_v1",
-  "speedup": {
-    "source_encoding": {
-      "supershots": 1,
-      "seed": 3
-    }
-  }
+  "protocol": "paper_supplement_v1"
 }
