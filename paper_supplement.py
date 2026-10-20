@@ -162,6 +162,11 @@ def build_specs(selection=None):
                  spec("G2_direct_keepadam_s3", experiment("direct"), control={**PREFIT, "keep_optimizer_state": True}),
                  spec("G3_direct_lr1em05_s3", g3, control=PREFIT),
                  spec("G1F_directFR_warmup20_s3", g1fr, control=PREFIT)]
+    # Review (major 8): the same three restarts for the direct network with Fourier layers.
+    g3fr = experiment("directFR")
+    g3fr["training"]["learning_rate"] = 1e-5
+    q["q6_G"] += [spec("G2F_directFR_keepadam_s3", experiment("directFR"), control={**PREFIT, "keep_optimizer_state": True}),
+                  spec("G3F_directFR_lr1em05_s3", g3fr, control=PREFIT)]
     # J: late loss spike of sigma 4 E4 under a learning-rate schedule or beta2 = 0.99.
     j1 = experiment("E4", "sigma4")
     j1["training"]["lr_schedule"] = copy.deepcopy(LR_SCHEDULE)
@@ -210,6 +215,15 @@ def build_specs(selection=None):
     for c in ("overthrust", "sigma2", "sigma4"):
         q["q12_ours_se"] += [spec(f"M_E3_{c}_s3", experiment("E3", c), condition=c),
                              spec(f"M_E3_se_{c}_s3", long(experiment("E3", c)), condition=c, speedup=se)]
+    # Review round 1 (docs/paper_supplement.md, "Review experiments"):
+    # (1) RFS-IFWI (E3 + SE) with three source-encoding seeds in one session (encoding randomness, major 1);
+    # (2) Res-IFWI-SE on Overthrust (ablation without Fourier layers, major 7);
+    # (3) direct-network restarts with warmup, kept Adam moments or a 10x smaller rate (major 8; q6_G).
+    def se_seed(seed):
+        return {"source_encoding": {"supershots": 1, "seed": seed}}
+    q["q13_review"] = [spec(f"R_E3_se_enc{seed}_s3", long(experiment("E3"), 1500), speedup=se_seed(seed)) for seed in (3, 1, 2)]
+    q["q13_review"].append(spec("R_E2_se_overthrust_s3", long(experiment("E2", "overthrust")), condition="overthrust", speedup=se))
+    q["q13_review"] += q["q6_G"]
     # Formal runs that depend on a screening selection.
     if "C_grid_lr" in selection:
         lr, formal = float(selection["C_grid_lr"]), []

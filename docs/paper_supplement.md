@@ -155,3 +155,19 @@ python residual_ifwi.py --config F:\project\IFWI\.worktrees\offline-diagnostics-
 ```
 
 建议先各用 `--epochs 1001` 试一步，确认 checkpoint 能读入、身份校验通过、第 1001 步的 RMSE 与原轨迹衔接，再改成 4000。三组各约 5 小时。
+
+## 审稿补充实验（`q13_review`）
+
+对应审稿报告（report2）中需要新数据的三条意见，10 次运行，约 18–20 小时：
+
+| 运行 | 回应 | 内容 |
+|---|---|---|
+| `R_E3_se_enc{3,1,2}_s3` | major 1：编码随机性、单种子 | RFS-IFWI（E3 + SE，与 q8 的 S1 同配置）用三组编码种子在同一会话里各跑 1500 步；种子 3 应复现 S1，用作同会话计时基准。报告 k*、t*、第 1000 步 RMSE 的均值与标准差 |
+| `R_E2_se_overthrust_s3` | major 7：Overthrust 上的消融 | Res-IFWI-SE（无 Fourier 层 + SE），2000 步 |
+| `G1/G2/G3_direct_*`、`G1F/G2F/G3F_directFR_*` | major 8：直接表示失败是否源于 Adam 冷启动 | 预训练后分别用 20 步 warmup、保留预训练 Adam 矩、η=1e-5 重启；IFWI 与 FR-IFWI 各三组（G2F、G3F 为新增，其余与 q6_G 同名同配置，已跑完会被跳过） |
+
+```bash
+python paper_queue.py experiments/paper_supplement/queues/q13_review.json --out-root outputs/paper_supplement --shared-dir SHARED --wait-idle
+```
+
+无学习率衰减，编码运行的预算只决定停止点；精度仍按第 1000 步比较。

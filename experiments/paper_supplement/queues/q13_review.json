@@ -1,0 +1,12 @@
+[
+  "specs/R_E3_se_enc3_s3.json",
+  "specs/R_E3_se_enc1_s3.json",
+  "specs/R_E3_se_enc2_s3.json",
+  "specs/R_E2_se_overthrust_s3.json",
+  "specs/G1_direct_warmup20_s3.json",
+  "specs/G2_direct_keepadam_s3.json",
+  "specs/G3_direct_lr1em05_s3.json",
+  "specs/G1F_directFR_warmup20_s3.json",
+  "specs/G2F_directFR_keepadam_s3.json",
+  "specs/G3F_directFR_lr1em05_s3.json"
+]
