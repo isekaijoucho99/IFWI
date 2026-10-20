@@ -158,12 +158,11 @@ python residual_ifwi.py --config F:\project\IFWI\.worktrees\offline-diagnostics-
 
 ## 审稿补充实验（`q13_review`）
 
-对应审稿报告（report2）中需要新数据的三条意见，10 次运行，约 18–20 小时：
+对应审稿报告（report2）中需要新数据的意见，9 次运行，约 16–18 小时（Overthrust 上的 Res-IFWI-SE 已移到 q14，按达标口径运行）：
 
 | 运行 | 回应 | 内容 |
 |---|---|---|
 | `R_E3_se_enc{3,1,2}_s3` | major 1：编码随机性、单种子 | RFS-IFWI（E3 + SE，与 q8 的 S1 同配置）用三组编码种子在同一会话里各跑 1500 步；种子 3 应复现 S1，用作同会话计时基准。报告 k*、t*、第 1000 步 RMSE 的均值与标准差 |
-| `R_E2_se_overthrust_s3` | major 7：Overthrust 上的消融 | Res-IFWI-SE（无 Fourier 层 + SE），2000 步 |
 | `G1/G2/G3_direct_*`、`G1F/G2F/G3F_directFR_*` | major 8：直接表示失败是否源于 Adam 冷启动 | 预训练后分别用 20 步 warmup、保留预训练 Adam 矩、η=1e-5 重启；IFWI 与 FR-IFWI 各三组（G2F、G3F 为新增，其余与 q6_G 同名同配置，已跑完会被跳过） |
 
 ```bash
@@ -171,3 +170,24 @@ python paper_queue.py experiments/paper_supplement/queues/q13_review.json --out-
 ```
 
 无学习率衰减，编码运行的预算只决定停止点；精度仍按第 1000 步比较。
+
+## 达标口径（time-to-target）：`--stop-rmse`、`target_plan.py` 与 `q14_overthrust`
+
+论文改为比较“达到目标精度 ε 所需的更新次数 k* 与时间 t*”，并展示各方法在 k* 时的速度。`core_runner.py` 新增 `--stop-rmse ε`（或 spec 中 `"target": {"stop_rmse": ε}`）：第一次 RMSE ≤ ε 时保存 `target_velocity.npy`、`target_reached.json` 并停止。续跑是精确的（测试：从中间检查点续跑到 k* 与一次跑到 k* 的速度逐位相同）。ε：Marmousi 396.95，Overthrust 229.75，含噪 Marmousi 440.9375（相对 v0 降低 15%）。
+
+**1. `target_plan.py`**：按 `experiments/paper_supplement/target_plan.json` 依次运行，已完成的跳过。
+
+- `K_*`：从 k* 之前最近的检查点续跑到 k*，得到 Fig. 2/4 用的 k* 速度（每个只需几十步）。
+- `X_*`：把没达标的运行接着跑，最多到 4000 步，达标即停（IFWI、FR-IFWI、Res-IFWI-SE、两组含噪 Res-IFWI；Res-IFWI 来自 residual_ifwi.py，无停止选项，跑满 4000 后从历史读 k*）。这些运行的 RMSE 在第 1000 步前后仍在上升，可能到 4000 也不达标。
+
+```bash
+python target_plan.py experiments/paper_supplement/target_plan.json --out-root outputs/paper_supplement/targets --shared-dir SHARED --roots SPEED=F:/project/IFWI/outputs/speed_q8_0c82ad3_20261018_1451 Q12=F:/project/IFWI/outputs/q12_e3_se_205c956_20261019_2208 MISSING3=F:/project/IFWI/outputs/core_missing3_20261016 AK=F:/project/IFWI/outputs/paper_supplement_AK_0d9ef20_20261018_014331 ROB=F:/project/IFWI/outputs/robustness_overthrust_noise_20261016 PAPER13=F:/project/IFWI/.worktrees/offline-diagnostics-561c068-review/outputs/paper13_fresh_pair_20261012/01_paper13_ifwi/residual_seed3_20261012_091341_8f26bf
+```
+
+先加 `--dry-run` 检查路径（尤其 Q12 下 `runs/<名称>/attempt_01` 是否存在）；也可用 `--only K_RFS_marmousi ...` 只跑部分条目。
+
+**2. `q14_overthrust`**：表 III 中 Overthrust 还缺的四行，都带 `target`，最多 4000 步、达标即停：IFWI、FR-IFWI（直接表示 + 预训练）、Res-IFWI-MS、Res-IFWI-SE。
+
+```bash
+python paper_queue.py experiments/paper_supplement/queues/q14_overthrust.json --out-root outputs/paper_supplement --shared-dir SHARED --wait-idle
+```

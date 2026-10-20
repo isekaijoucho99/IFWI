@@ -47,7 +47,7 @@ from core_speed import CoarseView, SourceEncoder, coarse_problem, validate_speed
 
 ROOT=Path(__file__).resolve().parent
 SCHEMA='paper_supplement_v1'
-SPEC_KEYS={'name','experiment','control','robustness','model','background','protocol','speedup'}
+SPEC_KEYS={'name','experiment','control','robustness','model','background','protocol','speedup','target'}
 EXTENDABLE_SCHEMAS=(SCHEMA,'robustness_overthrust_noise_v1')
 
 
@@ -138,8 +138,11 @@ def build_model(spec, cfg, background):
     return model
 
 
-def run(spec, out, device='cuda:0', resume=None, save_figures=True, shared_dir=None, extend=False):
+def run(spec, out, device='cuda:0', resume=None, save_figures=True, shared_dir=None, extend=False, stop_rmse=None):
     check_spec(spec)
+    # Time-to-target protocol: stop at the first update whose velocity RMSE reaches the target.
+    if stop_rmse is None: stop_rmse=(spec.get('target') or {}).get('stop_rmse')
+    reached=None
     cfg=copy.deepcopy(spec['experiment']); control=spec['control']
     e.validate_config(cfg)
     schedule=cfg['training'].get('frequency_schedule'); lr_setting=cfg['training'].get('lr_schedule')
@@ -203,7 +206,7 @@ def run(spec, out, device='cuda:0', resume=None, save_figures=True, shared_dir=N
                 if saved.get('schema') not in EXTENDABLE_SCHEMAS or budget_free(saved['spec'])!=budget_free(spec) or saved['provenance']!=provenance:
                     raise ValueError('Extend: schema/config/data identity mismatch beyond the update budget')
                 if saved['phase']!='inversion' or saved['completed_updates']>=spec['experiment']['training']['epochs']:
-                    raise ValueError('Extend needs a finished inversion checkpoint and a larger budget')
+                    raise ValueError('Extend needs an inversion checkpoint and a larger budget')
                 changed=sorted(k for k in set(saved['sources'])|set(sources) if saved['sources'].get(k)!=sources.get(k))
                 atomic_json(out/'extend.json',{'from_checkpoint':str(Path(resume).resolve()),'original_schema':saved['schema'],
                     'from_updates':saved['completed_updates'],'to_updates':spec['experiment']['training']['epochs'],
@@ -365,7 +368,10 @@ def run(spec, out, device='cuda:0', resume=None, save_figures=True, shared_dir=N
                     'elapsed_training_seconds':elapsed,'preparation_seconds':timing['preparation_seconds'],
                     'remaining_seconds_estimate':(cfg['training']['epochs']-completed)*np.mean([x['step_seconds'] for x in history[-30:]])})
                 emit(f"{spec['name']} {update}/{cfg['training']['epochs']}: RMSE(after)={post_metrics['rmse_mps']:.3f} SSIM={post_metrics['ssim']:.5f} MSE(before)={report['data_mse']:.7g} step={row['step_seconds']:.2f}s elapsed={elapsed/60:.1f}min")
-                if update%cfg['training']['checkpoint_interval']==0 or update==cfg['training']['epochs']:
+                if stop_rmse is not None and post_metrics['rmse_mps']<=stop_rmse:
+                    reached={'update':update,'stop_rmse':stop_rmse,'rmse_mps':post_metrics['rmse_mps'],
+                             'ssim':post_metrics['ssim'],'after_cumulative_seconds':row['after_cumulative_seconds']}
+                if update%cfg['training']['checkpoint_interval']==0 or update==cfg['training']['epochs'] or reached:
                     es=time.perf_counter(); mse=e.evaluate_data_mse(model,problem); sync(model)
                     timing['diagnostic_seconds']+=time.perf_counter()-es
                     evaluations.append({'evaluated_updates':update,'update':update,**post_metrics,'data_mse':mse,
@@ -373,6 +379,10 @@ def run(spec, out, device='cuda:0', resume=None, save_figures=True, shared_dir=N
                     atomic_json(out/'evaluation_history.json',evaluations)
                     checkpoint('checkpoints/update_%04d.pt'%update); checkpoint('checkpoint.pt')
                     np.save(out/'checkpoints'/('velocity_%04d.npy'%update),post)
+                if reached:
+                    np.save(out/'target_velocity.npy',post); atomic_json(out/'target_reached.json',reached)
+                    emit(f"TARGET reached at update {update}: RMSE={post_metrics['rmse_mps']:.3f} <= {stop_rmse}")
+                    break
         sync(model); timing['training_seconds']=train_prior+time.perf_counter()-train_started
         phase='finalizing'
         final=evaluations[-1]; np.save(out/'final_velocity.npy',post if history else initial)
@@ -406,7 +416,8 @@ def run(spec, out, device='cuda:0', resume=None, save_figures=True, shared_dir=N
 if __name__=='__main__':
     parser=argparse.ArgumentParser(); parser.add_argument('--spec'); parser.add_argument('--out',required=True)
     parser.add_argument('--resume'); parser.add_argument('--device',default='cuda:0'); parser.add_argument('--no-plots',action='store_true')
-    parser.add_argument('--extend',help='finished checkpoint.pt to continue to --epochs updates (spec read from it)')
+    parser.add_argument('--extend',help='checkpoint (.pt) to continue to --epochs updates (spec read from it)')
+    parser.add_argument('--stop-rmse',type=float,help='stop at the first update whose velocity RMSE is at or below this value')
     parser.add_argument('--shared-dir',help='shared observations root (default outputs/shared in the repository)')
     parser.add_argument('--epochs',type=int,help='override the update budget, e.g. 5 for a first-step check')
     args=parser.parse_args()
@@ -415,7 +426,7 @@ if __name__=='__main__':
             parser.error('--extend needs --epochs and no --resume')
         spec=torch.load(args.extend,map_location='cpu',weights_only=False)['spec']
         spec['experiment']['training']['epochs']=args.epochs
-        run(spec,args.out,args.device,args.extend,not args.no_plots,args.shared_dir,extend=True)
+        run(spec,args.out,args.device,args.extend,not args.no_plots,args.shared_dir,extend=True,stop_rmse=args.stop_rmse)
         raise SystemExit(0)
     if not args.spec:
         parser.error('--spec is required unless --extend is given')
@@ -423,4 +434,4 @@ if __name__=='__main__':
     if args.epochs is not None:
         spec['experiment']['training']['epochs']=args.epochs
         spec['experiment']['training']['checkpoint_interval']=min(spec['experiment']['training']['checkpoint_interval'],args.epochs)
-    run(spec,args.out,args.device,args.resume,not args.no_plots,args.shared_dir)
+    run(spec,args.out,args.device,args.resume,not args.no_plots,args.shared_dir,stop_rmse=args.stop_rmse)

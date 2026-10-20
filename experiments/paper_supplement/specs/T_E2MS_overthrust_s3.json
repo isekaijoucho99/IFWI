@@ -1,7 +1,7 @@
 {
-  "name": "R_E2_se_overthrust_s3",
+  "name": "T_E2MS_overthrust_s3",
   "experiment": {
-    "experiment_name": "R_E2_se_overthrust_s3",
+    "experiment_name": "T_E2MS_overthrust_s3",
     "parameterization": "residual",
     "seed": 3,
     "data": {
@@ -61,10 +61,23 @@
       "pml_reflection": 1e-06
     },
     "training": {
-      "epochs": 2000,
+      "epochs": 4000,
       "learning_rate": 0.0001,
       "checkpoint_interval": 50,
-      "shot_batch_size": 5
+      "shot_batch_size": 5,
+      "frequency_schedule": [
+        {
+          "max_hz": 3.0,
+          "updates": 100
+        },
+        {
+          "max_hz": 5.0,
+          "updates": 100
+        },
+        {
+          "max_hz": null
+        }
+      ]
     }
   },
   "control": {
@@ -76,10 +89,7 @@
     "noise_seed": 3
   },
   "protocol": "paper_supplement_v1",
-  "speedup": {
-    "source_encoding": {
-      "supershots": 1,
-      "seed": 3
-    }
+  "target": {
+    "stop_rmse": 229.75
   }
 }

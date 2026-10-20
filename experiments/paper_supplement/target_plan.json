@@ -1,0 +1,12 @@
+[
+  {"name": "K_RFS_marmousi", "purpose": "Fig. 2(h): RFS-IFWI at k*=794", "checkpoint": "{SPEED}/runs/S1_E3_encoded_s3/attempt_01/checkpoints/update_0750.pt", "epochs": 3000, "stop_rmse": 396.95},
+  {"name": "K_ResFR_marmousi", "purpose": "Fig. 2(g): Res-FR-IFWI at k*=593", "checkpoint": "{SPEED}/runs/A_E3_s3/attempt_01/checkpoints/update_0550.pt", "epochs": 1000, "stop_rmse": 396.95},
+  {"name": "K_RFS_overthrust", "purpose": "Fig. 4: RFS-IFWI at k*=613", "checkpoint": "{Q12}/runs/M_E3_se_overthrust_s3/attempt_01/checkpoints/update_0600.pt", "epochs": 2000, "stop_rmse": 229.75},
+  {"name": "K_ResFR_overthrust", "purpose": "Fig. 4: Res-FR-IFWI at k*=721", "checkpoint": "{Q12}/runs/M_E3_overthrust_s3/attempt_01/checkpoints/update_0700.pt", "epochs": 1000, "stop_rmse": 229.75},
+  {"name": "X_IFWI_marmousi", "purpose": "IFWI continued to the target (max 4000)", "checkpoint": "{MISSING3}/runs/02_direct_prefit_sigma15/attempt_01/checkpoint.pt", "epochs": 4000, "stop_rmse": 396.95},
+  {"name": "X_FRIFWI_marmousi", "purpose": "FR-IFWI continued to the target (max 4000)", "checkpoint": "{AK}/runs/E_directFR_prefit_s3/attempt_01/checkpoint.pt", "epochs": 4000, "stop_rmse": 396.95},
+  {"name": "X_ResIFWISE_marmousi", "purpose": "Res-IFWI-SE continued to the target (max 4000)", "checkpoint": "{Q12}/runs/M_E2_se_s3/attempt_01/checkpoint.pt", "epochs": 4000, "stop_rmse": 396.95},
+  {"name": "X_ResIFWI_sigma2", "purpose": "Res-IFWI at -6 dB continued to the target (max 4000)", "checkpoint": "{ROB}/runs/04_marmousi_noise_sigma2_E2/attempt_01/checkpoint.pt", "epochs": 4000, "stop_rmse": 440.9375},
+  {"name": "X_ResIFWI_sigma4", "purpose": "Res-IFWI at -12 dB continued to the target (max 4000)", "checkpoint": "{ROB}/runs/07_marmousi_noise_sigma4_E2/attempt_01/checkpoint.pt", "epochs": 4000, "stop_rmse": 440.9375},
+  {"name": "X_ResIFWI_marmousi", "purpose": "Res-IFWI (residual_ifwi.py run) continued to 4000; k* read from its history", "runner": "residual", "config": "{PAPER13}/config.json", "checkpoint": "{PAPER13}/checkpoint.pt", "epochs": 4000}
+]

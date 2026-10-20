@@ -210,6 +210,25 @@ def test_extend_continues_a_finished_run_exactly(tmp_path):
                      shared_dir=tmp_path / "shared", extend=True)
 
 
+def test_stop_rmse_ends_at_the_target_update_exactly(tmp_path):
+    full = tiny_spec(tmp_path, "full", "E3", training={"epochs": 5, "checkpoint_interval": 2})
+    out, rows = run(tmp_path, full)
+    rmse = [r["after_metrics"]["rmse_mps"] for r in rows]
+    target = rmse[2]                                                   # reached at update 3 at the latest
+    k = next(i + 1 for i, r in enumerate(rmse) if r <= target)
+    stopped = runner().run(full, tmp_path / "stopped", "cpu", save_figures=False, shared_dir=tmp_path / "shared",
+                           stop_rmse=target)
+    reached = json.loads((stopped / "target_reached.json").read_text())
+    assert reached["update"] == k and len(json.loads((stopped / "history.json").read_text())) == k
+    # Continuing from an intermediate checkpoint reproduces the same velocity at the target update.
+    spec = torch.load(out / "checkpoints" / "update_0002.pt", weights_only=False)["spec"]
+    spec["experiment"]["training"]["epochs"] = 5
+    again = runner().run(spec, tmp_path / "again", "cpu", resume=out / "checkpoints" / "update_0002.pt", save_figures=False,
+                         shared_dir=tmp_path / "shared", extend=True, stop_rmse=target)
+    if k > 2:
+        assert np.array_equal(np.load(again / "target_velocity.npy"), np.load(stopped / "target_velocity.npy"))
+
+
 def test_queue_dry_run_lists_every_spec(tmp_path, capsys):
     queue = importlib.import_module("paper_queue")
     folder = tmp_path / "supplement"

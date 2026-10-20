@@ -222,8 +222,17 @@ def build_specs(selection=None):
     def se_seed(seed):
         return {"source_encoding": {"supershots": 1, "seed": seed}}
     q["q13_review"] = [spec(f"R_E3_se_enc{seed}_s3", long(experiment("E3"), 1500), speedup=se_seed(seed)) for seed in (3, 1, 2)]
-    q["q13_review"].append(spec("R_E2_se_overthrust_s3", long(experiment("E2", "overthrust")), condition="overthrust", speedup=se))
     q["q13_review"] += q["q6_G"]
+    # Overthrust rows still missing from Table III, run to the target accuracy (time-to-target protocol).
+    ot = {"stop_rmse": 229.75}
+    def target(item, stop):
+        item["target"] = dict(stop)
+        return item
+    q["q14_overthrust"] = [
+        target(spec("T_direct_prefit_overthrust_s3", long(experiment("direct", "overthrust"), 4000), control=PREFIT, condition="overthrust"), ot),
+        target(spec("T_directFR_prefit_overthrust_s3", long(experiment("directFR", "overthrust"), 4000), control=PREFIT, condition="overthrust"), ot),
+        target(spec("T_E2MS_overthrust_s3", long(experiment("E2MS", "overthrust"), 4000), condition="overthrust"), ot),
+        target(spec("T_E2_se_overthrust_s3", long(experiment("E2", "overthrust"), 4000), condition="overthrust", speedup=se), ot)]
     # Formal runs that depend on a screening selection.
     if "C_grid_lr" in selection:
         lr, formal = float(selection["C_grid_lr"]), []
