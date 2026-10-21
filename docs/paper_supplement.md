@@ -237,3 +237,23 @@ python paper_queue.py experiments/paper_supplement/queues/q16_background.json --
 ```
 
 先只看 D1；D2 可在 D1 结束后视结果决定是否继续。
+
+## smooth400 背景上的试点（队列 `q17_smooth400_pilot`）
+
+D1 表明 IFWI 在 σ15 背景上失败、在 smooth400 背景上收敛，原因在背景而不是代码：smooth400 背景下 1000 次更新后 RMSE 为 415.4 m/s，与最早的 418 m/s 基本一致。smooth400 的生成方式可以从数据反推：在原分辨率上对慢度做 σ=36 点（约 135 m）的高斯平滑，结果与该文件的 RMS 差为 2.6 m/s；再接 σ50 速度平滑和 4 倍下采样后，与 D1 的背景差 1.4 m/s。它的垂直双程走时误差为 13.5 ms，而 σ15 背景为 43.6 ms；速度 RMSE 前者反而更大（537 对 519 m/s）。
+
+试点在同一会话中、smooth400 背景上依次运行消融链（各组只改了背景）：
+
+| 运行 | 方法 |
+|---|---|
+| `B_E2_smooth400_s3` | P-IFWI，1000 次 |
+| `B_E2MS_smooth400_s3` | MS-IFWI，1000 次 |
+| `B_E3_smooth400_s3` | FR-IFWI，1000 次 |
+| `D2_E3_se_smooth400_s3` | PFS-IFWI，1500 次 |
+| `D1_direct_prefit_smooth400_s3` | IFWI 重跑（可选）：RMSE 轨迹直接沿用已完成的 D1；只有需要同会话的单步耗时才跑 |
+
+ε 沿用原规则：取非 Fourier 方法（IFWI、P-IFWI、MS-IFWI）中最终 RMSE 最低者，k\*、t\* 事后从逐次记录中计算。约 7 小时，加可选的 D1 约 1.6 小时。之前完成的 D1 每次更新 6.91 s，高于同类运行的约 5.8 s；如果当时 GPU 上还有其他任务，它的计时就不能用于加速比。
+
+```bash
+python paper_queue.py experiments/paper_supplement/queues/q17_smooth400_pilot.json --out-root outputs/paper_supplement --shared-dir SHARED --wait-idle
+```

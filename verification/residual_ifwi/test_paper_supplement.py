@@ -308,3 +308,16 @@ def test_smooth400_background_matches_earliest_recipe_and_q16(tmp_path):
     assert d1["experiment"]["training"]["epochs"] == 1000 and d1["experiment"]["parameterization"] == "absolute"
     d2 = q16["D2_E3_se_smooth400_s3"]
     assert d2["speedup"]["source_encoding"]["supershots"] == 1 and d2["control"] == ps().ZERO
+
+
+def test_q17_smooth400_pilot_changes_only_the_background():
+    queues = ps().build_specs()
+    pilot = {s["name"]: s for s in queues["q17_smooth400_pilot"]}
+    assert list(pilot)[-2:] == ["D2_E3_se_smooth400_s3", "D1_direct_prefit_smooth400_s3"]
+    for name, method in (("B_E2_smooth400_s3", "E2"), ("B_E2MS_smooth400_s3", "E2MS"), ("B_E3_smooth400_s3", "E3")):
+        item = pilot[name]
+        base = ps().spec(name, ps().experiment(method))
+        assert item["background"] == {"kind": "smooth400"}
+        assert item["robustness"]["condition"] == "marmousi_clean_smooth400"     # shares D1's observations
+        assert {k: v for k, v in item.items() if k not in ("background", "robustness")} == \
+               {k: v for k, v in base.items() if k != "robustness"}

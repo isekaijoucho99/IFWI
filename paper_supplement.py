@@ -269,6 +269,15 @@ def build_specs(selection=None):
     q["q16_background"] = [
         spec("D1_direct_prefit_smooth400_s3", experiment("direct"), control=PREFIT, background=SMOOTH400),
         spec("D2_E3_se_smooth400_s3", long(experiment("E3"), 1500), speedup=se, background=SMOOTH400)]
+    # Pilot on the smooth400 background (the only background tested on which direct IFWI converges; it equals
+    # Gaussian slowness smoothing, ~135 m, plus velocity smoothing, ~188 m, to 4 m/s RMS): the ablation chain
+    # in one session. IFWI reuses D1's trajectory; its rerun is last and optional (same-session time per update).
+    q["q17_smooth400_pilot"] = [
+        spec("B_E2_smooth400_s3", experiment("E2"), background=SMOOTH400),
+        spec("B_E2MS_smooth400_s3", experiment("E2MS"), background=SMOOTH400),
+        spec("B_E3_smooth400_s3", experiment("E3"), background=SMOOTH400),
+        q["q16_background"][1],                                     # D2: PFS-IFWI, 1500 updates
+        q["q16_background"][0]]                                     # D1 rerun (optional)
     # Formal runs that depend on a screening selection.
     if "C_grid_lr" in selection:
         lr, formal = float(selection["C_grid_lr"]), []
