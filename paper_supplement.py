@@ -63,6 +63,7 @@ PREFIT = {"kind": "prefit_background", "updates": 5000, "learning_rate": 0.0001,
 LR_SCHEDULE = {"warmup_updates": 20, "decay_start": 201, "decay_updates": 800, "final_factor": 0.1}
 WARMUP_ONLY = {"warmup_updates": 20, "decay_start": 1, "decay_updates": 1, "final_factor": 1.0}
 LINEAR_BACKGROUND = {"kind": "linear_depth", "top_mps": 1500.0, "gradient_per_s": 2.0}
+SMOOTH400 = {"kind": "smooth400"}       # background of the earliest IFWI runs (pretrain_marmousi.py)
 
 
 def experiment(method, condition="clean", seed=3, name=None):
@@ -94,7 +95,8 @@ def spec(name, cfg, control=ZERO, condition="clean", model=None, background=None
         result["speedup"] = copy.deepcopy(speedup)
     if background is not None:
         result["background"] = copy.deepcopy(background)
-        result["robustness"]["condition"] += "_lineardepth"   # observations are shared per background
+        suffix = {"linear_depth": "_lineardepth"}.get(background["kind"], "_" + background["kind"])
+        result["robustness"]["condition"] += suffix          # observations are shared per background
     return result
 
 
@@ -259,6 +261,14 @@ def build_specs(selection=None):
         # P4: record-length curriculum for RFS-IFWI (first half of each record for 200 updates).
         with_accel(spec("P4_E3_se_window_s3", long(experiment("E3"), 1500), speedup=se),
                    {"time_window": [{"from": 1, "fraction": 0.5}, {"from": 201, "fraction": 1.0}]})]
+    # Background diagnostic: the earliest IFWI (original IFWI2D code, smooth400 background) improves on its
+    # background up to ~1000 updates, whereas the paper's IFWI (core_runner, sigma-15 background) diverges.
+    # D1 runs the paper's IFWI with only the background changed to smooth400: if it follows the earliest run,
+    # the difference comes from the background; if it still diverges, from the code path. D2 (optional) is
+    # PFS-IFWI on the same background, needed only if D1 shows that the background matters.
+    q["q16_background"] = [
+        spec("D1_direct_prefit_smooth400_s3", experiment("direct"), control=PREFIT, background=SMOOTH400),
+        spec("D2_E3_se_smooth400_s3", long(experiment("E3"), 1500), speedup=se, background=SMOOTH400)]
     # Formal runs that depend on a screening selection.
     if "C_grid_lr" in selection:
         lr, formal = float(selection["C_grid_lr"]), []

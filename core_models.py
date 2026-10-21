@@ -26,6 +26,8 @@ initialization and the zero output layer are unchanged, so step 0 is still exact
 """
 from __future__ import annotations
 
+from pathlib import Path
+
 import numpy as np
 import torch
 
@@ -148,6 +150,23 @@ def warp_coordinates(model, coords):
         raise ValueError(f"warped coordinates {tuple(new.shape)} do not match {tuple(model.coords.shape)}")
     model.coords.copy_(new)
     return model
+
+
+SMOOTH400_CSV = "vel_marmousi_smooth400_376x1151.csv"
+
+
+def smooth400_background(data_dir, shape):
+    """Background of the earliest IFWI runs (pretrain_marmousi.py), reproduced step by step: the author's
+    smoothed Marmousi CSV read with pandas' default header (first row consumed), Gaussian sigma = 50 on the
+    full-resolution grid (reflect, truncate 4), then every 4th point; float32 m/s. Its generating recipe is
+    unknown, so it may contain truth information beyond the sigma-15 background."""
+    import pandas as pd
+    from scipy.ndimage import gaussian_filter
+    smooth = np.array(pd.read_csv(Path(data_dir) / SMOOTH400_CSV))
+    background = gaussian_filter(smooth, sigma=50)[::4, ::4].astype(np.float32)
+    if background.shape != tuple(shape):
+        raise ValueError(f"smooth400 background {background.shape} does not match the grid {tuple(shape)}")
+    return background
 
 
 def linear_depth_background(shape, dz_m, top_mps, gradient_per_s):

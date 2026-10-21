@@ -220,3 +220,20 @@ python paper_queue.py experiments/paper_supplement/queues/q15_accel.json --out-r
 ```
 
 建议先跑 `P1_E3_fs_d1em2_s3`，确认 Gauss–Newton 的单步开销和前几十步的 RMSE 走向，再跑其余。
+
+## 背景诊断（spec 字段 `background: {kind: smooth400}`；队列 `q16_background`）
+
+最早的 IFWI（2026-09-20，原作者 `IFWI2D` 入口）先预训练到 smooth400 背景，在约 1000 次更新内把 RMSE 从 537 降到 418 m/s，随后在第 2500–2600 次之间发散。论文中的 IFWI（`core_runner`，σ15 背景）则从 518.75 一路升到 835 m/s。两者有两处不同：背景和代码路径。`smooth400` 背景逐步复现 `pretrain_marmousi.py`：用 pandas 默认表头读取（首行被当作表头）、在原分辨率上做 Gaussian σ=50（reflect、truncate 4），再每 4 点取 1 点。与真值的 RMSE 为 537.36 m/s。该文件原始生成配方未知，因此不能声称它不含真值信息。
+
+| 运行 | 内容 |
+|---|---|
+| `D1_direct_prefit_smooth400_s3` | 论文的 IFWI（直接形式，预训练 5000 次后重置 Adam），只把背景换成 smooth400，1000 次更新，约 1.6 小时 |
+| `D2_E3_se_smooth400_s3` | 可选：PFS-IFWI 在同一背景下 1500 次。只在 D1 表明背景起作用时才需要，用于同背景对比 |
+
+判读：D1 若与最早的结果一致（约 1000 次时降到约 420 m/s），说明差异来自背景，论文中"直接网络失败"的结论需要限定为 σ15 背景；D1 若仍然发散，说明差异来自代码路径，需要逐项对齐 `IFWI2D.train` 与 `core_runner` 的损失、初始化和优化细节。
+
+```bash
+python paper_queue.py experiments/paper_supplement/queues/q16_background.json --out-root outputs/paper_supplement --shared-dir SHARED --wait-idle
+```
+
+先只看 D1；D2 可在 D1 结束后视结果决定是否继续。

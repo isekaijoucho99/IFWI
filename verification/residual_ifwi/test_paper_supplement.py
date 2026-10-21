@@ -282,3 +282,29 @@ def test_queue_dry_run_lists_every_spec(tmp_path, capsys):
     printed = capsys.readouterr().out
     assert printed.count("core_runner.py") == 3 and "B_E2MS_sigma2_s3.json" in printed
     assert (folder / "configs" / "I_overthrust.json").exists()
+
+
+def test_smooth400_background_matches_earliest_recipe_and_q16(tmp_path):
+    import pandas as pd
+    from scipy.ndimage import gaussian_filter
+    models = importlib.import_module("core_models")
+    data = Path(__file__).resolve().parents[2] / "data"
+    v0 = models.smooth400_background(data, (94, 288))
+    expected = gaussian_filter(np.array(pd.read_csv(data / models.SMOOTH400_CSV)), sigma=50)[::4, ::4].astype(np.float32)
+    assert v0.dtype == np.float32 and np.array_equal(v0, expected)           # same as pretrain_marmousi.py
+    with pytest.raises(ValueError, match="does not match"):
+        models.smooth400_background(data, (8, 9))
+    item = tiny_spec(tmp_path, "smooth", background={"kind": "smooth400"})
+    runner().check_spec(item)
+    with pytest.raises(ValueError, match="spec.background"):
+        runner().check_spec({**item, "background": {"kind": "smooth400", "sigma": 50}})
+    with pytest.raises(ValueError, match="does not match"):                   # tiny grid != 94 x 288
+        run(tmp_path, item)
+    q16 = {s["name"]: s for s in ps().build_specs()["q16_background"]}
+    d1 = q16["D1_direct_prefit_smooth400_s3"]
+    base = ps().spec("D1_direct_prefit_smooth400_s3", ps().experiment("direct"), control=ps().PREFIT)
+    assert d1["background"] == {"kind": "smooth400"} and d1["robustness"]["condition"] == "marmousi_clean_smooth400"
+    assert {k: v for k, v in d1.items() if k != "background"} == {**base, "robustness": d1["robustness"]}
+    assert d1["experiment"]["training"]["epochs"] == 1000 and d1["experiment"]["parameterization"] == "absolute"
+    d2 = q16["D2_E3_se_smooth400_s3"]
+    assert d2["speedup"]["source_encoding"]["supershots"] == 1 and d2["control"] == ps().ZERO

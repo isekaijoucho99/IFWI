@@ -42,7 +42,7 @@ from experiments.muon_optimizer import build_optimizer
 from experiments.frequency_continuation import energy_scales, stage_cutoff
 from experiments.lr_schedule import lr_factor
 from core_controls import small_output, prefit_background, training_state, restore_training_state, sync, layer_snapshot, layer_changes
-from core_models import FourierFeatureVelocity, GridVelocity, linear_depth_background, traveltime_coordinates, warp_coordinates, warp_report, WARP_AXES
+from core_models import FourierFeatureVelocity, GridVelocity, linear_depth_background, smooth400_background, traveltime_coordinates, warp_coordinates, warp_report, WARP_AXES
 from core_speed import CoarseView, SourceEncoder, coarse_problem, validate_speedup
 from core_accel import validate_accel, StepProblems, FunctionSpaceOptimizer, function_space_update, coordinate_scale
 
@@ -122,8 +122,10 @@ def check_spec(spec):
     if spec.get('accel') and (spec.get('speedup') or {}).get('coarse_lowpass'):
         raise ValueError('spec.accel cannot be combined with coarse low-pass stages')
     background=spec.get('background')
-    if background is not None and (background.get('kind')!='linear_depth' or set(background)!={'kind','top_mps','gradient_per_s'}):
-        raise ValueError('spec.background must be {kind: linear_depth, top_mps, gradient_per_s}')
+    if background is not None and not (
+            (background.get('kind')=='linear_depth' and set(background)=={'kind','top_mps','gradient_per_s'})
+            or (background.get('kind')=='smooth400' and set(background)=={'kind'})):
+        raise ValueError('spec.background must be {kind: linear_depth, top_mps, gradient_per_s} or {kind: smooth400}')
 
 
 def build_model(spec, cfg, background):
@@ -200,9 +202,13 @@ def run(spec, out, device='cuda:0', resume=None, save_figures=True, shared_dir=N
         truth,background,provenance=load_velocity_data(cfg,ROOT)
         if spec.get('background') is not None:
             override=spec['background']
-            background=linear_depth_background(truth.shape,cfg['data']['grid_spacing_m'],override['top_mps'],override['gradient_per_s'])
-            provenance={**provenance,'background_override':{**override,'array_hash':array_hash(background),
-                'note':'replaces the Gaussian background; no truth used'}}
+            if override['kind']=='smooth400':
+                background=smooth400_background(ROOT/'data',truth.shape)
+                note='the earliest IFWI background (pretrain_marmousi.py): smooth400 CSV, Gaussian sigma 50, stride 4'
+            else:
+                background=linear_depth_background(truth.shape,cfg['data']['grid_spacing_m'],override['top_mps'],override['gradient_per_s'])
+                note='replaces the Gaussian background; no truth used'
+            provenance={**provenance,'background_override':{**override,'array_hash':array_hash(background),'note':note}}
         atomic_json(out/'initial_model_provenance.json',provenance)
         if resume:
             saved=torch.load(resume,map_location='cpu',weights_only=False)
