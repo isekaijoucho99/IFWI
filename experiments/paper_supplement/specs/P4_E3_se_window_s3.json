@@ -1,0 +1,93 @@
+{
+  "name": "P4_E3_se_window_s3",
+  "experiment": {
+    "experiment_name": "P4_E3_se_window_s3",
+    "parameterization": "residual",
+    "seed": 3,
+    "data": {
+      "model_file": "vel_marmousi_376x1151.csv",
+      "model_units": "m/s",
+      "csv_header": "legacy",
+      "downsample": 4,
+      "crop_shape": null,
+      "grid_spacing_m": 15.0
+    },
+    "initialization": {
+      "sigma": 15.0,
+      "gaussian_mode": "reflect",
+      "gaussian_truncate": 4.0
+    },
+    "model": {
+      "neurons": [
+        2,
+        128,
+        128,
+        128,
+        128,
+        1
+      ],
+      "omega_0": 30.0,
+      "mean_kmps": 3.0,
+      "std_kmps": 1.0,
+      "fourier": {
+        "high_freq_num": 128,
+        "low_freq_num": 128,
+        "phi_num": 32,
+        "alpha": 0.01,
+        "lambda_init": "fr_inr"
+      }
+    },
+    "acquisition": {
+      "num_shots": 13,
+      "source_x_indices": null,
+      "source_start_index": 20,
+      "source_spacing_index": 20,
+      "source_end_margin": 10,
+      "source_depth_index": 1,
+      "receiver_depth_index": 2,
+      "receiver_stride": 1
+    },
+    "forward": {
+      "dt_s": 0.0019,
+      "nt": 1000,
+      "frequency_hz": 8.0,
+      "npad": 15,
+      "order": 2,
+      "free_surface": true,
+      "pml_reflection": 1e-06
+    },
+    "training": {
+      "epochs": 1500,
+      "learning_rate": 0.0001,
+      "checkpoint_interval": 50,
+      "shot_batch_size": null
+    }
+  },
+  "control": {
+    "kind": "zero_output"
+  },
+  "robustness": {
+    "condition": "marmousi_clean",
+    "noise_sigma": 0.0,
+    "noise_seed": 3
+  },
+  "protocol": "paper_supplement_v1",
+  "speedup": {
+    "source_encoding": {
+      "supershots": 1,
+      "seed": 3
+    }
+  },
+  "accel": {
+    "time_window": [
+      {
+        "from": 1,
+        "fraction": 0.5
+      },
+      {
+        "from": 201,
+        "fraction": 1.0
+      }
+    ]
+  }
+}

@@ -44,10 +44,11 @@ from experiments.lr_schedule import lr_factor
 from core_controls import small_output, prefit_background, training_state, restore_training_state, sync, layer_snapshot, layer_changes
 from core_models import FourierFeatureVelocity, GridVelocity, linear_depth_background, traveltime_coordinates, warp_coordinates, warp_report, WARP_AXES
 from core_speed import CoarseView, SourceEncoder, coarse_problem, validate_speedup
+from core_accel import validate_accel, StepProblems, FunctionSpaceOptimizer, function_space_update, coordinate_scale
 
 ROOT=Path(__file__).resolve().parent
 SCHEMA='paper_supplement_v1'
-SPEC_KEYS={'name','experiment','control','robustness','model','background','protocol','speedup','target'}
+SPEC_KEYS={'name','experiment','control','robustness','model','background','protocol','speedup','target','accel'}
 EXTENDABLE_SCHEMAS=(SCHEMA,'robustness_overthrust_noise_v1')
 
 
@@ -57,7 +58,7 @@ def budget_free(spec):
     return spec
 
 
-SOURCE_FILES=('core_runner.py','core_controls.py','core_models.py','core_speed.py','robust_observations.py',
+SOURCE_FILES=('core_runner.py','core_controls.py','core_models.py','core_speed.py','core_accel.py','robust_observations.py',
               'ifwi_modules.py','rnn_fd.py','generator.py','plot_functions.py')
 
 
@@ -115,6 +116,11 @@ def check_spec(spec):
     if kind=='grid' and spec['control']['kind']!='zero_output':
         raise ValueError('Grid FWI starts at dv = 0 (control zero_output)')
     validate_speedup(spec.get('speedup'),spec['experiment'])
+    validate_accel(spec.get('accel'))
+    if (spec.get('accel') or {}).get('function_space') and spec['control'].get('keep_optimizer_state'):
+        raise ValueError('function_space cannot reuse prefit Adam moments')
+    if spec.get('accel') and (spec.get('speedup') or {}).get('coarse_lowpass'):
+        raise ValueError('spec.accel cannot be combined with coarse low-pass stages')
     background=spec.get('background')
     if background is not None and (background.get('kind')!='linear_depth' or set(background)!={'kind','top_mps','gradient_per_s'}):
         raise ValueError('spec.background must be {kind: linear_depth, top_mps, gradient_per_s}')
@@ -239,6 +245,14 @@ def run(spec, out, device='cuda:0', resume=None, save_figures=True, shared_dir=N
             problem['frequency_scales']=energy_scales(problem['observed'],schedule,cfg['forward']['dt_s'])
             atomic_json(out/'frequency_scales.json',{str(k):v for k,v in problem['frequency_scales'].items()})
         model=build_model(spec,cfg,background).to(device)
+        accel=spec.get('accel') or {}
+        def make_optimizer(model):
+            fs=accel.get('function_space')
+            if fs is None: return build_optimizer(model,cfg)
+            return FunctionSpaceOptimizer(model,**fs)
+        base_coords=model.coords.detach().clone() if getattr(model,'coords',None) is not None else None
+        if accel.get('coordinate_anneal') is not None and base_coords is None:
+            raise ValueError('coordinate_anneal needs a coordinate network')
         if getattr(model,'coordinate_warp_report',None) is not None:
             atomic_json(out/'coordinate_warp.json',model.coordinate_warp_report)
             emit(f"WARP traveltime axes={model.coordinate_warp_report['axes']} stretch_z={model.coordinate_warp_report['stretch_z']['min']:.2f}-{model.coordinate_warp_report['stretch_z']['max']:.2f}")
@@ -254,9 +268,11 @@ def run(spec, out, device='cuda:0', resume=None, save_figures=True, shared_dir=N
             option=speedup['source_encoding']
             encoders={'fine':SourceEncoder(problem,option['supershots'],option['seed'])}
             if coarse: encoders['coarse']=SourceEncoder(coarse,option['supershots'],option['seed'])
+        step_problems=StepProblems(problem,accel,(speedup.get('source_encoding') or {}).get('seed',cfg['seed'])) if accel else None
+        if accel: atomic_json(out/'accel.json',accel)
         control_report={}; prefit_optimizer_state=None
         if saved and saved['phase']=='inversion':
-            opt=build_optimizer(model,cfg); base_lrs=[g['lr'] for g in opt.param_groups]
+            opt=make_optimizer(model); base_lrs=[g['lr'] for g in opt.param_groups]
             completed,timing=restore_training_state(saved,model,opt)
             history=saved['history']; evaluations=saved['evaluations']; control_report=saved['control_report']
         else:
@@ -273,7 +289,7 @@ def run(spec, out, device='cuda:0', resume=None, save_figures=True, shared_dir=N
                 timing['prefit_seconds']=control_report['seconds']
                 if saved: timing['preparation_seconds']+=saved.get('preparation_elapsed_seconds',saved['seconds'])
                 atomic_torch(out/'prefit_selected_model.pt',{'model':model.state_dict(),'control_report':control_report})
-            opt=build_optimizer(model,cfg); base_lrs=[g['lr'] for g in opt.param_groups]
+            opt=make_optimizer(model); base_lrs=[g['lr'] for g in opt.param_groups]
             if prefit_optimizer_state is not None:
                 # Continue with the pretraining moments; only the learning rate changes to the inversion one.
                 opt.load_state_dict(prefit_optimizer_state)
@@ -331,10 +347,20 @@ def run(spec, out, device='cuda:0', resume=None, save_figures=True, shared_dir=N
                 compute_start=time.perf_counter()
                 use_coarse=bool(coarse) and max_hz is not None
                 step_problem,step_model=(coarse,coarse_model) if use_coarse else (problem,model)
-                if encoders: step_problem=encoders['coarse' if use_coarse else 'fine'].problem(update)
+                accel_info=None
+                if accel:
+                    if accel.get('coordinate_anneal') is not None:
+                        scale=coordinate_scale(accel['coordinate_anneal'],update)
+                        with torch.no_grad(): model.coords.copy_(base_coords*scale)
+                    fixed=(speedup.get('source_encoding') or {}).get('supershots')
+                    step_problem,accel_info=step_problems(update,fixed)
+                    if accel.get('coordinate_anneal') is not None: accel_info['coordinate_scale']=scale
+                elif encoders: step_problem=encoders['coarse' if use_coarse else 'fine'].problem(update)
                 if use_coarse:
                     with torch.no_grad(): fine_before=model().cpu().numpy()[0].copy()
-                report=e.train_update(step_model,step_problem,opt,max_hz)
+                if isinstance(opt,FunctionSpaceOptimizer): report=function_space_update(step_model,step_problem,opt,max_hz)
+                else: report=e.train_update(step_model,step_problem,opt,max_hz)
+                if accel_info is not None: report['accel']=accel_info
                 if use_coarse:
                     # Full-band misfit on the coarse grid is meaningless (dispersion); log the stage objective.
                     report['velocity_before_mps']=fine_before; report['data_mse']=report['objective']

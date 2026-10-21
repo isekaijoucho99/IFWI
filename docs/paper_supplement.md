@@ -191,3 +191,32 @@ python target_plan.py experiments/paper_supplement/target_plan.json --out-root o
 ```bash
 python paper_queue.py experiments/paper_supplement/queues/q14_overthrust.json --out-root outputs/paper_supplement --shared-dir SHARED --wait-idle
 ```
+
+## 加速候选方案（`core_accel.py`，spec 字段 `accel`；队列 `q15_accel`）
+
+| 选项 | 作用 | 依据 |
+|---|---|---|
+| `function_space` {velocity_step_mps, damping, cg_iters} | 函数空间 Gauss–Newton：一次正演+伴随得 g_v；在速度空间做 Adam 步（单位 m/s）；用共轭梯度解 (JᵀJ+λI)d = Jᵀdv 把它投影到网络参数（J、Jᵀ 只过网络，不做波场模拟）；λ = damping·tr(JᵀJ)/P | ENGD（ICML 2023）、KFAC-PINN（NeurIPS 2024） |
+| `supershot_schedule` [{from, supershots}] | 超级炮数随迭代递增，`null` 为精确逐炮 | Friedlander & Schmidt 2012 |
+| `time_window` [{from, fraction}] | 记录时长由短到长：早期只用每道前一部分（时间步少、单步快） | 课程学习 / 层剥离 |
+| `coordinate_anneal` {start, updates} | 输入坐标乘以 c(k)（余弦从 start 升到 1），早期降低第一层频率 | BARF（ICCV 2021）、SAPE（NeurIPS 2021） |
+
+全部选项不启用时与原运行逐位相同（测试 `test_accel_options_run_and_reduce_to_the_plain_update`）；Gauss–Newton 投影与稠密雅可比的阻尼正规方程一致（相对误差 <1e-3）。每条历史记录的 `accel`、`function_space` 字段给出该步的超级炮数、时间比例、坐标尺度、CG 迭代数、残差与 λ。注意：Gauss–Newton 每步多做 cg_iters 次网络正反传，开销请看日志中的 step 时间。
+
+`q15_accel`（干净 Marmousi，均画全程曲线、不按目标停止；9 组，约 12 小时）：
+
+| 运行 | 内容 |
+|---|---|
+| `P1_E3_fs_d1em1/1em2/1em3_s3` | Res-FR-IFWI + Gauss–Newton，阻尼 0.1/0.01/0.001，速度步 10 m/s |
+| `P1_E3_se_fs_d1em2_s3` | RFS-IFWI + Gauss–Newton（1500 步） |
+| `C1_E3_sched_s3` | 超级炮 1→2（300 步）→4（500）→逐炮（700），1500 步 |
+| `B2_E3_se_cos_s3` | RFS-IFWI + 余弦学习率衰减（201–1000 步降到 0.1） |
+| `C2_E3_coord_s3` | Res-FR-IFWI + 坐标由粗到细（0.25→1，前 200 步） |
+| `W_E3_warmup_s3` | Res-FR-IFWI + 20 步学习率 warmup（检验早期 RMSE 上升是否只是步长过大） |
+| `P4_E3_se_window_s3` | RFS-IFWI + 前 200 步只用前一半记录 |
+
+```bash
+python paper_queue.py experiments/paper_supplement/queues/q15_accel.json --out-root outputs/paper_supplement --shared-dir SHARED --wait-idle
+```
+
+建议先跑 `P1_E3_fs_d1em2_s3`，确认 Gauss–Newton 的单步开销和前几十步的 RMSE 走向，再跑其余。

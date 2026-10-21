@@ -1,0 +1,11 @@
+[
+  "specs/P1_E3_fs_d1em1_s3.json",
+  "specs/P1_E3_fs_d1em2_s3.json",
+  "specs/P1_E3_fs_d1em3_s3.json",
+  "specs/P1_E3_se_fs_d1em2_s3.json",
+  "specs/C1_E3_sched_s3.json",
+  "specs/B2_E3_se_cos_s3.json",
+  "specs/C2_E3_coord_s3.json",
+  "specs/W_E3_warmup_s3.json",
+  "specs/P4_E3_se_window_s3.json"
+]

@@ -229,6 +229,50 @@ def test_stop_rmse_ends_at_the_target_update_exactly(tmp_path):
         assert np.array_equal(np.load(again / "target_velocity.npy"), np.load(stopped / "target_velocity.npy"))
 
 
+def test_function_space_projection_solves_the_damped_normal_equations(tmp_path):
+    accel = importlib.import_module("core_accel")
+    model = importlib.import_module("core_models")
+    exp = api()
+    torch.manual_seed(0)
+    net = exp.VelocityParameterization(np.full((6, 7), 3000., np.float32), 15., [2, 8, 8, 8, 1], 30., 3., 1., "residual",
+                                       {"high_freq_num": 8, "low_freq_num": 8, "phi_num": 4, "alpha": .01, "lambda_init": "fr_inr"})
+    with torch.no_grad():
+        net.net.linear[-1].weight.normal_(0, .1)                         # leave the zero start so J is not trivial
+    opt = accel.FunctionSpaceOptimizer(net, velocity_step_mps=10., damping=1e-3, cg_iters=200)
+    dv = torch.randn(1, 6, 7)
+    step, info = opt.project(dv)
+    params = [p for p in net.parameters()]
+    field = net().reshape(-1)
+    rows = [torch.cat([g.reshape(-1) for g in torch.autograd.grad(field[i], params, retain_graph=True)]) for i in range(field.numel())]
+    jac = torch.stack(rows).double()                                    # dense J by autograd
+    d = torch.cat([step[n].reshape(-1) for n, _ in net.named_parameters()]).double()
+    lhs = jac.T @ (jac @ d) + info["damping_lambda"] * d
+    rhs = jac.T @ dv.reshape(-1).double()
+    assert float((lhs - rhs).norm() / rhs.norm()) < 1e-3
+    assert info["cg_relative_residual"] < 1e-3
+
+
+def test_accel_options_run_and_reduce_to_the_plain_update(tmp_path):
+    plain = tiny_spec(tmp_path, "plain_a", "E3", training={"epochs": 3})
+    _, base = run(tmp_path, plain)
+    neutral = tiny_spec(tmp_path, "neutral", "E3", training={"epochs": 3},
+                        accel={"time_window": [{"from": 1, "fraction": 1.0}], "supershot_schedule": [{"from": 1, "supershots": None}]})
+    _, same = run(tmp_path, neutral)
+    keys = ("data_mse", "rmse_mps")
+    assert [[r[k] for k in keys] for r in same] == [[r[k] for k in keys] for r in base]
+    full = tiny_spec(tmp_path, "accel_all", "E3", training={"epochs": 4},
+                     accel={"function_space": {"velocity_step_mps": 5.0, "damping": 1e-2, "cg_iters": 10},
+                            "supershot_schedule": [{"from": 1, "supershots": 1}, {"from": 3, "supershots": None}],
+                            "time_window": [{"from": 1, "fraction": 0.5}, {"from": 3, "fraction": 1.0}],
+                            "coordinate_anneal": {"start": 0.5, "updates": 2}})
+    out, rows = run(tmp_path, full)
+    assert np.array_equal(np.load(out / "run_start_velocity.npy"), np.load(out / "initial_velocity.npy"))
+    info = [r["accel"] for r in rows]
+    assert [i["supershots"] for i in info] == [1, 1, None, None] and [i["time_fraction"] for i in info] == [.5, .5, 1., 1.]
+    assert info[0]["coordinate_scale"] == .5 and info[2]["coordinate_scale"] == 1.
+    assert all(np.isfinite(r["after_metrics"]["rmse_mps"]) and "function_space" in r for r in rows)
+
+
 def test_queue_dry_run_lists_every_spec(tmp_path, capsys):
     queue = importlib.import_module("paper_queue")
     folder = tmp_path / "supplement"

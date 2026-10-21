@@ -233,6 +233,32 @@ def build_specs(selection=None):
         target(spec("T_directFR_prefit_overthrust_s3", long(experiment("directFR", "overthrust"), 4000), control=PREFIT, condition="overthrust"), ot),
         target(spec("T_E2MS_overthrust_s3", long(experiment("E2MS", "overthrust"), 4000), condition="overthrust"), ot),
         target(spec("T_E2_se_overthrust_s3", long(experiment("E2", "overthrust"), 4000), condition="overthrust", speedup=se), ot)]
+    # Acceleration candidates (core_accel.py), clean Marmousi, full curves (no target stop) to see the plateau.
+    def with_accel(item, setting):
+        item["accel"] = copy.deepcopy(setting)
+        return item
+    def lr_sched(cfg, setting):
+        cfg["training"]["lr_schedule"] = copy.deepcopy(setting)
+        return cfg
+    fs = lambda damping, step=10.0: {"function_space": {"velocity_step_mps": step, "damping": damping, "cg_iters": 10}}
+    q["q15_accel"] = [
+        # P1: function-space Gauss-Newton on Res-FR-IFWI (three dampings) and on RFS-IFWI.
+        with_accel(spec("P1_E3_fs_d1em1_s3", experiment("E3")), fs(1e-1)),
+        with_accel(spec("P1_E3_fs_d1em2_s3", experiment("E3")), fs(1e-2)),
+        with_accel(spec("P1_E3_fs_d1em3_s3", experiment("E3")), fs(1e-3)),
+        with_accel(spec("P1_E3_se_fs_d1em2_s3", long(experiment("E3"), 1500), speedup=se), fs(1e-2)),
+        # C1: super-shots growing from 1 to exact sequential shots.
+        with_accel(spec("C1_E3_sched_s3", long(experiment("E3"), 1500)),
+                   {"supershot_schedule": [{"from": 1, "supershots": 1}, {"from": 300, "supershots": 2},
+                                           {"from": 500, "supershots": 4}, {"from": 700, "supershots": None}]}),
+        # B2 (part): cosine learning-rate decay for RFS-IFWI against the late spikes.
+        spec("B2_E3_se_cos_s3", lr_sched(long(experiment("E3"), 1500), LR_SCHEDULE), speedup=se),
+        # C2: coarse-to-fine input coordinates; warmup-only control for the early RMSE rise.
+        with_accel(spec("C2_E3_coord_s3", experiment("E3")), {"coordinate_anneal": {"start": 0.25, "updates": 200}}),
+        spec("W_E3_warmup_s3", lr_sched(experiment("E3"), WARMUP_ONLY)),
+        # P4: record-length curriculum for RFS-IFWI (first half of each record for 200 updates).
+        with_accel(spec("P4_E3_se_window_s3", long(experiment("E3"), 1500), speedup=se),
+                   {"time_window": [{"from": 1, "fraction": 0.5}, {"from": 201, "fraction": 1.0}]})]
     # Formal runs that depend on a screening selection.
     if "C_grid_lr" in selection:
         lr, formal = float(selection["C_grid_lr"]), []
