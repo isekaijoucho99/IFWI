@@ -15,7 +15,8 @@ the same arithmetic as before):
 * spec.model.coordinate_warp: {"kind": "traveltime", "axes": "z" | "xz"} feeds the SIREN
   traveltime-through-v0 coordinates instead of (x, z) (core_models.traveltime_coordinates);
 * spec.background: {"kind": "linear_depth", "top_mps", "gradient_per_s"} replaces the
-  Gaussian background with a depth-only one;
+  Gaussian background with a depth-only one; {"kind": "file", "path", "array_hash"} loads a saved
+  float32 background (genbg candidates, docs/generative_background_ifwi_design_v0.1.md);
 * control prefit_background with keep_optimizer_state: start the inversion with the
   pretraining Adam moments instead of a reset;
 * --shared-dir for the shared clean/noisy observations, --epochs for short checks.
@@ -42,7 +43,7 @@ from experiments.muon_optimizer import build_optimizer
 from experiments.frequency_continuation import energy_scales, stage_cutoff
 from experiments.lr_schedule import lr_factor
 from core_controls import small_output, prefit_background, training_state, restore_training_state, sync, layer_snapshot, layer_changes
-from core_models import FourierFeatureVelocity, GridVelocity, linear_depth_background, smooth400_background, traveltime_coordinates, warp_coordinates, warp_report, WARP_AXES
+from core_models import FourierFeatureVelocity, GridVelocity, file_background, linear_depth_background, smooth400_background, traveltime_coordinates, warp_coordinates, warp_report, WARP_AXES
 from core_speed import CoarseView, SourceEncoder, coarse_problem, validate_speedup
 from core_accel import validate_accel, StepProblems, FunctionSpaceOptimizer, function_space_update, coordinate_scale
 
@@ -124,8 +125,10 @@ def check_spec(spec):
     background=spec.get('background')
     if background is not None and not (
             (background.get('kind')=='linear_depth' and set(background)=={'kind','top_mps','gradient_per_s'})
-            or (background.get('kind')=='smooth400' and set(background)=={'kind'})):
-        raise ValueError('spec.background must be {kind: linear_depth, top_mps, gradient_per_s} or {kind: smooth400}')
+            or (background.get('kind')=='smooth400' and set(background)=={'kind'})
+            or (background.get('kind')=='file' and set(background)=={'kind','path','array_hash'})):
+        raise ValueError('spec.background must be {kind: linear_depth, top_mps, gradient_per_s}, {kind: smooth400} '
+                         'or {kind: file, path, array_hash}')
 
 
 def build_model(spec, cfg, background):
@@ -205,6 +208,9 @@ def run(spec, out, device='cuda:0', resume=None, save_figures=True, shared_dir=N
             if override['kind']=='smooth400':
                 background=smooth400_background(ROOT/'data',truth.shape)
                 note='the earliest IFWI background (pretrain_marmousi.py): smooth400 CSV, Gaussian sigma 50, stride 4'
+            elif override['kind']=='file':
+                background=file_background(ROOT,override['path'],truth.shape,override['array_hash'])
+                note='saved background file (path relative to the repository), hash checked'
             else:
                 background=linear_depth_background(truth.shape,cfg['data']['grid_spacing_m'],override['top_mps'],override['gradient_per_s'])
                 note='replaces the Gaussian background; no truth used'

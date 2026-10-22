@@ -1,0 +1,21 @@
+[
+  "specs/P0_E2_G15_s3.json",
+  "specs/P0_E2_SM400_s3.json",
+  "specs/P0_E2_G10_s3.json",
+  "specs/P0_E2_G22_s3.json",
+  "specs/P0_E2_G30_s3.json",
+  "specs/P0_E2_S6_s3.json",
+  "specs/P0_E2_S9_s3.json",
+  "specs/P0_E2_S14_s3.json",
+  "specs/P0_E2_LIN_s3.json",
+  "specs/P0_E2_P600_3_1_s3.json",
+  "specs/P0_E2_P600_3_2_s3.json",
+  "specs/P0_E2_P600_6_1_s3.json",
+  "specs/P0_E2_P600_6_2_s3.json",
+  "specs/P0_E2_P1500_3_1_s3.json",
+  "specs/P0_E2_P1500_3_2_s3.json",
+  "specs/P0_E2_P1500_6_1_s3.json",
+  "specs/P0_E2_P1500_6_2_s3.json",
+  "specs/P0_E2_Km5_s3.json",
+  "specs/P0_E2_Kp5_s3.json"
+]

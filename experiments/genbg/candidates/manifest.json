@@ -1,0 +1,341 @@
+[
+  {
+    "id": "G10",
+    "family": "G",
+    "params": {
+      "velocity_sigma_points": 10
+    },
+    "truth_free": false,
+    "file": "experiments/genbg/candidates/G10.npy",
+    "array_hash": "3eb08952cca9ab5cd4c3577643509d88c52c14626c994f2f25b80f144d891be6",
+    "shape": [
+      94,
+      288
+    ],
+    "min_mps": 1669.1453857421875,
+    "max_mps": 4184.70947265625
+  },
+  {
+    "id": "G15",
+    "family": "G",
+    "params": {
+      "velocity_sigma_points": 15
+    },
+    "truth_free": false,
+    "file": "experiments/genbg/candidates/G15.npy",
+    "array_hash": "cfdca6e6c5b6542d7e5ba937f138fd5d4cf26f1a8f98f41fb77e9bf99bd2bfb8",
+    "shape": [
+      94,
+      288
+    ],
+    "min_mps": 1726.138671875,
+    "max_mps": 4029.408203125
+  },
+  {
+    "id": "G22",
+    "family": "G",
+    "params": {
+      "velocity_sigma_points": 22
+    },
+    "truth_free": false,
+    "file": "experiments/genbg/candidates/G22.npy",
+    "array_hash": "c79f0517dee1d8bf07ff3f2754096aff7a752e6aea469ade9f84736387a9bd30",
+    "shape": [
+      94,
+      288
+    ],
+    "min_mps": 1818.736572265625,
+    "max_mps": 3951.850341796875
+  },
+  {
+    "id": "G30",
+    "family": "G",
+    "params": {
+      "velocity_sigma_points": 30
+    },
+    "truth_free": false,
+    "file": "experiments/genbg/candidates/G30.npy",
+    "array_hash": "29c72e5d5c2c7321e8ab216fe7b794d4adb8868f1fa04579b5d5544aad77f6e2",
+    "shape": [
+      94,
+      288
+    ],
+    "min_mps": 1988.55126953125,
+    "max_mps": 3770.2392578125
+  },
+  {
+    "id": "S6",
+    "family": "S",
+    "params": {
+      "slowness_sigma_points": 6
+    },
+    "truth_free": false,
+    "file": "experiments/genbg/candidates/S6.npy",
+    "array_hash": "cdb1816da7b32e07fc337e79012c8369b09400d96b435aa3b1ee6e4d1b0f4a0a",
+    "shape": [
+      94,
+      288
+    ],
+    "min_mps": 1623.06640625,
+    "max_mps": 4370.1552734375
+  },
+  {
+    "id": "S9",
+    "family": "S",
+    "params": {
+      "slowness_sigma_points": 9
+    },
+    "truth_free": false,
+    "file": "experiments/genbg/candidates/S9.npy",
+    "array_hash": "ba9d18aaf88ef027c59c0f207e77a94a57a536fe21c33737fff3167a6151d416",
+    "shape": [
+      94,
+      288
+    ],
+    "min_mps": 1654.3916015625,
+    "max_mps": 4062.648681640625
+  },
+  {
+    "id": "S14",
+    "family": "S",
+    "params": {
+      "slowness_sigma_points": 14
+    },
+    "truth_free": false,
+    "file": "experiments/genbg/candidates/S14.npy",
+    "array_hash": "f0173f85e7b4eec35e482a6f79b1b4f8a2f555f6fc22b1769d9685d72dbb7854",
+    "shape": [
+      94,
+      288
+    ],
+    "min_mps": 1704.07373046875,
+    "max_mps": 3972.971435546875
+  },
+  {
+    "id": "SM400",
+    "family": "SM",
+    "params": {
+      "note": "smooth400 background; recipe unknown"
+    },
+    "truth_free": false,
+    "file": "experiments/genbg/candidates/SM400.npy",
+    "array_hash": "bdb579daf045f4b13d4d7eceb07ae6a1f4e9f8205d83341e52404bdae9c323db",
+    "shape": [
+      94,
+      288
+    ],
+    "min_mps": 1690.3853759765625,
+    "max_mps": 3952.527099609375
+  },
+  {
+    "id": "LIN",
+    "family": "L",
+    "params": {
+      "top_mps": 1500.0,
+      "gradient_per_s": 2.0
+    },
+    "truth_free": true,
+    "file": "experiments/genbg/candidates/LIN.npy",
+    "array_hash": "31d7cebb0385313f219ef703696ab556e750d966cf6fa320d6f29b6c02eca6b4",
+    "shape": [
+      94,
+      288
+    ],
+    "min_mps": 1500.0,
+    "max_mps": 4290.0
+  },
+  {
+    "id": "P600_3_1",
+    "family": "P",
+    "params": {
+      "correlation_length_m": 600,
+      "slowness_rms_fraction": 0.03,
+      "seed": 1,
+      "field_clip": 2.5,
+      "base": "G15"
+    },
+    "truth_free": false,
+    "file": "experiments/genbg/candidates/P600_3_1.npy",
+    "array_hash": "a17dc3e5dbdb5915fca1eb34ffc6f83193aaee5ed836761bf3f65e454440beab",
+    "shape": [
+      94,
+      288
+    ],
+    "min_mps": 1703.7293701171875,
+    "max_mps": 4006.00048828125
+  },
+  {
+    "id": "P600_3_2",
+    "family": "P",
+    "params": {
+      "correlation_length_m": 600,
+      "slowness_rms_fraction": 0.03,
+      "seed": 2,
+      "field_clip": 2.5,
+      "base": "G15"
+    },
+    "truth_free": false,
+    "file": "experiments/genbg/candidates/P600_3_2.npy",
+    "array_hash": "baf3e15dbefa4ea71de9650fe5c855fb1e0fa95552230574e8a022c7b058fb16",
+    "shape": [
+      94,
+      288
+    ],
+    "min_mps": 1743.125732421875,
+    "max_mps": 4356.1171875
+  },
+  {
+    "id": "P600_6_1",
+    "family": "P",
+    "params": {
+      "correlation_length_m": 600,
+      "slowness_rms_fraction": 0.06,
+      "seed": 1,
+      "field_clip": 2.5,
+      "base": "G15"
+    },
+    "truth_free": false,
+    "file": "experiments/genbg/candidates/P600_6_1.npy",
+    "array_hash": "c71721ae1dabd1a56e2d055a9483eab593be2955d82ffe261043ba35e0384085",
+    "shape": [
+      94,
+      288
+    ],
+    "min_mps": 1680.3446044921875,
+    "max_mps": 4127.53857421875
+  },
+  {
+    "id": "P600_6_2",
+    "family": "P",
+    "params": {
+      "correlation_length_m": 600,
+      "slowness_rms_fraction": 0.06,
+      "seed": 2,
+      "field_clip": 2.5,
+      "base": "G15"
+    },
+    "truth_free": false,
+    "file": "experiments/genbg/candidates/P600_6_2.npy",
+    "array_hash": "5377e9caaa7a793c3a1b93c3ff8f3236099a317cf88039cad9a93378c47f535c",
+    "shape": [
+      94,
+      288
+    ],
+    "min_mps": 1720.3544921875,
+    "max_mps": 4740.48046875
+  },
+  {
+    "id": "P1500_3_1",
+    "family": "P",
+    "params": {
+      "correlation_length_m": 1500,
+      "slowness_rms_fraction": 0.03,
+      "seed": 1,
+      "field_clip": 2.5,
+      "base": "G15"
+    },
+    "truth_free": false,
+    "file": "experiments/genbg/candidates/P1500_3_1.npy",
+    "array_hash": "156c565b7914d89679847d8ac6f61075d7fc95074de3d4ffd5fdc849dbd82718",
+    "shape": [
+      94,
+      288
+    ],
+    "min_mps": 1771.8699951171875,
+    "max_mps": 4216.30615234375
+  },
+  {
+    "id": "P1500_3_2",
+    "family": "P",
+    "params": {
+      "correlation_length_m": 1500,
+      "slowness_rms_fraction": 0.03,
+      "seed": 2,
+      "field_clip": 2.5,
+      "base": "G15"
+    },
+    "truth_free": false,
+    "file": "experiments/genbg/candidates/P1500_3_2.npy",
+    "array_hash": "c2f465edfbea40e38b5f9175320f91fe8bb884983deb0bd05191856e2346a273",
+    "shape": [
+      94,
+      288
+    ],
+    "min_mps": 1656.6348876953125,
+    "max_mps": 4200.41552734375
+  },
+  {
+    "id": "P1500_6_1",
+    "family": "P",
+    "params": {
+      "correlation_length_m": 1500,
+      "slowness_rms_fraction": 0.06,
+      "seed": 1,
+      "field_clip": 2.5,
+      "base": "G15"
+    },
+    "truth_free": false,
+    "file": "experiments/genbg/candidates/P1500_6_1.npy",
+    "array_hash": "c8823d06d8d683f153ac026e0d62f95843a9565dd9f4d8d04bf3a126e506f4ee",
+    "shape": [
+      94,
+      288
+    ],
+    "min_mps": 1775.1529541015625,
+    "max_mps": 4423.08740234375
+  },
+  {
+    "id": "P1500_6_2",
+    "family": "P",
+    "params": {
+      "correlation_length_m": 1500,
+      "slowness_rms_fraction": 0.06,
+      "seed": 2,
+      "field_clip": 2.5,
+      "base": "G15"
+    },
+    "truth_free": false,
+    "file": "experiments/genbg/candidates/P1500_6_2.npy",
+    "array_hash": "8aa4c4438a17c5b812b03e02617e9761d56eca474cef182c295a79b953364ed9",
+    "shape": [
+      94,
+      288
+    ],
+    "min_mps": 1591.1219482421875,
+    "max_mps": 4387.7421875
+  },
+  {
+    "id": "Km5",
+    "family": "K",
+    "params": {
+      "velocity_scale": 0.95,
+      "base": "G15"
+    },
+    "truth_free": false,
+    "file": "experiments/genbg/candidates/Km5.npy",
+    "array_hash": "bf03508cf3a4d9fc5e297635018b98211b1e9b99d1a33a9b093b95ce547ba34a",
+    "shape": [
+      94,
+      288
+    ],
+    "min_mps": 1639.831787109375,
+    "max_mps": 3827.937744140625
+  },
+  {
+    "id": "Kp5",
+    "family": "K",
+    "params": {
+      "velocity_scale": 1.05,
+      "base": "G15"
+    },
+    "truth_free": false,
+    "file": "experiments/genbg/candidates/Kp5.npy",
+    "array_hash": "55598a9d95999473916a8dbe903def85ea7084804d9c1f69a3c09f9f375bf74e",
+    "shape": [
+      94,
+      288
+    ],
+    "min_mps": 1812.445556640625,
+    "max_mps": 4230.87841796875
+  }
+]

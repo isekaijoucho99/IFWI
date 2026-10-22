@@ -175,3 +175,17 @@ def linear_depth_background(shape, dz_m, top_mps, gradient_per_s):
         raise ValueError("Linear background needs a positive top velocity and a nonnegative gradient")
     z = np.arange(shape[0], dtype=np.float64) * dz_m
     return np.repeat((top_mps + gradient_per_s * z)[:, None], shape[1], axis=1).astype(np.float32)
+
+
+def file_background(root, path, shape, expected_hash):
+    """A background saved as a float32 [nz, nx] .npy (m/s), e.g. a candidate of genbg/. The array hash
+    (robust_observations.array_hash) must match the spec, so a regenerated file cannot slip in silently."""
+    from robust_observations import array_hash
+    background = np.load(Path(root) / path, allow_pickle=False)
+    if background.dtype != np.float32 or background.shape != tuple(shape):
+        raise ValueError(f"file background must be float32 {tuple(shape)}, got {background.dtype} {background.shape}")
+    if not np.isfinite(background).all() or background.min() <= 0:
+        raise ValueError("file background must be finite and positive")
+    if array_hash(background) != expected_hash:
+        raise ValueError(f"file background hash mismatch for {path}")
+    return background
