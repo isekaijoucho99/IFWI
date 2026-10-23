@@ -321,3 +321,33 @@ def test_q17_smooth400_pilot_changes_only_the_background():
         assert item["robustness"]["condition"] == "marmousi_clean_smooth400"     # shares D1's observations
         assert {k: v for k, v in item.items() if k not in ("background", "robustness")} == \
                {k: v for k, v in base.items() if k != "robustness"}
+
+
+def test_slowness_background_plateau_stop_and_q18(tmp_path):
+    from scipy.ndimage import gaussian_filter
+    models = importlib.import_module("core_models")
+    truth = np.linspace(1500, 4500, 30, dtype=np.float32)[:, None] + np.zeros((30, 40), np.float32)
+    v0 = models.slowness_gaussian_background(truth, 15., 135., 187.5)
+    expected = gaussian_filter(1 / gaussian_filter(1 / truth.astype(np.float64), 9., mode="nearest"), 12.5, mode="reflect")
+    assert v0.dtype == np.float32 and np.allclose(v0, expected)
+    item = tiny_spec(tmp_path, "slow", background={"kind": "slowness_gaussian", "slowness_sigma_m": 15., "velocity_sigma_m": 15.})
+    item["robustness"]["condition"] = "tiny_slow"
+    out, _ = run(tmp_path, item)
+    assert json.loads((out / "initial_model_provenance.json").read_text())["background_override"]["kind"] == "slowness_gaussian"
+    with pytest.raises(ValueError, match="spec.target"):
+        runner().check_spec({**item, "target": {"plateau": {"window": 3}}})
+    # Plateau stop: rel close to 1 stops as soon as the window is filled (window 1 -> after update 2).
+    stop = tiny_spec(tmp_path, "plateau", training={"epochs": 6})
+    stop["target"] = {"plateau": {"window": 1, "rel": 0.99}}
+    out, history = run(tmp_path, stop)
+    reached = json.loads((out / "target_reached.json").read_text())
+    assert reached["update"] == 2 == len(history) and "best_rmse_mps" in reached
+    q18 = {s["name"]: s for s in ps().build_specs()["q18_converge"]}
+    ours = q18["V_ours_smooth400_s3"]
+    assert ours["accel"] == ps().PROGRESSIVE and ours["target"] == ps().PLATEAU and ours["background"] == ps().SMOOTH400
+    assert "speedup" not in ours and ours["experiment"]["training"]["epochs"] == 4000
+    assert q18["V_ours_overthrust_s3"]["background"] == ps().SLOWNESS
+    assert q18["V_ours_overthrust_s3"]["robustness"]["condition"] == "overthrust_slowness"
+    assert q18["V_ours_sigma2_s3"]["robustness"]["condition"] == "marmousi_noise_sigma2_smooth400"
+    plan = json.loads((Path(__file__).resolve().parents[2] / "experiments/paper_supplement/converge_plan.json").read_text())
+    assert all(e["stop_plateau"] == ps().PLATEAU["plateau"] and e["epochs"] == 4000 for e in plan)

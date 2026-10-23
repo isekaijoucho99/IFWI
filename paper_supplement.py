@@ -64,6 +64,11 @@ LR_SCHEDULE = {"warmup_updates": 20, "decay_start": 201, "decay_updates": 800, "
 WARMUP_ONLY = {"warmup_updates": 20, "decay_start": 1, "decay_updates": 1, "final_factor": 1.0}
 LINEAR_BACKGROUND = {"kind": "linear_depth", "top_mps": 1500.0, "gradient_per_s": 2.0}
 SMOOTH400 = {"kind": "smooth400"}       # background of the earliest IFWI runs (pretrain_marmousi.py)
+# Overthrust counterpart of smooth400: slowness smoothing (135 m) then velocity smoothing (187.5 m).
+SLOWNESS = {"kind": "slowness_gaussian", "slowness_sigma_m": 135.0, "velocity_sigma_m": 187.5}
+PLATEAU = {"plateau": {"window": 300, "rel": 0.005}}   # converged: best RMSE improves < 0.5% over 300 epochs
+PROGRESSIVE = {"supershot_schedule": [{"from": 1, "supershots": 1}, {"from": 300, "supershots": 2},
+                                      {"from": 500, "supershots": 4}, {"from": 700, "supershots": None}]}
 
 
 def experiment(method, condition="clean", seed=3, name=None):
@@ -95,7 +100,7 @@ def spec(name, cfg, control=ZERO, condition="clean", model=None, background=None
         result["speedup"] = copy.deepcopy(speedup)
     if background is not None:
         result["background"] = copy.deepcopy(background)
-        suffix = {"linear_depth": "_lineardepth"}.get(background["kind"], "_" + background["kind"])
+        suffix = {"linear_depth": "_lineardepth", "slowness_gaussian": "_slowness"}.get(background["kind"], "_" + background["kind"])
         result["robustness"]["condition"] += suffix          # observations are shared per background
     return result
 
@@ -278,6 +283,25 @@ def build_specs(selection=None):
         spec("B_E3_smooth400_s3", experiment("E3"), background=SMOOTH400),
         q["q16_background"][1],                                     # D2: PFS-IFWI, 1500 updates
         q["q16_background"][0]]                                     # D1 rerun (optional)
+    # Run-to-convergence protocol (docs/paper_supplement.md, "Convergence"): every method on a background on
+    # which all of them converge (smooth400 for Marmousi, slowness smoothing for Overthrust), each stopped by
+    # the plateau rule. Ours = E3 + progressive encoding (1 super-shot -> 2 -> 4 -> all shots).
+    def conv(item, accel=None):
+        item["target"] = copy.deepcopy(PLATEAU)
+        if accel is not None:
+            item["accel"] = copy.deepcopy(accel)
+        return item
+    def bg(condition):
+        return SLOWNESS if condition == "overthrust" else SMOOTH400
+    q["q18_converge"] = [conv(spec("V_ours_smooth400_s3", long(experiment("E3"), 4000), background=SMOOTH400), PROGRESSIVE),
+                         conv(spec("V_directFR_prefit_smooth400_s3", long(experiment("directFR"), 4000), control=PREFIT, background=SMOOTH400)),
+                         conv(spec("V_E2_se_smooth400_s3", long(experiment("E2"), 4000), speedup=se, background=SMOOTH400))]
+    for c in ("sigma2", "sigma4", "overthrust"):
+        q["q18_converge"] += [conv(spec(f"V_ours_{c}_s3", long(experiment("E3", c), 4000), condition=c, background=bg(c)), PROGRESSIVE),
+                              conv(spec(f"V_E3_{c}_s3", long(experiment("E3", c), 4000), condition=c, background=bg(c))),
+                              conv(spec(f"V_E2_{c}_s3", long(experiment("E2", c), 4000), condition=c, background=bg(c)))]
+    q["q18_converge"] += [conv(spec("V_direct_prefit_overthrust_s3", long(experiment("direct", "overthrust"), 4000),
+                                    control=PREFIT, condition="overthrust", background=SLOWNESS))]
     # Formal runs that depend on a screening selection.
     if "C_grid_lr" in selection:
         lr, formal = float(selection["C_grid_lr"]), []

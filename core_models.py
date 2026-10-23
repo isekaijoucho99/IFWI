@@ -169,6 +169,18 @@ def smooth400_background(data_dir, shape):
     return background
 
 
+def slowness_gaussian_background(truth_mps, dz_m, slowness_sigma_m, velocity_sigma_m):
+    """Kinematically smooth background: Gaussian smoothing of the slowness (nearest edges), then of the
+    velocity (reflect edges); sigmas in m. With 135 m and 187.5 m it matches smooth400 on Marmousi to
+    4.1 m/s RMS and keeps traveltimes much closer to the truth than velocity smoothing."""
+    from scipy.ndimage import gaussian_filter
+    if not slowness_sigma_m > 0 or not velocity_sigma_m > 0:
+        raise ValueError("slowness_gaussian sigmas must be positive")
+    truth = np.asarray(truth_mps, dtype=np.float64)
+    slow = gaussian_filter(1.0 / truth, slowness_sigma_m / dz_m, mode="nearest")
+    return gaussian_filter(1.0 / slow, velocity_sigma_m / dz_m, mode="reflect").astype(np.float32)
+
+
 def linear_depth_background(shape, dz_m, top_mps, gradient_per_s):
     """v0(z) = top + gradient * z (m/s, z in m), constant along x; float32 like the Gaussian background."""
     if not top_mps > 0 or gradient_per_s < 0:

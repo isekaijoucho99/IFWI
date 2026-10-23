@@ -257,3 +257,31 @@ D1 表明 IFWI 在 σ15 背景上失败、在 smooth400 背景上收敛，原因
 ```bash
 python paper_queue.py experiments/paper_supplement/queues/q17_smooth400_pilot.json --out-root outputs/paper_supplement --shared-dir SHARED --wait-idle
 ```
+
+## 收敛协议（队列 `q18_converge` 与 `converge_plan.json`）
+
+审稿要求：所有方法都必须跑到收敛再比较，不能和没收敛的结果比。
+
+- **背景**：Marmousi（干净和噪声）统一用 smooth400；Overthrust 用 `slowness_gaussian` 背景，即对真值慢度做 135 m 高斯平滑，再对速度做 187.5 m 高斯平滑。在 Overthrust 上，该背景 RMSE 为 403 m/s、走时误差 3.4 ms；σ15 背景分别为 421 m/s、19.2 ms。在 Marmousi 上，同一配方与 smooth400 的 RMS 差为 4.1 m/s。
+- **停止**：`target.plateau {window: 300, rel: 0.005}`。当"迄今最低 RMSE"在最近 300 个 epoch 内的改进不足 0.5% 时，判定收敛并停止，最多 4000 个 epoch。也可以用命令行参数 `--stop-plateau 300 0.005`，`--extend` 时同样适用。
+- **E_conv**：离线计算，取 RMSE 首次进入该方法收敛 RMSE 的 1% 以内的 epoch；T_conv 为对应的墙钟时间。
+- **Ours**：E3 加上渐进编码（`accel.supershot_schedule`：从第 1 个 epoch 起 1 个超炮，第 300 起 2 个，第 500 起 4 个，第 700 起逐炮），与 q15 的 C1 相同。
+
+`q18_converge` 中的新运行（共 13 组）：
+
+| 组 | 运行 |
+|---|---|
+| Marmousi 干净 | `V_ours_smooth400`、`V_directFR_prefit_smooth400`、`V_E2_se_smooth400` |
+| −6 / −12 dB | `V_ours`、`V_E3`、`V_E2`（σ2、σ4 各一组） |
+| Overthrust | `V_ours`、`V_E3`、`V_E2`、`V_direct_prefit` |
+
+续训（`converge_plan.json`，从 q16/q17 的 checkpoint 出发，到收敛为止）：MS-IFWI、P-IFWI、FR-IFWI、IFWI、FR-IFWI+SE。
+
+建议顺序：先跑 `V_ours_smooth400` 和 `C_E2MS_smooth400`，确认 Ours 收敛后是否最好，再决定是否跑完其余各组。
+
+```bash
+python paper_queue.py experiments/paper_supplement/queues/q18_converge.json --out-root outputs/paper_supplement --shared-dir SHARED --wait-idle
+python target_plan.py experiments/paper_supplement/converge_plan.json --roots Q17=<q17 输出目录> D1=<D1 的 attempt_01 目录> --out-root outputs/paper_supplement/converge --shared-dir SHARED
+```
+
+注意：`verification/residual_ifwi/test_reporting.py` 中有 4 个测试在本次改动之前就已失败（SSIM 相关），与本次改动无关。

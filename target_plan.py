@@ -38,6 +38,8 @@ def command(entry, roots, out, shared):
                '--out', str(out), '--no-plots']
         if entry.get('stop_rmse') is not None:
             cmd += ['--stop-rmse', str(entry['stop_rmse'])]
+        if entry.get('stop_plateau') is not None:
+            cmd += ['--stop-plateau', str(entry['stop_plateau']['window']), str(entry['stop_plateau']['rel'])]
         if shared:
             cmd += ['--shared-dir', shared]
         return cmd

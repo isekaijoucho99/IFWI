@@ -1,0 +1,15 @@
+[
+  "specs/V_ours_smooth400_s3.json",
+  "specs/V_directFR_prefit_smooth400_s3.json",
+  "specs/V_E2_se_smooth400_s3.json",
+  "specs/V_ours_sigma2_s3.json",
+  "specs/V_E3_sigma2_s3.json",
+  "specs/V_E2_sigma2_s3.json",
+  "specs/V_ours_sigma4_s3.json",
+  "specs/V_E3_sigma4_s3.json",
+  "specs/V_E2_sigma4_s3.json",
+  "specs/V_ours_overthrust_s3.json",
+  "specs/V_E3_overthrust_s3.json",
+  "specs/V_E2_overthrust_s3.json",
+  "specs/V_direct_prefit_overthrust_s3.json"
+]

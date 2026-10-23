@@ -1,0 +1,7 @@
+[
+  {"name": "C_E2MS_smooth400", "purpose": "MS-IFWI on smooth400 continued to convergence", "checkpoint": "{Q17}/runs/B_E2MS_smooth400_s3/attempt_01/checkpoint.pt", "epochs": 4000, "stop_plateau": {"window": 300, "rel": 0.005}},
+  {"name": "C_E2_smooth400", "purpose": "P-IFWI on smooth400 continued to convergence", "checkpoint": "{Q17}/runs/B_E2_smooth400_s3/attempt_01/checkpoint.pt", "epochs": 4000, "stop_plateau": {"window": 300, "rel": 0.005}},
+  {"name": "C_E3_smooth400", "purpose": "FR-IFWI on smooth400 continued to convergence", "checkpoint": "{Q17}/runs/B_E3_smooth400_s3/attempt_01/checkpoint.pt", "epochs": 4000, "stop_plateau": {"window": 300, "rel": 0.005}},
+  {"name": "C_direct_smooth400", "purpose": "IFWI on smooth400 continued to convergence", "checkpoint": "{D1}/checkpoint.pt", "epochs": 4000, "stop_plateau": {"window": 300, "rel": 0.005}},
+  {"name": "C_E3_se_smooth400", "purpose": "FR-IFWI + SE (one super-shot throughout) on smooth400 continued to convergence", "checkpoint": "{Q17}/runs/D2_E3_se_smooth400_s3/attempt_01/checkpoint.pt", "epochs": 4000, "stop_plateau": {"window": 300, "rel": 0.005}}
+]

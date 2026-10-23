@@ -42,7 +42,7 @@ from experiments.muon_optimizer import build_optimizer
 from experiments.frequency_continuation import energy_scales, stage_cutoff
 from experiments.lr_schedule import lr_factor
 from core_controls import small_output, prefit_background, training_state, restore_training_state, sync, layer_snapshot, layer_changes
-from core_models import FourierFeatureVelocity, GridVelocity, linear_depth_background, smooth400_background, traveltime_coordinates, warp_coordinates, warp_report, WARP_AXES
+from core_models import FourierFeatureVelocity, GridVelocity, linear_depth_background, smooth400_background, slowness_gaussian_background, traveltime_coordinates, warp_coordinates, warp_report, WARP_AXES
 from core_speed import CoarseView, SourceEncoder, coarse_problem, validate_speedup
 from core_accel import validate_accel, StepProblems, FunctionSpaceOptimizer, function_space_update, coordinate_scale
 
@@ -124,8 +124,16 @@ def check_spec(spec):
     background=spec.get('background')
     if background is not None and not (
             (background.get('kind')=='linear_depth' and set(background)=={'kind','top_mps','gradient_per_s'})
-            or (background.get('kind')=='smooth400' and set(background)=={'kind'})):
-        raise ValueError('spec.background must be {kind: linear_depth, top_mps, gradient_per_s} or {kind: smooth400}')
+            or (background.get('kind')=='smooth400' and set(background)=={'kind'})
+            or (background.get('kind')=='slowness_gaussian' and set(background)=={'kind','slowness_sigma_m','velocity_sigma_m'})):
+        raise ValueError('spec.background must be {kind: linear_depth, top_mps, gradient_per_s}, {kind: smooth400} '
+                         'or {kind: slowness_gaussian, slowness_sigma_m, velocity_sigma_m}')
+    target=spec.get('target')
+    if target is not None:
+        plateau=target.get('plateau')
+        if set(target)-{'stop_rmse','plateau'} or (plateau is not None and (set(plateau)!={'window','rel'}
+                or int(plateau['window'])<1 or not 0<plateau['rel']<1)):
+            raise ValueError('spec.target is {stop_rmse?, plateau?: {window >= 1, rel in (0, 1)}}')
 
 
 def build_model(spec, cfg, background):
@@ -146,10 +154,13 @@ def build_model(spec, cfg, background):
     return model
 
 
-def run(spec, out, device='cuda:0', resume=None, save_figures=True, shared_dir=None, extend=False, stop_rmse=None):
+def run(spec, out, device='cuda:0', resume=None, save_figures=True, shared_dir=None, extend=False, stop_rmse=None,
+        stop_plateau=None):
     check_spec(spec)
     # Time-to-target protocol: stop at the first update whose velocity RMSE reaches the target.
     if stop_rmse is None: stop_rmse=(spec.get('target') or {}).get('stop_rmse')
+    # Convergence: stop when the best RMSE so far improved by less than rel over the last window updates.
+    if stop_plateau is None: stop_plateau=(spec.get('target') or {}).get('plateau')
     reached=None
     cfg=copy.deepcopy(spec['experiment']); control=spec['control']
     e.validate_config(cfg)
@@ -205,6 +216,9 @@ def run(spec, out, device='cuda:0', resume=None, save_figures=True, shared_dir=N
             if override['kind']=='smooth400':
                 background=smooth400_background(ROOT/'data',truth.shape)
                 note='the earliest IFWI background (pretrain_marmousi.py): smooth400 CSV, Gaussian sigma 50, stride 4'
+            elif override['kind']=='slowness_gaussian':
+                background=slowness_gaussian_background(truth,cfg['data']['grid_spacing_m'],override['slowness_sigma_m'],override['velocity_sigma_m'])
+                note='Gaussian smoothing of the true slowness, then of the velocity'
             else:
                 background=linear_depth_background(truth.shape,cfg['data']['grid_spacing_m'],override['top_mps'],override['gradient_per_s'])
                 note='replaces the Gaussian background; no truth used'
@@ -403,6 +417,12 @@ def run(spec, out, device='cuda:0', resume=None, save_figures=True, shared_dir=N
                 if stop_rmse is not None and post_metrics['rmse_mps']<=stop_rmse:
                     reached={'update':update,'stop_rmse':stop_rmse,'rmse_mps':post_metrics['rmse_mps'],
                              'ssim':post_metrics['ssim'],'after_cumulative_seconds':row['after_cumulative_seconds']}
+                if stop_plateau is not None and not reached and len(history)>int(stop_plateau['window']):
+                    curve=[h['after_metrics']['rmse_mps'] for h in history]
+                    best_now,best_then=min(curve),min(curve[:-int(stop_plateau['window'])])
+                    if best_then-best_now<stop_plateau['rel']*best_then:
+                        reached={'update':update,'plateau':stop_plateau,'best_rmse_mps':best_now,'rmse_mps':post_metrics['rmse_mps'],
+                                 'ssim':post_metrics['ssim'],'after_cumulative_seconds':row['after_cumulative_seconds']}
                 if update%cfg['training']['checkpoint_interval']==0 or update==cfg['training']['epochs'] or reached:
                     es=time.perf_counter(); mse=e.evaluate_data_mse(model,problem); sync(model)
                     timing['diagnostic_seconds']+=time.perf_counter()-es
@@ -413,7 +433,10 @@ def run(spec, out, device='cuda:0', resume=None, save_figures=True, shared_dir=N
                     np.save(out/'checkpoints'/('velocity_%04d.npy'%update),post)
                 if reached:
                     np.save(out/'target_velocity.npy',post); atomic_json(out/'target_reached.json',reached)
-                    emit(f"TARGET reached at update {update}: RMSE={post_metrics['rmse_mps']:.3f} <= {stop_rmse}")
+                    if 'plateau' in reached:
+                        emit(f"CONVERGED at update {update}: best RMSE {reached['best_rmse_mps']:.3f} improved < {stop_plateau['rel']} over {stop_plateau['window']} updates")
+                    else:
+                        emit(f"TARGET reached at update {update}: RMSE={post_metrics['rmse_mps']:.3f} <= {stop_rmse}")
                     break
         sync(model); timing['training_seconds']=train_prior+time.perf_counter()-train_started
         phase='finalizing'
@@ -450,15 +473,19 @@ if __name__=='__main__':
     parser.add_argument('--resume'); parser.add_argument('--device',default='cuda:0'); parser.add_argument('--no-plots',action='store_true')
     parser.add_argument('--extend',help='checkpoint (.pt) to continue to --epochs updates (spec read from it)')
     parser.add_argument('--stop-rmse',type=float,help='stop at the first update whose velocity RMSE is at or below this value')
+    parser.add_argument('--stop-plateau',nargs=2,type=float,metavar=('WINDOW','REL'),
+                        help='stop when the best RMSE improved by less than REL (relative) over the last WINDOW updates')
     parser.add_argument('--shared-dir',help='shared observations root (default outputs/shared in the repository)')
     parser.add_argument('--epochs',type=int,help='override the update budget, e.g. 5 for a first-step check')
     args=parser.parse_args()
+    plateau=None if args.stop_plateau is None else {'window':int(args.stop_plateau[0]),'rel':args.stop_plateau[1]}
     if args.extend:
         if args.epochs is None or args.resume:
             parser.error('--extend needs --epochs and no --resume')
         spec=torch.load(args.extend,map_location='cpu',weights_only=False)['spec']
         spec['experiment']['training']['epochs']=args.epochs
-        run(spec,args.out,args.device,args.extend,not args.no_plots,args.shared_dir,extend=True,stop_rmse=args.stop_rmse)
+        run(spec,args.out,args.device,args.extend,not args.no_plots,args.shared_dir,extend=True,stop_rmse=args.stop_rmse,
+            stop_plateau=plateau)
         raise SystemExit(0)
     if not args.spec:
         parser.error('--spec is required unless --extend is given')
@@ -466,4 +493,4 @@ if __name__=='__main__':
     if args.epochs is not None:
         spec['experiment']['training']['epochs']=args.epochs
         spec['experiment']['training']['checkpoint_interval']=min(spec['experiment']['training']['checkpoint_interval'],args.epochs)
-    run(spec,args.out,args.device,args.resume,not args.no_plots,args.shared_dir,stop_rmse=args.stop_rmse)
+    run(spec,args.out,args.device,args.resume,not args.no_plots,args.shared_dir,stop_rmse=args.stop_rmse,stop_plateau=plateau)
