@@ -302,6 +302,20 @@ def build_specs(selection=None):
                               conv(spec(f"V_E2_{c}_s3", long(experiment("E2", c), 4000), condition=c, background=bg(c)))]
     q["q18_converge"] += [conv(spec("V_direct_prefit_overthrust_s3", long(experiment("direct", "overthrust"), 4000),
                                     control=PREFIT, condition="overthrust", background=SLOWNESS))]
+    # Pilot after q18 (docs/paper_supplement.md, "Pilot q19"): FR layers speed up early epochs but go unstable
+    # late. A: drop FR (P-IFWI + progressive encoding). B: keep FR early and merge it into plain weights at
+    # epoch 300 (fr_collapse), or decay the learning rate (with the matching P-IFWI control).
+    COSINE = {"warmup_updates": 20, "decay_start": 201, "decay_updates": 1800, "final_factor": 0.1}
+    def cosine(cfg):
+        cfg["training"]["lr_schedule"] = copy.deepcopy(COSINE)
+        return cfg
+    collapse = {"fr_collapse": {"at": 300}}
+    q["q19_pilot"] = [
+        conv(spec("Y_E3_collapse300_prog_smooth400_s3", long(experiment("E3"), 4000), background=SMOOTH400), {**PROGRESSIVE, **collapse}),
+        conv(spec("Y_E2_prog_smooth400_s3", long(experiment("E2"), 4000), background=SMOOTH400), PROGRESSIVE),
+        conv(spec("Y_E3_collapse300_smooth400_s3", long(experiment("E3"), 4000), background=SMOOTH400), collapse),
+        conv(spec("Y_E3_cos_smooth400_s3", cosine(long(experiment("E3"), 4000)), background=SMOOTH400)),
+        conv(spec("Y_E2_cos_smooth400_s3", cosine(long(experiment("E2"), 4000)), background=SMOOTH400))]
     # Formal runs that depend on a screening selection.
     if "C_grid_lr" in selection:
         lr, formal = float(selection["C_grid_lr"]), []

@@ -30,7 +30,7 @@ import torch
 from core_speed import SourceEncoder
 from experiments import residual_ifwi_experiment as e
 
-ACCEL_KEYS = {"function_space", "supershot_schedule", "time_window", "coordinate_anneal"}
+ACCEL_KEYS = {"function_space", "supershot_schedule", "time_window", "coordinate_anneal", "fr_collapse"}
 FS_KEYS = {"velocity_step_mps", "damping", "cg_iters", "betas", "eps"}
 
 
@@ -59,6 +59,9 @@ def validate_accel(setting):
         k = stage.get("supershots")
         if set(stage) != {"from", "supershots"} or (k is not None and int(k) < 1):
             raise ValueError("supershot_schedule stages are {from, supershots >= 1 or null}")
+    collapse = setting.get("fr_collapse")
+    if collapse is not None and (set(collapse) != {"at"} or int(collapse["at"]) < 1):
+        raise ValueError("fr_collapse is {at >= 1}: merge the Fourier layers before that update")
     anneal = setting.get("coordinate_anneal")
     if anneal is not None and (set(anneal) != {"start", "updates"} or not 0 < anneal["start"] <= 1 or anneal["updates"] < 1):
         raise ValueError("coordinate_anneal is {start in (0, 1], updates >= 1}")

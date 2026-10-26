@@ -148,6 +148,24 @@ def reparameterize_irn(irn, fourier):
     return replaced
 
 
+@torch.no_grad()
+def collapse_fourier(irn):
+    """Replace every FR layer by a plain Linear with weight = lamb @ bases (same function); return the indices.
+
+    The network output is unchanged up to float32 rounding of the product; afterwards the hidden weights
+    are trained directly, as in an ordinary SIREN.
+    """
+    collapsed = []
+    for index, layer in enumerate(irn.linear):
+        if isinstance(layer, FRLinear):
+            plain = torch.nn.Linear(layer.in_features, layer.out_features, bias=True).to(device=layer.lamb.device)
+            plain.weight.copy_(layer.weight)
+            plain.bias.copy_(layer.bias)
+            irn.linear[index] = plain
+            collapsed.append(index)
+    return collapsed
+
+
 def merged_weights(irn):
     """Plain weight matrices of every IRN layer (FR layers merged), for export or audits."""
     return [layer.weight.detach().clone() for layer in irn.linear]

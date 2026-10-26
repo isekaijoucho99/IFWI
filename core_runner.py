@@ -291,7 +291,16 @@ def run(spec, out, device='cuda:0', resume=None, save_figures=True, shared_dir=N
         step_problems=StepProblems(problem,accel,(speedup.get('source_encoding') or {}).get('seed',cfg['seed'])) if accel else None
         if accel: atomic_json(out/'accel.json',accel)
         control_report={}; prefit_optimizer_state=None
+        collapse_at=(accel.get('fr_collapse') or {}).get('at')
+        if collapse_at is not None and not getattr(model,'fourier_layers',None):
+            raise ValueError('fr_collapse needs Fourier layers')
+        def collapse(model):
+            # Fourier layers -> plain weights W = Lambda B (same function); later updates train W directly.
+            from experiments.fourier_modules import collapse_fourier
+            indices=collapse_fourier(model.net); model.fourier_layers=[]
+            return indices
         if saved and saved['phase']=='inversion':
+            if collapse_at is not None and saved['completed_updates']>=collapse_at: collapse(model)
             opt=make_optimizer(model); base_lrs=[g['lr'] for g in opt.param_groups]
             completed,timing=restore_training_state(saved,model,opt)
             history=saved['history']; evaluations=saved['evaluations']; control_report=saved['control_report']
@@ -353,6 +362,13 @@ def run(spec, out, device='cuda:0', resume=None, save_figures=True, shared_dir=N
         with (out/'history.jsonl').open('w',encoding='utf-8',buffering=1) as stream, (out/'mechanisms.jsonl').open('w',encoding='utf-8',buffering=1) as mechanisms:
             for row in history: stream.write(json.dumps(row,allow_nan=False)+'\n')
             for update in range(completed+1,cfg['training']['epochs']+1):
+                if collapse_at is not None and update==collapse_at and model.fourier_layers:
+                    with torch.no_grad(): before_collapse=model().clone()
+                    indices=collapse(model); opt=make_optimizer(model); base_lrs=[g['lr'] for g in opt.param_groups]
+                    with torch.no_grad(): drift=float((model()-before_collapse).abs().max())
+                    atomic_json(out/'fr_collapse.json',{'update':update,'layers':indices,'max_velocity_change_mps':drift,
+                        'optimizer':'new Adam state for all parameters'})
+                    emit(f"FR COLLAPSE before update {update}: layers {indices} merged, max velocity change {drift:.2e} m/s")
                 sync(model); step_started=time.perf_counter()
                 before_time=timing['preparation_seconds']+train_prior+step_started-train_started
                 rollback=training_state(model,opt,completed,timing); rollback_history_length=len(history)
@@ -417,8 +433,13 @@ def run(spec, out, device='cuda:0', resume=None, save_figures=True, shared_dir=N
                 if stop_rmse is not None and post_metrics['rmse_mps']<=stop_rmse:
                     reached={'update':update,'stop_rmse':stop_rmse,'rmse_mps':post_metrics['rmse_mps'],
                              'ssim':post_metrics['ssim'],'after_cumulative_seconds':row['after_cumulative_seconds']}
-                if stop_plateau is not None and not reached and len(history)>int(stop_plateau['window']):
-                    curve=[h['after_metrics']['rmse_mps'] for h in history]
+                # The plateau window lies within the current stage (super-shot count, FR collapse), so a
+                # stage change does not stop the run with the previous stage's progress.
+                stage_from=max([1]+[s['from'] for s in accel.get('supershot_schedule') or [] if s['from']<=update]
+                               +([collapse_at] if collapse_at is not None and collapse_at<=update else []))
+                stage_rows=[h for h in history if h['update']>=stage_from]
+                if stop_plateau is not None and not reached and len(stage_rows)>int(stop_plateau['window']):
+                    curve=[h['after_metrics']['rmse_mps'] for h in stage_rows]
                     best_now,best_then=min(curve),min(curve[:-int(stop_plateau['window'])])
                     if best_then-best_now<stop_plateau['rel']*best_then:
                         reached={'update':update,'plateau':stop_plateau,'best_rmse_mps':best_now,'rmse_mps':post_metrics['rmse_mps'],

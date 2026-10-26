@@ -285,3 +285,28 @@ python target_plan.py experiments/paper_supplement/converge_plan.json --roots Q1
 ```
 
 注意：`verification/residual_ifwi/test_reporting.py` 中有 4 个测试在本次改动之前就已失败（SSIM 相关），与本次改动无关。
+
+## 试点 q19：放弃 FR（A）或稳定 FR（B）
+
+q18 的结论：Fourier 层前期更快，但后期会失稳。FR-IFWI 每个 epoch 的速度变化中位数是 P-IFWI 的 4 倍；第 1400 次左右，单步变化达到 74–107 m/s，RMSE 从 403 升到 502，之后没有恢复。Ours 在第 440–450 次也出现同样的尖峰，最后停在 420 m/s。P-IFWI 收敛最好（355.7 m/s，跑满 4000 次时仍在下降）；P-IFWI+SE 在 420–380 m/s 区间最快。
+
+新增：
+
+- `accel.fr_collapse {at: N}`：在第 N 次更新前，把 Fourier 层精确合并成普通权重 W = ΛB（网络输出不变，改变量记录在 `fr_collapse.json`），并重建 Adam；之后按普通 SIREN 训练。从合并后的 checkpoint 续训，与不中断连续运行的结果一致（测试 `test_fr_collapse_keeps_the_function_resumes_exactly_and_plateau_is_per_stage`）。
+- 平台判定按阶段计算：300 步窗口只统计当前阶段内的更新，阶段由超炮数切换和 FR 合并划分，避免切换阶段时被误判为收敛。q18 中噪声和 Overthrust 上的 Ours 受过这个问题影响。
+
+`q19_pilot`（Marmousi smooth400，最多 4000 个 epoch，平台判定停止）：
+
+| 运行 | 方向 | 内容 |
+|---|---|---|
+| `Y_E3_collapse300_prog` | B | FR 前 300 个 epoch，之后合并为普通权重，同时超炮数逐步增加 |
+| `Y_E2_prog` | A | P-IFWI + 超炮数逐步增加 |
+| `Y_E3_collapse300` | B | 只做合并（不用 SE），与 q18 的 P-IFWI 对比 |
+| `Y_E3_cos` | B | FR + 余弦学习率衰减（第 201–2000 个 epoch 降到 0.1） |
+| `Y_E2_cos` | 对照 | P-IFWI + 同样的学习率衰减 |
+
+判断标准：谁先达到 P-IFWI 收敛精度的 1% 以内（≤ 359 m/s），并且明显快于 MS-IFWI 的 328 min。
+
+```bash
+python paper_queue.py experiments/paper_supplement/queues/q19_pilot.json --out-root outputs/paper_supplement --shared-dir SHARED --wait-idle
+```

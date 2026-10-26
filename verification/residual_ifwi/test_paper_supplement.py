@@ -351,3 +351,38 @@ def test_slowness_background_plateau_stop_and_q18(tmp_path):
     assert q18["V_ours_sigma2_s3"]["robustness"]["condition"] == "marmousi_noise_sigma2_smooth400"
     plan = json.loads((Path(__file__).resolve().parents[2] / "experiments/paper_supplement/converge_plan.json").read_text())
     assert all(e["stop_plateau"] == ps().PLATEAU["plateau"] and e["epochs"] == 4000 for e in plan)
+
+
+def test_fr_collapse_keeps_the_function_resumes_exactly_and_plateau_is_per_stage(tmp_path):
+    fm = importlib.import_module("experiments.fourier_modules")
+    item = tiny_spec(tmp_path, "collapse", "E3", training={"epochs": 4})
+    item["accel"] = {"fr_collapse": {"at": 3}}
+    out, history = run(tmp_path, item)
+    record = json.loads((out / "fr_collapse.json").read_text())
+    assert record["update"] == 3 and record["layers"] and record["max_velocity_change_mps"] < 1e-2
+    saved = torch.load(out / "checkpoint.pt", weights_only=False)
+    assert not any(k.endswith("lamb") for k in saved["model"])                # plain weights after the merge
+    # 3 updates, then continue to 4 from the post-collapse checkpoint: same velocity as 4 straight updates.
+    short = tiny_spec(tmp_path, "collapse3", "E3", training={"epochs": 3})
+    short["accel"] = {"fr_collapse": {"at": 3}}
+    out3, _ = run(tmp_path, short)
+    resumed = runner().run(short | {"experiment": {**short["experiment"], "training": {**short["experiment"]["training"], "epochs": 4}}},
+                           tmp_path / "collapse_resumed", "cpu", resume=out3 / "checkpoint.pt", save_figures=False,
+                           shared_dir=tmp_path / "shared", extend=True)
+    assert np.allclose(np.load(resumed / "final_velocity.npy"), np.load(out / "final_velocity.npy"), atol=1e-4)
+    # collapse_fourier on its own: identical output, plain Linear layers.
+    model = runner().build_model(item, item["experiment"], np.full((8, 9), 3000., np.float32))
+    with torch.no_grad():
+        model.net.linear[-1].weight.normal_()                                 # non-zero head: a real check
+    before = model().detach().clone()
+    assert fm.collapse_fourier(model.net) and torch.allclose(model(), before, atol=1e-3)
+    # Plateau window within the stage: window 2, stage change at 3 -> stops at 5, not at 3.
+    stop = tiny_spec(tmp_path, "stage", "E2", training={"epochs": 8})
+    stop["accel"] = {"supershot_schedule": [{"from": 1, "supershots": 1}, {"from": 3, "supershots": None}]}
+    stop["target"] = {"plateau": {"window": 2, "rel": 0.99}}
+    out, history = run(tmp_path, stop)
+    assert json.loads((out / "target_reached.json").read_text())["update"] == 5 == len(history)
+    q19 = {s["name"]: s for s in ps().build_specs()["q19_pilot"]}
+    assert q19["Y_E3_collapse300_prog_smooth400_s3"]["accel"] == {**ps().PROGRESSIVE, "fr_collapse": {"at": 300}}
+    assert q19["Y_E3_cos_smooth400_s3"]["experiment"]["training"]["lr_schedule"]["decay_updates"] == 1800
+    assert all(s["background"] == ps().SMOOTH400 and s["target"] == ps().PLATEAU for s in q19.values())
