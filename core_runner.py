@@ -241,7 +241,8 @@ def run(spec, out, device='cuda:0', resume=None, save_figures=True, shared_dir=N
             if prior is not None:
                 if prior.meta is not None:
                     shape = prior.grid_shape(truth.shape)
-                    patch_origins(*shape,prior.meta['patch_size'],prior.stride)
+                    if prior.cfg['mode'] == 'diffusion' or prior.cfg.get('red_geometry') == 'patch':
+                        patch_origins(*shape,prior.meta['patch_size'],prior.stride)
                     prior.info['prior_grid_shape'] = list(shape)
                 provenance={**provenance,'diffusion_prior':prior.info}
                 atomic_json(out/'diffusion_prior.json',{'config':prior.cfg,**prior.info})

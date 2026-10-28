@@ -159,10 +159,23 @@ class LoRA1x1(nn.Module):
         return self.base(x)+self.scale*self.lora_up(self.lora_down(x))
 
 
+def build_model(config):
+    """Use the prior's recorded backbone; preserve older small checkpoints."""
+    config = dict(config)
+    backbone = config.pop('backbone','small')
+    if backbone == 'small':
+        return UNet(**config)
+    if backbone == 'g2_author':
+        from .author_unet import G2AuthorUNet
+        return G2AuthorUNet(**config)
+    raise ValueError(f'Unknown diffusion backbone: {backbone}')
+
+
 def inject_lora(net, rank=4, alpha=4.):
     if any(isinstance(m, LoRA1x1) for m in net.modules()):
         raise ValueError('LoRA is already attached')
-    blocks = [m for m in net.modules() if isinstance(m, Attn)]
+    from .author_unet import AttentionBlock
+    blocks = [m for m in net.modules() if isinstance(m, (Attn, AttentionBlock))]
     if not blocks:
         raise ValueError('No compatible attention blocks')
     # Validate every target before modifying the module tree.

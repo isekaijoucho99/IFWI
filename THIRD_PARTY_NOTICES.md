@@ -14,3 +14,5 @@
 现有项目说明引用：Sun et al. (2023), “Implicit Seismic Full Waveform Inversion With Deep Neural Representation”, JGR Solid Earth, DOI: `10.1029/2022JB025964`。以上来源来自本地文件标注，本次没有重新进行外部文献核验。
 
 没有在本次来源目录中找到明确的上游许可文件。本文件仅记录出处，不授予新的许可，也不改变原文件和数据的权利归属。
+
+- `experiments/diffusion_prior/author_unet.py`: G²IFWI author architecture matches the provided `G2IFWI_code.zip` `synthetic/core/diffusion/diffusion.py`. Layer implementations are adapted from public `LinXueyuanStdio/PyTorch-DDPM` (`ddpm.py`); upstream GitHub does not advertise a repository-level license, while the user-supplied G²IFWI release describes its software as MIT licensed. This file adds gradient checkpointing and safety checks and is not a redistributable pretrained weight.

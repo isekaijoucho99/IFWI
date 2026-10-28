@@ -7,7 +7,7 @@ import os
 from pathlib import Path
 import torch
 
-from .model import UNet, DDPM, inject_lora, adapter_state
+from .model import build_model, DDPM, inject_lora, adapter_state
 
 BASE_SCHEMA = 'ifwi_fixed_scale_ddpm_v1'
 ADAPTER_SCHEMA = 'ifwi_attention_lora_v1'
@@ -42,7 +42,7 @@ def validate_metadata(meta, model_config=None):
     if type(p) is not int or p < 2:
         raise ValueError('Invalid patch size')
     if model_config is not None:
-        divisor = 2**(len(model_config.get('mult', [1, 2, 4, 8]))-1)
+        divisor = 2**(len(model_config.get('mult', model_config.get('channel_mult', [1, 2, 4, 8])))-1)
         if p % divisor or p // divisor < 2:
             raise ValueError('Patch size must fit U-Net downsampling (at least 2x2 at bottleneck)')
     return meta
@@ -80,9 +80,14 @@ def load_prior(path, device, grid_spacing_m, adapter=None, allow_untrained=False
         raise ValueError('Invalid prior training count')
     if ck['updates'] == 0 and not allow_untrained:
         raise ValueError('Refusing untrained prior; allow_untrained is only for an explicit control experiment')
+    if str(device).startswith('cuda') and torch.cuda.is_available() and ck['model_config'].get('backbone') == 'g2_author':
+        from .author_unet import check_memory_budget
+        free, _ = torch.cuda.mem_get_info(device)
+        check_memory_budget(ck['model_config'],free,mode='inference',microbatch=1,
+                            patch_size=meta['patch_size'])
     # Initialization consumes CPU RNG; fork it even though state_dict replaces all weights.
     with torch.random.fork_rng(devices=[]):
-        net = UNet(**ck['model_config'])
+        net = build_model(ck['model_config'])
         net.load_state_dict(ck['model'], strict=True)
         ddpm = DDPM(**ck['schedule_config'])
         info = dict(schema=BASE_SCHEMA, base_sha256=file_hash(path), updates=ck['updates'],

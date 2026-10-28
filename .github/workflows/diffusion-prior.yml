@@ -1,7 +1,7 @@
 name: Diffusion prior CPU checks
 on:
   push:
-    branches: [feature/lora-diffusion-prior-ifwi, feature/physical-scale-prior-bridge]
+    branches: [feature/lora-diffusion-prior-ifwi, feature/physical-scale-prior-bridge, feature/g2ifwi-red-lora-pms]
   workflow_dispatch:
 permissions:
   contents: read
