@@ -67,3 +67,72 @@ python -m compileall -q experiments/diffusion_prior core_runner.py
 ```
 
 本分支不提供实际训练好的扩散权重；CPU 小网格数值与集成测试不能证明全尺寸 GPU 运行时间、峰值显存或地质反演精度。第一步只执行上述 200-step CUDA benchmark，记录实际峰值显存再增加预算。
+
+## GPU microbatch tuning on RTX 5060 Ti (16 GiB)
+
+A Windows Task Manager screenshot showing ~4.3/16 GiB **dedicated GPU memory**
+indicates possible headroom but **does not provide peak allocated/reserved CUDA
+memory or training throughput**. The Task Manager 3D graph is not a reliable
+CUDA training-utilization metric. Do **not** enlarge the U-Net's channel count
+in an existing run: a 32-channel checkpoint cannot be resumed as 64-channel
+weights. Also do not start the profiler while another GPU training job is
+running; terminate/finish the old job first so the GPU's free-memory baseline
+is meaningful.
+
+The author-style 32-channel model previously estimated six GiB of activation
+memory **per micro-sample**, blocking microbatch 2 or 4 even when their real
+memory use might fit. The static budget is now less pessimistic for base
+training but is **not a GPU measurement**. The 128-channel, 1.308-billion-
+parameter original still fails preflight on 16 GiB.
+
+Use the following GPU probe to test real forward, backward, Adam, EMA,
+validation and accumulation with isolated subprocesses. It starts at batch 1,
+projects upper bounds before trying larger batches, and stops when the measured
+peak reserve would consume more than 75% of the GPU's initially **free**
+memory. This is a headroom policy, not an OOM guarantee. The probe consumes
+compute but does not modify trained weights or run data-dependent FWI.
+
+```powershell
+python -m experiments.diffusion_prior.batch_probe `
+  --model-channels 32 --patch-size 128 --effective-batch 16 `
+  --candidates 1 2 4 8 --mixed-precision bf16 `
+  --device cuda:0 --out outputs/g2_batch_probe_bf16.json
+```
+
+The resulting JSON contains `peak_reserved_bytes`, `peak_allocated_bytes`,
+`samples_per_second` and the recommended `microbatch` / `accumulate_steps`.
+Its throughput comparison uses synthetic input tensors rather than the full
+`.npy` dataset loader; it is a **short compute benchmark**, so for publication
+run a longer real-data interval and compare actual step times. A likely
+first experiment is `--batch-size 2 --accumulate-steps 8`; advance to `4 / 4`
+only if the probe confirms there
+is sufficient headroom and better throughput. Do not change model channels,
+normalization, patch size or learning-rate when comparing these batches.
+
+An optional second probe checks whether removing activation recomputation is
+faster with the remaining free VRAM:
+
+```powershell
+python -m experiments.diffusion_prior.batch_probe `
+  --model-channels 32 --patch-size 128 --effective-batch 16 `
+  --candidates 1 2 4 --mixed-precision bf16 `
+  --no-activation-checkpointing `
+  --device cuda:0 --out outputs/g2_batch_probe_no_ckpt.json
+```
+
+If this second probe has better throughput and a safe peak, include
+`--no-activation-checkpointing` in the **new** training run. Always leave
+approximately 3–4 GiB free for other Windows/CUDA allocations and unexpected
+peaks. Keep a watch on VRAM and power using `nvidia-smi -l 1`.
+
+**Checkpoint compatibility:** The existing trainer intentionally refuses an
+exact `--resume` if the `batch_size`, `accumulate_steps`, or activation-checkpoint
+setting changed. This prevents silent trajectory changes. Finish/continue the
+original job with its original arguments, or start a **separate** training run
+using the selected new settings. The new memory-probe module and adjustment to
+static preflight do not alter the existing trainer's loss or optimizer steps.
+
+**Limit:** A higher GPU-memory figure is not itself evidence of faster training.
+In particular, the benchmark may recommend batch 2 instead of batch 4 if its
+measured samples/second are higher. GPU-dependent recommendations cannot be
+validated by the repository's CPU CI jobs.

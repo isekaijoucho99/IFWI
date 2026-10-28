@@ -324,7 +324,14 @@ def memory_requirements(config, mode='base_train', microbatch=1, patch_size=128)
     count = sum(p.numel() for p in network.parameters())
     # Base train: weight, gradient, 2x Adam state, EMA = 20 FP32 bytes/parameter.
     static = count * (20 if mode == 'base_train' else 4)
-    reserve = {'inference':3,'adapt':10,'base_train':6}[mode]*2**30*microbatch*(patch_size/128.)**2
+    # A 6 GiB activation reserve *per sample* made microbatch 2/4 impossible
+    # even on lightly loaded 16 GiB GPUs. Preserve fixed and per-sample
+    # headroom, and recommend a real CUDA batch probe before increasing it.
+    if mode == 'base_train':
+        reserve = (2 + 1.5*microbatch*(patch_size/128.)**2)*2**30
+    else:
+        # Keep full-author LoRA adaptation / inference budgets conservative.
+        reserve = {'inference':3,'adapt':10}[mode]*2**30*microbatch*(patch_size/128.)**2
     return dict(parameters=count,static_bytes=int(static),
                 activation_reserve_bytes=int(reserve),estimated_bytes=int(static+reserve))
 
@@ -339,6 +346,6 @@ def check_memory_budget(config, available_bytes, mode='base_train', microbatch=1
         raise MemoryError(
             f'G2IFWI estimated {report["estimated_bytes"]/2**30:.1f} GiB required, '
             f'{available_bytes/2**30:.1f} GiB available (e.g. 16 GiB). '
-            'Use --channels 32 --batch-size 1 --accumulate-steps 16; '
+            'Run experiments.diffusion_prior.batch_probe to calibrate batch size first; '
             'the 128-channel paper model needs much larger GPU/CPU offload.')
     return report
