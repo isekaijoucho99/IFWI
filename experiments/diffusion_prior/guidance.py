@@ -13,12 +13,14 @@ import torch
 import torch.nn.functional as F
 
 from .io import load_prior, validate_metadata
+from .scale_bridge import canonical_shape, query_velocity
 
 DEFAULTS = dict(enabled=True, mode='diffusion', checkpoint=None, adapter=None,
                 warmup=50, every=5, seed=0, ratio=.025, fixed_weight=None,
                 eta_start=.2, eta_end=.02, anneal_updates=400,
                 patch_stride=None, patch_batch_size=4, weighting='kl',
-                allow_untrained=False, resize_shape=[128, 128], scale_mps=1500.)
+                allow_untrained=False, resize_shape=[128, 128], scale_mps=1500.,
+                physical_scale_bridge=False)
 
 
 def validate_config(setting):
@@ -27,7 +29,7 @@ def validate_config(setting):
     if not isinstance(setting, dict) or set(setting)-set(DEFAULTS):
         raise ValueError('Unknown diffusion_prior configuration keys')
     cfg = {**DEFAULTS, **setting}
-    for key in ('enabled', 'allow_untrained'):
+    for key in ('enabled', 'allow_untrained', 'physical_scale_bridge'):
         if type(cfg[key]) is not bool:
             raise ValueError(f'diffusion_prior.{key} must be bool')
     if not cfg['enabled']:
@@ -57,8 +59,8 @@ def validate_config(setting):
             raise ValueError('A checkpoint is required for diffusion guidance')
         if cfg['adapter'] is not None and (not isinstance(cfg['adapter'], str) or not cfg['adapter']):
             raise ValueError('adapter must be a checkpoint path or null')
-    elif cfg['checkpoint'] is not None or cfg['adapter'] is not None:
-        raise ValueError('resize_only control must not load a neural prior')
+    elif cfg['checkpoint'] is not None or cfg['adapter'] is not None or cfg['physical_scale_bridge']:
+        raise ValueError('resize_only control cannot load a prior or use physical_scale_bridge')
     return cfg
 
 
@@ -119,7 +121,7 @@ def _norm(grads):
     return torch.stack([g.detach().double().square().sum() for g in grads]).sum().sqrt()
 
 
-def add_guidance(model, direction, ratio=.025, fixed_weight=None):
+def add_guidance(model, direction, ratio=.025, fixed_weight=None, *, velocity_fn=None):
     """Accumulate a frozen velocity field into already accumulated parameter grads."""
     if not 0 <= ratio < 1:
         raise ValueError('ratio must be in [0,1)')
@@ -136,7 +138,7 @@ def add_guidance(model, direction, ratio=.025, fixed_weight=None):
                   prior_lambda=0., effective_ratio=0., gradient_cosine=None)
     if (fixed_weight == 0) or (fixed_weight is None and (nd == 0 or ratio == 0)):
         return report
-    velocity = model()
+    velocity = model() if velocity_fn is None else velocity_fn()
     if direction.shape != velocity.shape or not torch.isfinite(direction).all():
         raise ValueError('Prior field shape/finiteness mismatch')
     proxy = (velocity*direction.detach()).sum()
@@ -164,6 +166,7 @@ def add_guidance(model, direction, ratio=.025, fixed_weight=None):
 class FrozenPrior:
     def __init__(self, cfg, device, grid_spacing_m, root=None):
         self.cfg, self.device = cfg, torch.device(device)
+        self.source_spacing_m = float(grid_spacing_m)
         self.net = self.ddpm = self.meta = None
         self.info = dict(mode=cfg['mode'])
         if cfg['mode'] == 'diffusion':
@@ -172,14 +175,27 @@ class FrozenPrior:
             self.net, self.ddpm, self.meta, info = load_prior(
                 resolve(cfg['checkpoint']), device, grid_spacing_m,
                 adapter=resolve(cfg['adapter']) if cfg['adapter'] else None,
-                allow_untrained=cfg['allow_untrained'])
-            self.info.update(info, normalization=self.meta)
+                allow_untrained=cfg['allow_untrained'],
+                allow_grid_mismatch=cfg['physical_scale_bridge'])
+            self.info.update(info, normalization=self.meta,
+                             physical_scale_bridge=cfg['physical_scale_bridge'],
+                             source_spacing_m=self.source_spacing_m)
             self.stride = cfg['patch_stride'] or max(1, self.meta['patch_size']//2)
             if self.stride > self.meta['patch_size']:
                 raise ValueError('patch_stride exceeds checkpoint patch size')
             self.etas = ((1-self.ddpm.abar)/self.ddpm.abar).sqrt()
             if cfg['eta_end'] < float(self.etas.min()) or cfg['eta_start'] > float(self.etas.max()):
                 raise ValueError('Requested eta interval lies outside the checkpoint diffusion schedule')
+
+    def grid_shape(self, shape):
+        if self.meta is None or not self.cfg['physical_scale_bridge']:
+            return tuple(shape)
+        return canonical_shape(tuple(shape), self.source_spacing_m, self.meta['grid_spacing_m'])
+
+    def query_velocity(self, model):
+        if self.meta is None or not self.cfg['physical_scale_bridge']:
+            return model()
+        return query_velocity(model, self.source_spacing_m, self.meta['grid_spacing_m'])
 
     def active(self, update):
         return (update > self.cfg['warmup'] and
@@ -211,8 +227,12 @@ class FrozenPrior:
             torch.cuda.synchronize(self.device)
         started = time.perf_counter()
         with torch.no_grad():
-            direction, info = self.direction(model().detach(), update)
-        report = add_guidance(model, direction, self.cfg['ratio'], self.cfg['fixed_weight'])
+            prior_velocity = self.query_velocity(model).detach()
+            direction, info = self.direction(prior_velocity, update)
+        report = add_guidance(model, direction, self.cfg['ratio'], self.cfg['fixed_weight'],
+                              velocity_fn=lambda: self.query_velocity(model))
+        if self.meta is not None:
+            info['prior_grid_shape'] = list(prior_velocity.shape[-2:])
         if self.device.type == 'cuda':
             torch.cuda.synchronize(self.device)
         return dict(active=True, prior_seconds=time.perf_counter()-started, **info, **report)

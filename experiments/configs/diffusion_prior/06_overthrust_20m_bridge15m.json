@@ -1,0 +1,105 @@
+{
+  "name": "overthrust_20m_bridge15m_s3",
+  "experiment": {
+    "experiment_name": "overthrust_20m_bridge15m_s3",
+    "parameterization": "residual",
+    "seed": 3,
+    "data": {
+      "model_file": "overthrust_94x401_mps.csv",
+      "model_units": "m/s",
+      "csv_header": "none",
+      "downsample": 1,
+      "crop_shape": null,
+      "grid_spacing_m": 20
+    },
+    "initialization": {
+      "sigma": 15,
+      "gaussian_mode": "reflect",
+      "gaussian_truncate": 4
+    },
+    "model": {
+      "neurons": [
+        2,
+        128,
+        128,
+        128,
+        128,
+        1
+      ],
+      "omega_0": 30,
+      "mean_kmps": 3,
+      "std_kmps": 1
+    },
+    "acquisition": {
+      "num_shots": 10,
+      "source_x_indices": [
+        20,
+        60,
+        100,
+        140,
+        180,
+        220,
+        260,
+        300,
+        340,
+        380
+      ],
+      "source_start_index": 20,
+      "source_spacing_index": 40,
+      "source_end_margin": 10,
+      "source_depth_index": 1,
+      "receiver_depth_index": 0,
+      "receiver_stride": 1
+    },
+    "forward": {
+      "dt_s": 0.002,
+      "nt": 1500,
+      "frequency_hz": 8,
+      "npad": 15,
+      "order": 2,
+      "free_surface": true,
+      "pml_reflection": 0.000001
+    },
+    "training": {
+      "epochs": 1000,
+      "learning_rate": 0.0001,
+      "checkpoint_interval": 50,
+      "shot_batch_size": 5,
+      "frequency_schedule": [
+        {
+          "max_hz": 3,
+          "updates": 100
+        },
+        {
+          "max_hz": 5,
+          "updates": 100
+        },
+        {
+          "max_hz": null
+        }
+      ]
+    }
+  },
+  "control": {
+    "kind": "zero_output"
+  },
+  "robustness": {
+    "condition": "overthrust",
+    "noise_sigma": 0,
+    "noise_seed": 3
+  },
+  "protocol": "paper_supplement_v1",
+  "diffusion_prior": {
+    "checkpoint": "weights/diffusion_base/best.pt",
+    "physical_scale_bridge": true,
+    "warmup": 50,
+    "every": 5,
+    "ratio": 0.025,
+    "eta_start": 0.2,
+    "eta_end": 0.02,
+    "anneal_updates": 400,
+    "patch_batch_size": 4,
+    "seed": 3,
+    "weighting": "kl"
+  }
+}

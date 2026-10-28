@@ -30,3 +30,13 @@
 没有训练可用于正式地质反演的扩散先验；没有全尺寸 Marmousi/Overthrust 反演结果；没有 CUDA 显存、速度或时间—精度优势证据；程序化生成器不是实测地质数据；未测试超级炮、粗网格、function-space 更新或 Muon 的耦合，因此配置入口暂时拒绝这些组合。
 
 小规模训练与反演用于验证代码通路、数值约定和恢复行为，不代表恢复精度或论文复现成功。
+
+## 2026-10-28 Physical-scale neural-field bridge (incremental branch)
+
+On isolated CPU source snapshot derived from `866083c`, ran
+`python -m pytest -q verification/diffusion_prior` → **36 passed** and
+`python -m compileall -q experiments/diffusion_prior core_runner.py verification/diffusion_prior`.
+Includes 20m PDE / 15m prior canonical shape, exact physical coordinates,
+analytic linear-background interpolation, SIREN/FR and traveltime-warp gradients,
+strict rejection of unsupported coarser prior and non-SIREN representations,
+and one end-to-end 20m small-grid core_runner test. No CUDA or full-size FWI was run.

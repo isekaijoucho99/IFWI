@@ -145,3 +145,31 @@ python core_runner.py --spec experiments/configs/diffusion_prior/03_diffusion.js
 `model.py`：U-Net、DDPM、LoRA；`io.py`：版本与权重身份；`guidance.py`：原网格先验方向；`training.py`：训练、验证、EMA、数据生成；`examples.py`：受控实验配置。
 
 算法参考而非代码复制：LoRA (Hu et al., arXiv:2106.09685)，DDPM (Ho et al., arXiv:2006.11239)，score distillation (Poole et al., arXiv:2209.14988)，以及 `lu-group/red-diffeq` 的停止梯度噪声残差和分块处理思路。不同时间权重与空间归一化的数值不可直接共用 lambda。
+
+## 9. 物理尺度神经场桥接：复用 15m 先验做 20m Overthrust
+
+默认仍严格要求先验与反演的网格间距完全一致；`physical_scale_bridge: true` 显式启用第二套**固定物理间距**的先验网格。当前仅支持 `core_runner.py` 的完整二维 SIREN / FR-SIREN（含现有走时坐标变换），且先验网格必须**不粗于**物理正演网格。例如可复用 15m 先验，在 20m Overthrust 模型上反演。
+
+```json
+"diffusion_prior": {
+  "checkpoint": "weights/diffusion_base/best.pt",
+  "physical_scale_bridge": true,
+  "warmup": 50,
+  "every": 5,
+  "ratio": 0.025,
+  "eta_start": 0.2,
+  "eta_end": 0.02
+}
+```
+
+核心过程：正演仍在 20m 网格通过 `model()` 取得速度场；先验在保持物理坐标原点不变的 15m 网格上，直接调用**同一个** `IRN` 的前向计算获取残差场。固定的初速度模型（以及可能的走时扭曲坐标场）仅做有物理坐标含义的双线性采样，**不先将反演速度图缩放成正方形**。扩散噪声残差通过先验网格的 IRN Jacobian 直接回传到共享参数，合并物理参数梯度，且每次仍只执行一次原来的优化器更新。
+
+规范先验网格在每个轴上使用 `floor(((n-1)*dx)/dx_prior)+1` 个点，间距始终为 `dx_prior`，不在物理区域外推；最右/最下可能剩余不足一个先验网格间距的边缘。报告 `prior_grid_shape` 便于审计。以 94×401、20m Overthrust 为例，将查询 125×534 个速度点，增加先验计算开销但**不会增加物理正演网格和炮数**。
+
+示例配置：`experiments/configs/diffusion_prior/06_overthrust_20m_bridge15m.json`。使用前按 `python paper_supplement.py prepare-data` 准备 Overthrust 速度 CSV，并确保已训练 `weights/diffusion_base/best.pt` 且其元数据记录 15m。保持相同观测、初模和总更新数，用去掉 `diffusion_prior` 的对应 spec 做基线对照。此示例不设置真值停止阈值。
+
+```bash
+python core_runner.py --spec experiments/configs/diffusion_prior/06_overthrust_20m_bridge15m.json --out outputs/overthrust_prior_bridge --device cuda:0
+```
+
+**限制**：连续 SIREN 在更细网格查询不意味着恢复了物理观测未约束的高频信息，也不保证扩散模型跨地质类型泛化。第一版禁止先验网格比物理网格粗（如 12.5m 正演直接接 15m 先验），因为这需要经过验证的空间低通/抗混叠策略。低秩分解速度网络、网格 FWI、Fourier-feature MLP 目前未接入这个桥接模块。空间尺度桥接为固定几何变换，不增设可训练权重；如需学习地质分布差异，使用离线 LoRA。未经验证不能宣称它能提升 RMSE、SSIM 或收敛速度。
