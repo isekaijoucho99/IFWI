@@ -346,7 +346,7 @@ def training_objective(prediction, observations, total_shots, max_hz, problem, p
     return scale * waveform_mse(time_gain(prediction, power, dt_s), time_gain(observations, power, dt_s), total_shots)
 
 
-def train_update(model, problem, optimizer, max_hz=None, power=None):
+def train_update(model, problem, optimizer, max_hz=None, power=None, *, prior=None, update=None):
     """One optimizer update, with all shots or a uniform subset and exact accumulation.
 
     All shot batches are accumulated before the single step, so Muon orthogonalizes the
@@ -355,6 +355,8 @@ def train_update(model, problem, optimizer, max_hz=None, power=None):
     objective; data_mse stays the plain full-band waveform MSE of the same forward pass,
     comparable with every other run.
     """
+    if prior is not None and (type(update) is not int or update < 1):
+        raise ValueError("Prior guidance requires a one-based update number")
     selected_indices = None
     if problem["config"]["training"].get("shots_per_update") is not None:
         from experiments.residual_ifwi_stochastic import sample_shot_indices, select_shot_problem
@@ -385,6 +387,8 @@ def train_update(model, problem, optimizer, max_hz=None, power=None):
         loss_value += float(loss.detach())
         # No field graph is retained between batches; every batch uses the same theta.
         del loss, predicted, velocity
+    # One frozen-prior injection after every shot batch, never once per microbatch.
+    prior_report = prior.apply(model, update) if prior is not None else None
     gradients = [p.grad for p in model.parameters()]
     if any(g is None for g in gradients):
         raise RuntimeError("A SIREN parameter is disconnected from waveform loss")
@@ -409,6 +413,8 @@ def train_update(model, problem, optimizer, max_hz=None, power=None):
         raise
     report = {"data_mse": loss_value, "gradient_norm": grad_norm,
               "parameter_update_norm": change, "velocity_before_mps": velocity_before}
+    if prior_report is not None:
+        report["diffusion_prior"] = prior_report
     if max_hz is not None:
         report.update(max_hz=float(max_hz), objective=objective_value)
     if power is not None:

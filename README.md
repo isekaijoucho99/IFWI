@@ -240,3 +240,8 @@ python main.py --experiment pretrain --epochs 4001 --pretrained outputs/pretrain
 原作者模块为 `ifwi_modules.py`、`rnn_fd.py`、`generator.py`、`plot_functions.py`，文件头署名与参考信息保留。补充入口及 `experiments/` 不应全部署名为原论文作者的发布实现；具体来源与引用见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。来源材料没有可确认的上游 LICENSE，本仓库不擅自授予新许可。
 
 本版本 Marmousi 震源深度 15 m、接收深度 30 m；采样与其他论文版本可能不同。legacy `regularization` 的原 auto-TV 逻辑及原 IFWI 非有限波场处理保留；它们不能作为有效 TV 正则化或数值稳定性的证据。结果受训练预算、硬件、依赖与随机性影响，本仓库不代表论文全部实验的精确复现。`docs/` 中保留的原始来源和环境说明按其记录日期理解；内部开发计划和本地历史实验工作记录不属于公开源码交付。
+
+
+## 可选：原网格扩散先验与 LoRA
+
+新增实验入口仍为 `core_runner.py`，默认关闭扩散先验。固定归一化、重叠原网格裁块、冻结先验梯度、离线 DDPM/LoRA 训练和五组对照见 [使用说明](docs/diffusion_prior.md)。已完成的 CPU 验证与未验证范围见 [验证记录](docs/diffusion_prior_validation.md)。本分支不包含已训练的地质扩散权重，也不声称已改善反演效果。

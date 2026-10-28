@@ -1,0 +1,37 @@
+name: Diffusion prior CPU checks
+on:
+  push:
+    branches: [feature/lora-diffusion-prior-ifwi]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  numerical-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      OMP_NUM_THREADS: '1'
+      MKL_NUM_THREADS: '1'
+      MPLBACKEND: Agg
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Archive exact tested source
+        run: git archive --format=zip --output=ifwi-source.zip HEAD
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ifwi-source
+          path: ifwi-source.zip
+          retention-days: 3
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install CPU test dependencies
+        run: |
+          python -m pip install torch==2.10.0 torchvision==0.25.0 --index-url https://download.pytorch.org/whl/cpu
+          python -m pip install -r requirements.txt pytest tqdm
+      - name: Run diffusion-prior numerical and integration tests
+        run: |
+          python -m pytest -q verification/diffusion_prior
+          python -m compileall -q experiments/diffusion_prior verification/diffusion_prior core_runner.py

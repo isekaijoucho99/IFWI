@@ -48,7 +48,7 @@ from core_accel import validate_accel, StepProblems, FunctionSpaceOptimizer, fun
 
 ROOT=Path(__file__).resolve().parent
 SCHEMA='paper_supplement_v1'
-SPEC_KEYS={'name','experiment','control','robustness','model','background','protocol','speedup','target','accel'}
+SPEC_KEYS={'name','experiment','control','robustness','model','background','protocol','speedup','target','accel','diffusion_prior'}
 EXTENDABLE_SCHEMAS=(SCHEMA,'robustness_overthrust_noise_v1')
 
 
@@ -82,7 +82,8 @@ def atomic_torch(path,payload):
 
 def source_hashes():
     # Explicit files: the repository root also holds .venv/ and outputs/, which must not be hashed.
-    files=[ROOT/name for name in SOURCE_FILES]+sorted((ROOT/'experiments').glob('*.py'))
+    files=([ROOT/name for name in SOURCE_FILES]+sorted((ROOT/'experiments').glob('*.py'))
+           +sorted((ROOT/'experiments'/'diffusion_prior').glob('*.py')))
     return {str(p.relative_to(ROOT)).replace('\\','/'):hashlib.sha256(p.read_bytes()).hexdigest() for p in files}
 
 
@@ -99,6 +100,13 @@ def check_spec(spec):
     if unknown or not {'name','experiment','control','robustness'}<=set(spec):
         raise ValueError(f'Spec needs name, experiment, control, robustness; unknown keys {sorted(unknown)}')
     training=spec['experiment']['training']
+    if spec.get('diffusion_prior') is not None:
+        from experiments.diffusion_prior.guidance import validate_config
+        prior_cfg=validate_config(spec['diffusion_prior'])
+        if prior_cfg['enabled'] and (spec.get('speedup') or spec.get('accel')):
+            raise ValueError('diffusion_prior v1 does not support speedup/accel paths; use the standard fine-grid update')
+        if prior_cfg['enabled'] and (training.get('optimizer') or {}).get('name','adam')!='adam':
+            raise ValueError('diffusion_prior v1 is validated with Adam only')
     for key in ('time_gain','report_estimates','shots_per_update'):
         if training.get(key) is not None:
             raise ValueError(f'core_runner does not support training.{key}; use residual_ifwi.py')
@@ -191,7 +199,7 @@ def run(spec, out, device='cuda:0', resume=None, save_figures=True, shared_dir=N
         'allow_tf32_matmul':torch.backends.cuda.matmul.allow_tf32})
     atomic_json(out/'status.json',{'state':'preparing','pid':os.getpid(),'completed_updates':0})
     if device.startswith('cuda'): torch.cuda.synchronize(device); torch.cuda.reset_peak_memory_stats(device)
-    started=time.perf_counter(); phase='preparing'; model=opt=None; completed=0
+    started=time.perf_counter(); phase='preparing'; model=opt=None; prior=None; completed=0
     timing={'preparation_seconds':0.,'training_seconds':0.,'diagnostic_seconds':0.,'checkpoint_seconds':0.,'prefit_seconds':0.}
     history=[]; evaluations=[]; train_started=None; train_prior=0.; saved=None
     rollback=None; rollback_history_length=0
@@ -223,6 +231,14 @@ def run(spec, out, device='cuda:0', resume=None, save_figures=True, shared_dir=N
                 background=linear_depth_background(truth.shape,cfg['data']['grid_spacing_m'],override['top_mps'],override['gradient_per_s'])
                 note='replaces the Gaussian background; no truth used'
             provenance={**provenance,'background_override':{**override,'array_hash':array_hash(background),'note':note}}
+        if spec.get('diffusion_prior') is not None:
+            from experiments.diffusion_prior.guidance import build_prior, patch_origins
+            prior=build_prior(spec['diffusion_prior'],device,cfg['data']['grid_spacing_m'],ROOT)
+            if prior is not None:
+                if prior.meta is not None:
+                    patch_origins(*truth.shape,prior.meta['patch_size'],prior.stride)
+                provenance={**provenance,'diffusion_prior':prior.info}
+                atomic_json(out/'diffusion_prior.json',{'config':prior.cfg,**prior.info})
         atomic_json(out/'initial_model_provenance.json',provenance)
         if resume:
             saved=torch.load(resume,map_location='cpu',weights_only=False)
@@ -395,6 +411,7 @@ def run(spec, out, device='cuda:0', resume=None, save_figures=True, shared_dir=N
                 if use_coarse:
                     with torch.no_grad(): fine_before=model().cpu().numpy()[0].copy()
                 if isinstance(opt,FunctionSpaceOptimizer): report=function_space_update(step_model,step_problem,opt,max_hz)
+                elif prior is not None: report=e.train_update(step_model,step_problem,opt,max_hz,prior=prior,update=update)
                 else: report=e.train_update(step_model,step_problem,opt,max_hz)
                 if accel_info is not None: report['accel']=accel_info
                 if use_coarse:
@@ -468,6 +485,8 @@ def run(spec, out, device='cuda:0', resume=None, save_figures=True, shared_dir=N
             'completed_updates':completed,'cumulative_shots':completed*cfg['acquisition']['num_shots'],
             'parameters':sum(p.numel() for p in model.parameters()),
             'peak_cuda_allocated_gib':torch.cuda.max_memory_allocated(device)/2**30 if device.startswith('cuda') else 0.,
+            **({'diffusion_prior_seconds':sum(h.get('diffusion_prior',{}).get('prior_seconds',0.) for h in history),
+                'diffusion_unet_calls':sum(h.get('diffusion_prior',{}).get('unet_calls',0) for h in history)} if prior is not None else {}),
             'selection':'last update, no truth-based stopping','timing_includes_diagnostics':True,
             'prefit_seconds_already_in_preparation':True})
         with (out/'metrics.csv').open('w',encoding='utf-8',newline='') as f:
