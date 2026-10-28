@@ -6,6 +6,7 @@ All arrays are numerical [nz,nx] velocities in m/s, not plotted RGB images.
 from __future__ import annotations
 
 import argparse
+from contextlib import nullcontext
 import copy
 import hashlib
 import json
@@ -19,7 +20,7 @@ from scipy.ndimage import gaussian_filter
 
 from .io import (atomic_save, file_hash, load_prior, save_adapter, save_base,
                  validate_metadata)
-from .model import DDPM, UNet, inject_lora
+from .model import DDPM, UNet, build_model, inject_lora
 
 TRAIN_SCHEMA = 'ifwi_prior_training_v1'
 DEFAULT_MODEL = dict(channels=32, mult=[1, 2, 4, 8], n_res=2, heads=4, attn_from=2)
@@ -149,12 +150,20 @@ def _validate(net, ddpm, dataset, batch_size, batches, seed, device):
 
 def train(train_dir, val_dir, out, *, steps=20000, batch_size=8, lr=2e-4, eval_every=200,
           val_batches=4, seed=3, device='cpu', meta=None, model_config=None, schedule_config=None,
-          base=None, rank=4, alpha=4., resume=None, ema_decay=.999):
+          base=None, rank=4, alpha=4., resume=None, ema_decay=.999,
+          accumulate_steps=1, mixed_precision='none', activation_checkpointing=True):
     for k, v in dict(steps=steps, batch_size=batch_size, eval_every=eval_every, val_batches=val_batches).items():
         if type(v) is not int or v < 1:
             raise ValueError(f'{k} must be a positive integer')
     if not math.isfinite(lr) or lr <= 0 or not 0 <= ema_decay < 1:
         raise ValueError('Invalid learning rate or EMA decay')
+    if type(accumulate_steps) is not int or accumulate_steps < 1:
+        raise ValueError('accumulate_steps must be positive')
+    if mixed_precision not in ('none','bf16','fp16') or type(activation_checkpointing) is not bool:
+        raise ValueError('Invalid AMP or gradient-checkpoint settings')
+    if mixed_precision != 'none' and not str(device).startswith('cuda'):
+        raise ValueError('Mixed precision training requires CUDA')
+
     torch.manual_seed(seed)
     if str(device).startswith('cuda'):
         if not torch.cuda.is_available():
@@ -169,6 +178,11 @@ def train(train_dir, val_dir, out, *, steps=20000, batch_size=8, lr=2e-4, eval_e
         if meta is not None and meta != base_meta:
             raise ValueError('LoRA adaptation must preserve base normalization/grid/patch metadata')
         meta = base_meta
+        if str(device).startswith('cuda') and ck['model_config'].get('backbone') == 'g2_author':
+            from .author_unet import check_memory_budget
+            free, _ = torch.cuda.mem_get_info(device)
+            check_memory_budget(ck['model_config'],free,mode='adapt',microbatch=batch_size,
+                                patch_size=meta['patch_size'])
         net, ddpm, meta, info = load_prior(base, device, meta['grid_spacing_m'])
         model_config, schedule_config = ck['model_config'], ck['schedule_config']
         params = inject_lora(net, rank, alpha)
@@ -178,8 +192,15 @@ def train(train_dir, val_dir, out, *, steps=20000, batch_size=8, lr=2e-4, eval_e
         model_config = copy.deepcopy(DEFAULT_MODEL if model_config is None else model_config)
         schedule_config = copy.deepcopy(DEFAULT_SCHEDULE if schedule_config is None else schedule_config)
         validate_metadata(meta, model_config)
-        net, ddpm = UNet(**model_config).to(device), DDPM(**schedule_config).to(device)
+        if str(device).startswith('cuda') and model_config.get('backbone') == 'g2_author':
+            from .author_unet import check_memory_budget
+            free, _ = torch.cuda.mem_get_info(device)
+            check_memory_budget(model_config,free,mode='base_train',microbatch=batch_size,
+                                patch_size=meta['patch_size'])
+        net, ddpm = build_model(model_config).to(device), DDPM(**schedule_config).to(device)
         params = list(net.parameters())
+    if hasattr(net, 'gradient_checkpointing'):
+        net.gradient_checkpointing = activation_checkpointing
     data, val = VelocityDataset(train_dir, meta), VelocityDataset(val_dir, meta)
     if {r['array_sha256'] for r in data.records} & {r['array_sha256'] for r in val.records}:
         raise ValueError('Training/validation full-model overlap: split models before cropping')
@@ -187,8 +208,10 @@ def train(train_dir, val_dir, out, *, steps=20000, batch_size=8, lr=2e-4, eval_e
                     train_records=data.records, val_records=val.records, base_sha256=base_hash,
                     rank=rank if base else None, alpha=alpha if base else None, batch_size=batch_size,
                     lr=lr, seed=seed, eval_every=eval_every, val_batches=val_batches, ema_decay=ema_decay,
+                    accumulate_steps=accumulate_steps, mixed_precision=mixed_precision,
+                    activation_checkpointing=activation_checkpointing,
                     implementation_sha256={name:file_hash(Path(__file__).with_name(name))
-                                           for name in ('training.py','model.py','io.py')})
+                                           for name in ('training.py','model.py','io.py','author_unet.py')})
     out = Path(out)
     if out.exists() and any(out.iterdir()) and resume is None:
         raise FileExistsError(f'Refusing to overwrite nonempty training directory: {out}')
@@ -196,6 +219,9 @@ def train(train_dir, val_dir, out, *, steps=20000, batch_size=8, lr=2e-4, eval_e
         raise FileExistsError('Resume output must be new/empty or the checkpoint training directory')
     out.mkdir(parents=True, exist_ok=True)
     opt = torch.optim.Adam(params, lr=lr)
+    amp = mixed_precision != 'none'
+    amp_dtype = torch.bfloat16 if mixed_precision == 'bf16' else torch.float16
+    scaler = torch.amp.GradScaler('cuda', enabled=(mixed_precision == 'fp16'))
     names = {n for n, p in net.named_parameters() if p.requires_grad}
     ema = {n: p.detach().clone() for n, p in net.named_parameters() if n in names}
     rng = np.random.default_rng(seed+17)
@@ -208,6 +234,8 @@ def train(train_dir, val_dir, out, *, steps=20000, batch_size=8, lr=2e-4, eval_e
             raise ValueError('Resume needs a larger update budget')
         net.load_state_dict(ck['model'], strict=True)
         opt.load_state_dict(ck['optimizer'])
+        if 'scaler' in ck:
+            scaler.load_state_dict(ck['scaler'])
         ema = {n: value.to(device) for n, value in ck['ema'].items()}
         rng.bit_generator.state = ck['data_rng']
         torch.set_rng_state(ck['torch_rng'].cpu())
@@ -235,15 +263,23 @@ def train(train_dir, val_dir, out, *, steps=20000, batch_size=8, lr=2e-4, eval_e
     started = time.perf_counter()
     net.train()
     while step < steps:
-        x = data.sample(batch_size, rng).to(device)
         opt.zero_grad(set_to_none=True)
-        loss = ddpm.loss(net, x)
-        if not torch.isfinite(loss):
-            raise FloatingPointError('Non-finite diffusion training loss')
-        loss.backward()
+        value = 0.
+        for micro in range(accumulate_steps):
+            x = data.sample(batch_size, rng).to(device)
+            amp_context = (torch.autocast('cuda', dtype=amp_dtype) if amp else nullcontext())
+            with amp_context:
+                loss = ddpm.loss(net, x) / accumulate_steps
+            if not torch.isfinite(loss):
+                raise FloatingPointError('Non-finite diffusion training loss')
+            value += float(loss.detach())
+            scaler.scale(loss).backward()
+            del x, loss
+        scaler.unscale_(opt)
         if any(p.grad is None or not torch.isfinite(p.grad).all() for p in params):
             raise FloatingPointError('Missing/non-finite diffusion training gradient')
-        opt.step()
+        scaler.step(opt)
+        scaler.update()
         step += 1
         with torch.no_grad():
             for n, p in net.named_parameters():
@@ -255,7 +291,7 @@ def train(train_dir, val_dir, out, *, steps=20000, batch_size=8, lr=2e-4, eval_e
                 metrics = _validate(net, ddpm, val, batch_size, val_batches, seed+100003, device)
             finally:
                 _swap(net, previous)
-            record = dict(update=step, training_epsilon_mse=float(loss.detach()), **metrics)
+            record = dict(update=step, training_epsilon_mse=value, **metrics)
             history.append(record)
             if metrics['epsilon_mse'] < best_value:
                 best_value, best_step = metrics['epsilon_mse'], step
@@ -263,7 +299,8 @@ def train(train_dir, val_dir, out, *, steps=20000, batch_size=8, lr=2e-4, eval_e
                 export_best()
             atomic_save(dict(schema=TRAIN_SCHEMA, identity=identity, step=step,
                 model={k: v.detach().cpu() for k, v in net.state_dict().items()}, optimizer=opt.state_dict(),
-                ema={k: v.detach().cpu() for k, v in ema.items()}, data_rng=rng.bit_generator.state,
+                ema={k: v.detach().cpu() for k, v in ema.items()}, scaler=scaler.state_dict(),
+                data_rng=rng.bit_generator.state,
                 torch_rng=torch.get_rng_state(), cuda_rng=torch.cuda.get_rng_state_all() if torch.cuda.is_available() else [],
                 best_value=best_value, best_step=best_step, best_state=best_state, history=history), out/'last_training.pt')
             _json(out/'history.json', history)
@@ -273,6 +310,7 @@ def train(train_dir, val_dir, out, *, steps=20000, batch_size=8, lr=2e-4, eval_e
         torch.cuda.synchronize(device)
     _json(out/'summary.json', dict(completed_updates=step, selected_update=best_step,
           parameters=sum(p.numel() for p in net.parameters()), trainable_parameters=sum(p.numel() for p in params),
+          effective_batch_size=batch_size*accumulate_steps, mixed_precision=mixed_precision,
           seconds_this_attempt=time.perf_counter()-started, export=str(target),
           note='Validation denoising is not evidence of improved FWI recovery.'))
     return target
@@ -298,7 +336,13 @@ def main():
         for key in ('train-dir','val-dir','out'):
             p.add_argument('--'+key, required=True)
         p.add_argument('--steps', type=int, default=20000 if command=='train' else 3000)
-        p.add_argument('--batch-size', type=int, default=8)
+        p.add_argument('--batch-size', type=int, default=8,
+                       help='microbatch size (use 1 for 16 GiB G2 author U-Net)')
+        p.add_argument('--accumulate-steps', type=int, default=1,
+                       help='effective batch = batch_size * accumulate_steps')
+        p.add_argument('--mixed-precision', choices=['none','bf16','fp16'], default='none')
+        p.add_argument('--no-activation-checkpointing', dest='activation_checkpointing',
+                       action='store_false', default=True)
         p.add_argument('--lr', type=float, default=2e-4 if command=='train' else 1e-4)
         p.add_argument('--eval-every', type=int, default=200)
         p.add_argument('--val-batches', type=int, default=4)
@@ -315,6 +359,7 @@ def main():
             p.add_argument('--mean-mps', type=float, default=3500.)
             p.add_argument('--scale-mps', type=float, default=2500.)
             p.add_argument('--channels', type=int, default=32)
+            p.add_argument('--architecture', choices=['small','g2_author'], default='small')
     args = vars(ap.parse_args())
     command = args.pop('command')
     if command == 'generate':
@@ -329,7 +374,12 @@ def main():
         print(path)
     else:
         if command == 'train':
-            args['model_config'] = {**DEFAULT_MODEL, 'channels':args.pop('channels')}
+            channels, architecture = args.pop('channels'), args.pop('architecture')
+            if architecture == 'g2_author':
+                from .author_unet import paper_configuration
+                args['model_config'] = paper_configuration(channels)
+            else:
+                args['model_config'] = {**DEFAULT_MODEL, 'channels':channels}
             args['meta'] = {**DEFAULT_META, **{k:args.pop(k) for k in ('patch_size','grid_spacing_m','mean_mps','scale_mps')}}
         print(train(**args))
 
