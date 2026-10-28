@@ -107,6 +107,10 @@ def check_spec(spec):
             raise ValueError('diffusion_prior v1 does not support speedup/accel paths; use the standard fine-grid update')
         if prior_cfg['enabled'] and (training.get('optimizer') or {}).get('name','adam')!='adam':
             raise ValueError('diffusion_prior v1 is validated with Adam only')
+        if prior_cfg['enabled'] and prior_cfg['physical_scale_bridge'] and (
+                spec.get('model',{}).get('kind','siren')!='siren' or
+                spec['experiment']['model'].get('low_rank') is not None):
+            raise ValueError('physical_scale_bridge only supports full 2-D SIREN representations')
     for key in ('time_gain','report_estimates','shots_per_update'):
         if training.get(key) is not None:
             raise ValueError(f'core_runner does not support training.{key}; use residual_ifwi.py')
@@ -236,7 +240,9 @@ def run(spec, out, device='cuda:0', resume=None, save_figures=True, shared_dir=N
             prior=build_prior(spec['diffusion_prior'],device,cfg['data']['grid_spacing_m'],ROOT)
             if prior is not None:
                 if prior.meta is not None:
-                    patch_origins(*truth.shape,prior.meta['patch_size'],prior.stride)
+                    shape = prior.grid_shape(truth.shape)
+                    patch_origins(*shape,prior.meta['patch_size'],prior.stride)
+                    prior.info['prior_grid_shape'] = list(shape)
                 provenance={**provenance,'diffusion_prior':prior.info}
                 atomic_json(out/'diffusion_prior.json',{'config':prior.cfg,**prior.info})
         atomic_json(out/'initial_model_provenance.json',provenance)

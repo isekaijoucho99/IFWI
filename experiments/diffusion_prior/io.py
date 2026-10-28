@@ -68,13 +68,13 @@ def save_adapter(path, net, base_path, rank, alpha, updates, training=None):
                      alpha=float(alpha), updates=updates, adapter=state, training=training or {}), path)
 
 
-def load_prior(path, device, grid_spacing_m, adapter=None, allow_untrained=False):
+def load_prior(path, device, grid_spacing_m, adapter=None, allow_untrained=False, *, allow_grid_mismatch=False):
     path = Path(path)
     ck = torch.load(path, map_location='cpu', weights_only=True)
     if ck.get('schema') != BASE_SCHEMA:
         raise ValueError('Unsupported prior checkpoint schema; legacy min-max weights require retraining')
     meta = validate_metadata(ck['normalization'], ck['model_config'])
-    if not math.isclose(float(grid_spacing_m), meta['grid_spacing_m'], rel_tol=1e-8, abs_tol=1e-8):
+    if not allow_grid_mismatch and not math.isclose(float(grid_spacing_m), meta['grid_spacing_m'], rel_tol=1e-8, abs_tol=1e-8):
         raise ValueError('Prior grid spacing differs from the inversion grid; no implicit resizing is allowed')
     if type(ck.get('updates')) is not int or ck['updates'] < 0:
         raise ValueError('Invalid prior training count')
