@@ -1,0 +1,5 @@
+{
+  "method": "gradient_attention",
+  "gate_strength": 0.2,
+  "attention_block": 10
+}

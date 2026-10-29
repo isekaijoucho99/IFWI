@@ -1,0 +1,77 @@
+[
+  {
+    "method": "baseline",
+    "updates": 10,
+    "elapsed_seconds": 0.3356947580000451,
+    "is_geological_benchmark": false,
+    "solver": "standalone tiny FD fixture, not repository RNN-FD",
+    "final_oracle_rmse_mps": 85.55616760253906,
+    "counters": {
+      "forward_solves": 40,
+      "backward_solves": 40,
+      "forward_time_steps": 3200
+    },
+    "torch": "2.10.0+cpu",
+    "device": "cpu"
+  },
+  {
+    "method": "gradient_attention",
+    "updates": 10,
+    "elapsed_seconds": 0.3044631279999521,
+    "is_geological_benchmark": false,
+    "solver": "standalone tiny FD fixture, not repository RNN-FD",
+    "final_oracle_rmse_mps": 85.5560531616211,
+    "counters": {
+      "forward_solves": 40,
+      "backward_solves": 40,
+      "forward_time_steps": 3200
+    },
+    "torch": "2.10.0+cpu",
+    "device": "cpu"
+  },
+  {
+    "method": "interface",
+    "updates": 10,
+    "elapsed_seconds": 0.34493920700015224,
+    "is_geological_benchmark": false,
+    "solver": "standalone tiny FD fixture, not repository RNN-FD",
+    "final_oracle_rmse_mps": 85.58560943603516,
+    "counters": {
+      "forward_solves": 40,
+      "backward_solves": 40,
+      "forward_time_steps": 3200
+    },
+    "torch": "2.10.0+cpu",
+    "device": "cpu"
+  },
+  {
+    "method": "routing",
+    "updates": 10,
+    "elapsed_seconds": 0.2853023339998799,
+    "is_geological_benchmark": false,
+    "solver": "standalone tiny FD fixture, not repository RNN-FD",
+    "final_oracle_rmse_mps": 85.55165100097656,
+    "counters": {
+      "forward_solves": 31,
+      "backward_solves": 31,
+      "forward_time_steps": 2480
+    },
+    "torch": "2.10.0+cpu",
+    "device": "cpu"
+  },
+  {
+    "method": "wavelet",
+    "updates": 10,
+    "elapsed_seconds": 0.46027780299982624,
+    "is_geological_benchmark": false,
+    "solver": "standalone tiny FD fixture, not repository RNN-FD",
+    "final_oracle_rmse_mps": 85.55616760253906,
+    "counters": {
+      "forward_solves": 40,
+      "backward_solves": 40,
+      "forward_time_steps": 3200
+    },
+    "torch": "2.10.0+cpu",
+    "device": "cpu"
+  }
+]

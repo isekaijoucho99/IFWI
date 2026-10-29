@@ -1,0 +1,6 @@
+............................................ssssss.........              [100%]
+=========================== short test summary info ============================
+SKIPPED [1] verification/five_ideas/test_repository_bridge.py:29: Original IFWI checkout not present; real RNN-FD integration UNVERIFIED
+SKIPPED [1] verification/five_ideas/test_repository_bridge.py:38: Original IFWI checkout not present; real RNN-FD integration UNVERIFIED
+SKIPPED [4] verification/five_ideas/test_repository_bridge.py:49: Original IFWI checkout not present; real RNN-FD integration UNVERIFIED
+53 passed, 6 skipped in 10.40s

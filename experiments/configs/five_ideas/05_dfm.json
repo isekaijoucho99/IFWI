@@ -1,0 +1,13 @@
+{
+  "method": "dfm",
+  "prior_start": 201,
+  "prior_every": 5,
+  "prior_ratio": 0.025,
+  "max_trials": 4,
+  "prior": {
+    "checkpoint": "weights/dfm_independent_15m/best.pt",
+    "start_t": 0.8,
+    "nfe": 1,
+    "seed": 3
+  }
+}

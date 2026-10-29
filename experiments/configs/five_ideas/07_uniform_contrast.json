@@ -1,0 +1,7 @@
+{
+  "method": "routing",
+  "routing_samples": 2,
+  "routing_topk": 4,
+  "exploration": 1.0,
+  "audit_every": 25
+}

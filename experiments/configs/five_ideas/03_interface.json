@@ -1,0 +1,7 @@
+{
+  "method": "interface",
+  "interface_depth_fraction": 0.5,
+  "interface_epsilon_cells": 3.0,
+  "interface_displacement_m": 150.0,
+  "interface_regularization": 0.0
+}

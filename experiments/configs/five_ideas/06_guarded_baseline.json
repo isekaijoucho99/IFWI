@@ -1,0 +1,6 @@
+{
+  "method": "baseline",
+  "prior_start": 201,
+  "guard_every": 5,
+  "max_trials": 4
+}
