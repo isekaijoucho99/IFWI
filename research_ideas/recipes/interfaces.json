@@ -1,0 +1,12 @@
+{
+  "base_spec": "experiments/configs/diffusion_prior/g2_pms/01_pms_baseline.json",
+  "steps": 1000,
+  "eval_every": 50,
+  "method": "interfaces",
+  "options": {
+    "interfaces": 3,
+    "width_m": 60.0,
+    "warmup": 100,
+    "ramp_updates": 100
+  }
+}

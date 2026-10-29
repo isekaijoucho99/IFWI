@@ -1,0 +1,11 @@
+{
+  "base_spec": "experiments/configs/diffusion_prior/g2_pms/01_pms_baseline.json",
+  "steps": 1000,
+  "eval_every": 50,
+  "method": "wavelet",
+  "options": {
+    "strength": 0.0,
+    "high_start": 0.0,
+    "ramp_updates": 200
+  }
+}

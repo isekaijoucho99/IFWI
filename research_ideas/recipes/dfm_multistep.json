@@ -1,0 +1,12 @@
+{
+  "base_spec": "experiments/configs/diffusion_prior/g2_pms/01_pms_baseline.json",
+  "steps": 1000,
+  "eval_every": 50,
+  "method": "dfm",
+  "safeguard": true,
+  "options": {
+    "checkpoint": "weights/dfm_15m/best.pt",
+    "blend": 0.0,
+    "ratio": 0.1
+  }
+}
