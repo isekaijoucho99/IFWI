@@ -9,7 +9,7 @@ import time
 import numpy as np
 import torch
 from experiments.residual_ifwi_experiment import (_simulate,waveform_mse,train_update,
-    VelocityParameterization,evaluate_data_mse)
+    VelocityParameterization,evaluate_data_mse,require_finite)
 from experiments.residual_ifwi_report import velocity_metrics
 
 
@@ -28,7 +28,10 @@ def evaluate(v,problem,rom=None,backward=False):
             prediction=_simulate(item['solver'],value,problem['wavelet'])
             target=problem['observed'][:,item['first']:item['last']]
             loss=waveform_mse(prediction,target,problem['observed'].shape[1])
-            if backward:gradient+=torch.autograd.grad(loss,value)[0].detach()
+            require_finite(loss,'benchmark waveform objective')
+            if backward:
+                part=torch.autograd.grad(loss,value)[0].detach()
+                require_finite(part,'benchmark velocity gradient');gradient+=part
             loss_value+=float(loss.detach());pieces.append(prediction.detach())
     return torch.cat(pieces,dim=1),gradient,loss_value
 
@@ -64,7 +67,10 @@ def paired_timings(functions,device,repeats):
 
 def error_metrics(actual,reference):
     actual=np.asarray(actual,dtype='float64');reference=np.asarray(reference,dtype='float64')
+    if not np.isfinite(actual).all() or not np.isfinite(reference).all():
+        raise FloatingPointError('Cannot report nonfinite prediction or gradient metrics')
     norm=float(np.linalg.norm(reference));error=float(np.linalg.norm(actual-reference))
+    if not np.isfinite(norm) or not np.isfinite(error):raise FloatingPointError('Metric norm overflow')
     return dict(relative=error/norm if norm>1e-20 else None,absolute=error,reference_norm=norm,
         cosine=float(np.vdot(actual.ravel(),reference.ravel()).real/(np.linalg.norm(actual)*norm)) if norm>1e-20 and np.linalg.norm(actual)>0 else None)
 

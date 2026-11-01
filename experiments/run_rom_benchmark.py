@@ -27,7 +27,7 @@ def main():
     cfg=default_config();options=dict(ranks=[16,32,64,96],training_frequencies=64,max_hz=32.,
         alias_tolerance=1e-12,pad_factor=4,repeats=3,states=['background','perturbed','truth'],pilot_updates=3,
         waveform_tolerance=.01,gradient_tolerance=.05,source_constraints=True,frequency_batch_size=128,
-        rom_dtype='float64',reference_dtype='float32')
+        rom_dtype='float64',reference_dtype='float32',basis_mode='primal')
     cfg['acquisition'].update(num_shots=1,source_x_indices=[144]);cfg['training']['shot_batch_size']=1
     if args.config:
         provided=yaml.safe_load(Path(args.config).read_text(encoding='utf-8'));cfg=provided['experiment'];options.update(provided['rom'])
@@ -37,9 +37,10 @@ def main():
         options.update(ranks=[8,16],training_frequencies=16,repeats=1,states=['background','perturbed'],pilot_updates=0)
     if options['rom_dtype']!='float64' or options['reference_dtype']!='float32':
         raise ValueError('This validation CLI fixes original float32 FDTD and float64 ROM precision')
+    if options['basis_mode'] not in ('primal','primal_adjoint'):raise ValueError('Unknown basis mode')
     validate_config(cfg);out=Path(args.output);out.mkdir(parents=True,exist_ok=False)
     files=['rnn_fd.py','ifwi_modules.py','experiments/residual_ifwi_experiment.py','experiments/residual_ifwi_data.py',
-        'experiments/run_rom_benchmark.py',*[f'experiments/rom/{name}.py' for name in ['paper','discrete','basis','solver','benchmark']]]
+        'experiments/run_rom_benchmark.py',*[f'experiments/rom/{name}.py' for name in ['paper','discrete','basis','solver','benchmark','stability']]]
     hashes={name:sha(ROOT/name) for name in files}
     save_json(out/'config.json',dict(experiment=cfg,rom=options,arguments=vars(args),source_sha256=hashes))
     for name in files:
@@ -55,6 +56,12 @@ def main():
     snapshots=np.unique(np.linspace(len(wave)//4,len(wave)-1,4).round().astype(int)).tolist()
     z,x=np.meshgrid(np.linspace(0,np.pi,len(background)),np.linspace(0,2*np.pi,background.shape[1]),indexing='ij')
     states=dict(background=background,perturbed=(background*(1+.02*np.sin(z)*np.cos(x))).astype('float32'),truth=truth)
+    adjoint_residual=None;calibration_seconds=0.
+    if options['basis_mode']=='primal_adjoint':
+        start=time.perf_counter()
+        prediction,_,_=evaluate(torch.tensor(background,device=args.device)[None],problem)
+        adjoint_residual=(prediction-problem['observed']).cpu().numpy()[0]
+        calibration_seconds=time.perf_counter()-start
     references={}
     for name in options['states']:
         v=torch.tensor(states[name],device=args.device)[None]
@@ -67,7 +74,9 @@ def main():
             basis,info=build_pressure_basis(system,background,source,wave,rank,
                 training_frequencies=options['training_frequencies'],max_hz=options['max_hz'],nfft=nfft,
                 alias_tolerance=options['alias_tolerance'],preserve_sources=options['source_constraints'],
-                progress=lambda v:print(json.dumps(v),flush=True))
+                progress=lambda v:print(json.dumps(v),flush=True),receiver_indices=receivers,
+                adjoint_residual=adjoint_residual)
+            info['adjoint_calibration_fdtd_seconds']=calibration_seconds
             np.save(out/f'basis_{rank}.npy',basis);save_json(out/f'offline_{rank}.json',info);offline.append(info)
             start=time.perf_counter()
             rom=PressureROM(system,basis,source,receivers,len(wave),nfft=nfft,max_hz=options['max_hz'],
@@ -103,7 +112,7 @@ def main():
             if all(r['waveform_relative_error']<options['waveform_tolerance'] and r['velocity_gradient_relative_error'] is not None and r['velocity_gradient_relative_error']<options['gradient_tolerance'] for r in checks) and hidden['relative']<options['gradient_tolerance']:
                 accepted.append(rank)
             del rom
-        except (ValueError,RuntimeError,np.linalg.LinAlgError) as error:
+        except (ValueError,RuntimeError,FloatingPointError,np.linalg.LinAlgError) as error:
             failure=dict(rank=rank,error=repr(error));failures.append(failure);print(json.dumps(dict(event='rank_failure',**failure)),flush=True)
             save_json(out/'progress.json',dict(comparisons=rows,failures=failures))
     pilot=None
@@ -115,6 +124,9 @@ def main():
         pilot=inversion_pilot(background,truth,cfg,problem,rom,pilot_out,args.device,options['pilot_updates'])
     result=dict(device=args.device,source_hashes_unchanged=hashes=={name:sha(ROOT/name) for name in files},
         offline_truth_snapshots_used=False,comparisons=rows,failures=failures,offline=offline,
+        data_conditioned_adjoint_calibration=adjoint_residual is not None,
+        shared_pml_reference_vmax_mps=system.reference_vmax,
+        shared_pml_profile_origin='Unchanged original baseline uses truth maximum to fix PML coefficients',
         accepted_ranks=accepted,inversion_pilot=pilot,snapshot_indices=snapshots,
         limits=['Paper elastic FEM theorem does not certify the discrete PML ROM',
             'Original FDTD float32; ROM float64 with complex128 solves',
