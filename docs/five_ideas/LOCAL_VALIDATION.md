@@ -2,6 +2,8 @@
 
 日期：2026-10-30（Asia/Shanghai）。
 
+最新回归：2026-11-01（Asia/Shanghai）。原有 4 项指标测试失败已修复；完整回归结果见下方更新记录。2026-10-30 的安装过程与结果保留作历史记录。
+
 ## 来源与提交范围
 
 - 目标仓库：`isekaijoucho99/IFWI`。
@@ -45,7 +47,35 @@ python -m pytest -q verification
 - `test_constant_offset_reports_physical_rmse_and_mae_without_clipping`。
 - `test_identical_velocity_fields_have_unit_ssim_and_zero_errors` 的 3 个 shape 参数用例。
 
-原因是 `experiments/residual_ifwi_report.py::velocity_metrics` 已返回 `r2` 字段，而旧断言仍要求结果字典仅有 `rmse_mps`、`mae_mps`、`ssim`。这些失败发生在安装前；相关实现与测试在本次提交中均未修改。本次未修复该已有问题，也不声称原仓库全部回归通过。
+原因是 `experiments/residual_ifwi_report.py::velocity_metrics` 已返回 `r2` 字段，而旧断言仍要求结果字典仅有 `rmse_mps`、`mae_mps`、`ssim`。这些失败发生在安装前；2026-10-30 的发布未修改相关实现与测试，当时未声称原仓库全部回归通过。后续修复与完整回归结果如下。
+
+## 2026-11-01：指标测试修复与完整回归
+
+在原发布提交 `c832ed9122f43203a497b2566663855b7f1340eb` 上再次运行指标测试，复现了同样的 `4 failed, 12 passed`。修复保留精确的字段与字典断言，将已有的 `r2` 纳入契约，并覆盖以下独立数值预期：
+
+- 非常量真值与预测完全一致时，R² 为 1。
+- 预测等于真值均值时，R² 为 0。
+- 对 `0..34` 加平移的真值施加 800 m/s 偏差时，真值总体方差为 102，R² 为 `-6273.509803921569`；允许合法负值。
+- 常量真值下，无论预测是否完全一致，R² 均保持未定义的 `None`，可用严格 JSON 序列化为 `null`。
+
+仅更新指标测试与函数说明，未改变指标计算、物理求解器或训练行为。对测试与函数说明的只读代码审查未发现需要修改的问题。
+
+沿用上述环境与线程设置，在项目根目录执行：
+
+```text
+python -m pytest -q verification/residual_ifwi/test_reporting.py --junitxml=outputs/metric_regression_20261101/reporting.xml
+19 passed in 1.12s
+
+python -m pytest -q -ra --junitxml=outputs/metric_regression_20261101/full_regression.xml
+387 passed, 2 skipped, 2 warnings in 159.83s
+
+python -m compileall -q experiments/residual_ifwi_report.py verification/residual_ifwi/test_reporting.py
+exit code 0
+```
+
+完整回归无失败，包含原有回归套件、五个研究原型的新增测试与全部 6 项真实 RNN-FD 桥接测试。两项跳过仍仅因为 Windows 符号链接权限。两项警告分别为 PyTorch 的旧 TF32 设置弃用提示，以及原 `ifwi_modules.py` 梯度裁剪收到空参数生成器的提示，与 2026-10-30 的原有回归警告一致。
+
+修复前、定向测试与完整回归的 JUnit XML 均保存在忽略的 `outputs/metric_regression_20261101/`，不提交生成报告。
 
 ## 结果边界
 

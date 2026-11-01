@@ -25,10 +25,11 @@ def _velocity_pair(prediction_mps, truth_mps):
 
 
 def velocity_metrics(prediction_mps: np.ndarray, truth_mps: np.ndarray) -> dict:
-    """Return RMSE/MAE in m/s and SSIM, without clipping either velocity field.
+    """Return RMSE/MAE in m/s, R2 and SSIM, without clipping either velocity field.
 
     SSIM uses the true model's velocity range. Constant truth uses an explicit
     1 m/s range; the window is the largest odd value up to 7 that fits the grid.
+    R2 is undefined for constant truth and is returned as None (JSON null).
     """
     prediction, truth = _velocity_pair(prediction_mps, truth_mps)
     difference = prediction - truth

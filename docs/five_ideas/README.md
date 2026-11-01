@@ -1,6 +1,6 @@
 # 使用入口：五个独立 IFWI 研究原型
 
-本地完整 checkout 的安装核验见 [`LOCAL_VALIDATION.md`](LOCAL_VALIDATION.md)：新增测试 57 项通过、2 项因 Windows 符号链接权限跳过，6 项真实 RNN-FD 桥接测试全部通过。下文与 `VALIDATION.md` 中的原始交付状态保留作历史记录。
+本地完整 checkout 的安装与回归核验见 [`LOCAL_VALIDATION.md`](LOCAL_VALIDATION.md)：2026-11-01 修复了原有指标测试的 R² 契约断言，完整回归 387 项通过、2 项因 Windows 符号链接权限跳过，6 项真实 RNN-FD 桥接测试全部通过。下文与 `VALIDATION.md` 中的原始交付状态保留作历史记录。
 
 ## 先看哪些文件
 

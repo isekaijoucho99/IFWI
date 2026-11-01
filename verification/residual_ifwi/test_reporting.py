@@ -26,7 +26,9 @@ def test_constant_offset_reports_physical_rmse_and_mae_without_clipping():
 
     assert result["rmse_mps"] == pytest.approx(800)
     assert result["mae_mps"] == pytest.approx(800)
-    assert set(result) == {"rmse_mps", "mae_mps", "ssim"}
+    assert set(result) == {"rmse_mps", "mae_mps", "r2", "ssim"}
+    # The integers 0..34 have population variance 102; SSE/SST = 800**2/102.
+    assert result["r2"] == pytest.approx(-6273.509803921569)
     assert all(type(value) is float for value in result.values())
     json.dumps(result, allow_nan=False)
 
@@ -45,7 +47,25 @@ def test_identical_velocity_fields_have_unit_ssim_and_zero_errors(shape):
     truth = np.arange(np.prod(shape), dtype=np.float64).reshape(shape) + 1500
     result = metrics(truth.copy(), truth)
 
-    assert result == {"rmse_mps": 0.0, "mae_mps": 0.0, "ssim": 1.0}
+    assert result == {"rmse_mps": 0.0, "mae_mps": 0.0, "r2": 1.0, "ssim": 1.0}
+
+
+def test_predicting_truth_mean_reports_zero_r2():
+    truth = np.arange(9, dtype=np.float64).reshape(3, 3) + 1500
+
+    result = metrics(np.full((3, 3), 1504.0), truth)
+
+    assert result["r2"] == pytest.approx(0.0)
+
+
+@pytest.mark.parametrize("prediction_mps", [3000.0, 3001.0])
+def test_constant_truth_reports_undefined_r2_as_json_null(prediction_mps):
+    truth = np.full((3, 3), 3000.0)
+
+    result = metrics(np.full((3, 3), prediction_mps), truth)
+
+    assert result["r2"] is None
+    assert json.loads(json.dumps(result, allow_nan=False))["r2"] is None
 
 
 def test_constant_truth_uses_one_mps_ssim_data_range():
