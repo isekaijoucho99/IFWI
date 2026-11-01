@@ -24,13 +24,17 @@ def require_repository(root: str | Path) -> Path:
 
 
 class RepositoryObjective:
-    def __init__(self,problem):
+    def __init__(self,problem, *, code_batch_size=None):
         from experiments import residual_ifwi_experiment as e
         from experiments.frequency_continuation import energy_scales
         self.e=e; self.problem=problem; self.shots=problem['observed'].shape[1]
         cfg=problem['config']
+        self.code_batch_size=(cfg['training']['shot_batch_size'] or self.shots) if code_batch_size is None else code_batch_size
+        if type(self.code_batch_size) is not int or self.code_batch_size<1:
+            raise ValueError('Code batch size must be a positive integer')
         problem['frequency_scales']=energy_scales(problem['observed'],cfg['training'].get('frequency_schedule'),cfg['forward']['dt_s'])
         self.encoder=None
+        self.code_solvers={}
         self.counters={'forward_solves':0,'backward_solves':0,'forward_time_steps':0}
 
     def valid(self,velocity):
@@ -47,10 +51,50 @@ class RepositoryObjective:
                     raise ValueError('Common/contrast routing requires identical receivers for all shots')
             self.encoder=SourceEncoder(self.problem,1,seed=3)
 
+    def _evaluate_code_batches(self,velocity,plan,cutoff,gradient):
+        from .batched_sources import build_code_solver
+        from experiments.frequency_continuation import lowpass
+        obs=self.problem['observed']; geometry=self.problem['geometry_tensors']
+        for name in ('xr','zr'):
+            values=geometry[name]
+            if not torch.equal(values,values[:,:1].expand_as(values)):
+                raise ValueError('Common/contrast routing requires identical receivers for all shots')
+        basis=common_contrast_basis(self.shots,device=obs.device,dtype=obs.dtype)
+        value=0.; energies=[]; total_grad=torch.zeros_like(velocity) if gradient else None
+        for first in range(0,len(plan.indices),self.code_batch_size):
+            last=min(first+self.code_batch_size,len(plan.indices)); count=last-first
+            codes=basis[plan.indices[first:last].to(obs.device)]
+            if count not in self.code_solvers:
+                self.code_solvers[count]=build_code_solver(self.problem,count)
+            solver=self.code_solvers[count]; solver.fd.weights=codes
+            observations=torch.einsum('ks,bstr->bktr',codes,obs)
+            with torch.enable_grad() if gradient else torch.no_grad():
+                field=velocity.detach().requires_grad_(gradient)
+                prediction=self.e._simulate(solver,field,self.problem['wavelet'])
+                if cutoff is not None:
+                    dt=self.problem['config']['forward']['dt_s']
+                    prediction,observations=lowpass(prediction,cutoff,dt),lowpass(observations,cutoff,dt)
+                per_code=(prediction-observations).square().mean(dim=(0,2,3))
+                if cutoff is not None: per_code=per_code*self.problem['frequency_scales'][cutoff]
+                if not torch.isfinite(per_code).all(): raise FloatingPointError('Nonfinite RNN-FD objective')
+                weights=plan.weights[first:last]
+                loss=(per_code*weights.to(per_code)).sum()
+                energy=per_code.detach().cpu().double()
+                value+=float((energy*weights.detach().cpu().double()).sum())
+                energies.append(energy)
+                self.counters['forward_solves']+=count
+                self.counters['forward_time_steps']+=count*self.problem['config']['forward']['nt']
+                if gradient:
+                    total_grad.add_(torch.autograd.grad(loss,field)[0])
+                    self.counters['backward_solves']+=count
+        return Evaluation(value,total_grad,plan.indices.clone(),torch.cat(energies))
+
     def evaluate(self,velocity,plan=None,cutoff=None,gradient=True):
         if not self.valid(velocity): raise FloatingPointError('Invalid physical trial model / CFL violation')
         if cutoff is not None and cutoff not in self.problem['frequency_scales']:
             raise ValueError('Cutoff must be registered in the baseline frequency schedule')
+        if plan is not None and self.code_batch_size>1:
+            return self._evaluate_code_batches(velocity,plan,cutoff,gradient)
         obs=self.problem['observed']; global_s=self.shots
         if plan is None:
             jobs=[(it['solver'],obs[:,it['first']:it['last']],1.,it['last']-it['first'],None)
@@ -81,7 +125,7 @@ class RepositoryObjective:
                           torch.tensor(energies,dtype=torch.float64) if plan is not None else None)
 
 
-def load_problem(spec: dict,root: Path,device: str='cpu',snr_db: float | None=None):
+def load_problem(spec: dict,root: Path,device: str='cpu',snr_db: float | None=None, *, shot_batch_size=None):
     root=require_repository(root)
     from experiments import residual_ifwi_experiment as e
     from experiments.residual_ifwi_data import load_velocity_data
@@ -99,8 +143,11 @@ def load_problem(spec: dict,root: Path,device: str='cpu',snr_db: float | None=No
         raise ValueError('Keep the baseline standard Adam and full shots; routing is configured separately')
     if spec.get('robustness',{}).get('noise_sigma',0)!=0:
         raise ValueError('Use --snr-db for explicit seeded noise; legacy noise_sigma is not silently reinterpreted')
-    # Same loss, microbatch one: no simultaneous wavefield graphs, including on 16GB GPUs.
-    train['shot_batch_size']=1
+    # Preserve full-shot batching from the baseline; explicit batch1 remains available.
+    if shot_batch_size is not None:
+        if type(shot_batch_size) is not int or shot_batch_size<1:
+            raise ValueError('Shot batch size must be a positive integer')
+        train['shot_batch_size']=shot_batch_size
     torch.manual_seed(cfg['seed']); np.random.seed(cfg['seed'])
     truth,background,provenance=load_velocity_data(cfg,root)
     override=spec.get('background')

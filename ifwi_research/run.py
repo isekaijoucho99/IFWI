@@ -54,10 +54,15 @@ def main():
     parser.add_argument('--baseline',required=True); parser.add_argument('--research',required=True)
     parser.add_argument('--out',required=True); parser.add_argument('--device',default='cpu')
     parser.add_argument('--epochs',type=int); parser.add_argument('--resume')
+    parser.add_argument('--shot-batch-size',type=int,
+                        help='Physical shots and selected source codes per solver batch; default inherits baseline (null means all shots)')
     parser.add_argument('--snr-db',type=float,help='Seeded AWGN; signal power computed from all clean recorded samples')
     args=parser.parse_args(); started=time.perf_counter()
     root=require_repository(Path(__file__).resolve().parents[1])
     spec=json.loads(Path(args.baseline).read_text(encoding='utf-8'))
+    if args.shot_batch_size is not None:
+        if args.shot_batch_size<1: parser.error('--shot-batch-size must be positive')
+        spec['experiment']['training']['shot_batch_size']=args.shot_batch_size
     cfg,prior_options,interface_path=read_research_config(args.research,spec['experiment']['training']['learning_rate'],spec['experiment']['seed'])
     # Both the base INR and the research component use the same declared seed.
     spec['experiment']['seed']=cfg.seed
@@ -90,6 +95,8 @@ def main():
     schedule=spec['experiment']['training'].get('frequency_schedule')
     lr_schedule=spec['experiment']['training'].get('lr_schedule')
     identity={'baseline':spec,'research':dataclasses.asdict(cfg),'prior_options':prior_options,
+              'execution':{'shot_batch_size':objective.problem['config']['training']['shot_batch_size'] or objective.shots,
+                           'code_batch_size':objective.code_batch_size},
               'source_hashes':source_identity(root),'initial_hash':tensor_hash(background),
               'observations_hash':tensor_hash(objective.problem['observed']),
               'interface_reference_hash':tensor_hash(phi) if phi is not None else None,

@@ -1,6 +1,6 @@
 # 使用入口：五个独立 IFWI 研究原型
 
-本地完整 checkout 的安装与回归核验见 [`LOCAL_VALIDATION.md`](LOCAL_VALIDATION.md)：2026-11-01 修复了原有指标测试的 R² 契约断言，完整回归 387 项通过、2 项因 Windows 符号链接权限跳过，6 项真实 RNN-FD 桥接测试全部通过。下文与 `VALIDATION.md` 中的原始交付状态保留作历史记录。
+本地完整 checkout 的安装与回归核验见 [`LOCAL_VALIDATION.md`](LOCAL_VALIDATION.md)：2026-11-01 修复了原有指标测试的 R² 契约断言并恢复 GPU 批量求解，最新完整回归 406 项通过、2 项因 Windows 符号链接权限跳过，真实 RNN-FD 桥接与 CUDA 批量一致性检查通过。下文与 `VALIDATION.md` 中的原始交付状态保留作历史记录。
 
 ## 先看哪些文件
 
@@ -60,11 +60,15 @@ python -m pytest verification/five_ideas/test_repository_bridge.py -v
 随后用同一既有 baseline spec：
 
 ```bash
-python -m ifwi_research.run --baseline experiments/configs/diffusion_prior/g2_pms/01_pms_baseline.json --research experiments/configs/five_ideas/00_baseline.json --epochs 10 --device cuda:0 --out outputs/five_ideas/pms_smoke
-python -m ifwi_research.run --baseline experiments/configs/diffusion_prior/g2_pms/01_pms_baseline.json --research experiments/configs/five_ideas/01_routing.json --epochs 10 --device cuda:0 --out outputs/five_ideas/routing_smoke
+python -m ifwi_research.run --baseline experiments/configs/diffusion_prior/g2_pms/01_pms_baseline.json --research experiments/configs/five_ideas/00_baseline.json --epochs 10 --shot-batch-size 13 --device cuda:0 --out outputs/five_ideas/pms_smoke
+python -m ifwi_research.run --baseline experiments/configs/diffusion_prior/g2_pms/01_pms_baseline.json --research experiments/configs/five_ideas/01_routing.json --epochs 10 --shot-batch-size 13 --device cuda:0 --out outputs/five_ideas/routing_smoke
 ```
 
 10 步仅用于接口与显存检查。正式运行去掉 `--epochs 10`，沿用 baseline 的固定预算与频率日程。其余方向只替换 `--research` 和新输出目录。
+
+2026-11-01 起，运行器继承 baseline 的炮批大小，`null` 表示全部炮；也可用 `--shot-batch-size` 显式覆盖。该大小同时控制物理炮与选中编码源的批量求解。Marmousi 的 13 炮可以在本机 16 GB GPU 上批量执行，不再强制单炮串行；需要低显存路径时显式指定 `--shot-batch-size 1`。
+
+路由方案仍只求解原采样规则选中的编码源，逐编码重要性权重、能量分数和真实源求解计数均保留。批量仅改变执行分组，不改变网格、物理算子、随机种子、优化器或频率日程。有效批大小写入 `identity.json`，更改批大小不能冒充同一精确续训协议。实际 CUDA 一致性与耗时记录见 `LOCAL_VALIDATION.md`。
 
 | 配置 | 作用 |
 |---|---|
