@@ -1,0 +1,34 @@
+[
+  {
+    "method": "仅正演 POD",
+    "directory": "F:\\project\\IFWI\\outputs\\rom_marmousi_single_gpu_20261102_064343",
+    "log": "F:\\project\\IFWI\\outputs\\rom_marmousi_single_gpu_20261102_064343.log",
+    "summary_sha256": "9a49494558761335e685b561d09e4816b222e86755004171118540acb6455b8e",
+    "all_source_hashes_unchanged": true,
+    "source_commit": "b018d25"
+  },
+  {
+    "method": "正演＋伴随等能量 POD",
+    "directory": "F:\\project\\IFWI\\outputs\\rom_marmousi_adjoint_gpu_20261102_065654",
+    "log": "F:\\project\\IFWI\\outputs\\rom_marmousi_adjoint_gpu_20261102_065654.log",
+    "summary_sha256": "a4cadf5af22459331e5af08238f4d4faee6401bff26a99f971a59c22e368f16c",
+    "all_source_hashes_unchanged": true,
+    "source_commit": "043a16a"
+  },
+  {
+    "method": "保留96维正演＋伴随补空间",
+    "directory": "F:\\project\\IFWI\\outputs\\rom_marmousi_enriched_gpu_20261102_070234",
+    "log": "F:\\project\\IFWI\\outputs\\rom_marmousi_enriched_gpu_20261102_070234.log",
+    "summary_sha256": "5b5ab964fd2e11ced4772e91384d49597f218b8c1254e00b3938074e18b8a992",
+    "all_source_hashes_unchanged": true,
+    "source_commit": "5017a46"
+  },
+  {
+    "method": "Guarded original IFWI local pilot",
+    "directory": "F:\\project\\IFWI\\outputs\\rom_guarded_ifwi_pilot_20261102_070800",
+    "log": "F:\\project\\IFWI\\reports\\rom_guarded_ifwi_pilot_20261102.log",
+    "source_snapshot": "F:\\project\\IFWI\\outputs\\rom_guarded_ifwi_pilot_20261102_070800\\source_snapshot\\run_rom_local_pilot.py",
+    "executed_script_sha256": "725131eff0607dcbccd58570d7b7b9f9146cd5d127f911ad602f8cf57cbeef7b",
+    "note": "Execution source archived before adding candidate-validation failure persistence; final finite-data path is equivalent."
+  }
+]

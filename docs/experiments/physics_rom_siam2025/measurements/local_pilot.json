@@ -1,0 +1,213 @@
+{
+  "purpose": "Guarded local trajectory diagnostic; held-out benchmark admission remains failed",
+  "rank": 192,
+  "config": {
+    "experiment": {
+      "experiment_name": "residual_ifwi_stage1",
+      "parameterization": "residual",
+      "seed": 3,
+      "data": {
+        "model_file": "vel_marmousi_376x1151.csv",
+        "model_units": "m/s",
+        "csv_header": "legacy",
+        "downsample": 4,
+        "crop_shape": null,
+        "grid_spacing_m": 15.0
+      },
+      "initialization": {
+        "sigma": 15.0,
+        "gaussian_mode": "reflect",
+        "gaussian_truncate": 4.0
+      },
+      "model": {
+        "neurons": [
+          2,
+          128,
+          128,
+          128,
+          128,
+          1
+        ],
+        "omega_0": 30.0,
+        "mean_kmps": 3.0,
+        "std_kmps": 1.0
+      },
+      "acquisition": {
+        "num_shots": 1,
+        "source_x_indices": [
+          144
+        ],
+        "source_start_index": 20,
+        "source_spacing_index": 20,
+        "source_end_margin": 10,
+        "source_depth_index": 1,
+        "receiver_depth_index": 2,
+        "receiver_stride": 1
+      },
+      "forward": {
+        "dt_s": 0.0019,
+        "nt": 1000,
+        "frequency_hz": 8.0,
+        "npad": 15,
+        "order": 2,
+        "free_surface": true,
+        "pml_reflection": 1e-06
+      },
+      "training": {
+        "epochs": 3,
+        "learning_rate": 0.0001,
+        "checkpoint_interval": 50,
+        "shot_batch_size": 1
+      }
+    },
+    "rom": {
+      "ranks": [
+        160,
+        192
+      ],
+      "training_frequencies": 64,
+      "max_hz": 32.0,
+      "alias_tolerance": 1e-12,
+      "pad_factor": 4,
+      "repeats": 3,
+      "states": [
+        "background",
+        "perturbed",
+        "truth"
+      ],
+      "pilot_updates": 3,
+      "waveform_tolerance": 0.01,
+      "gradient_tolerance": 0.05,
+      "source_constraints": true,
+      "frequency_batch_size": 128,
+      "rom_dtype": "float64",
+      "reference_dtype": "float32",
+      "basis_mode": "primal_adjoint",
+      "protected_primal_rank": 96
+    },
+    "arguments": {
+      "config": "experiments/configs/rom_marmousi_enriched.yaml",
+      "small": false,
+      "device": "cuda:0",
+      "output": "F:\\project\\IFWI\\outputs\\rom_marmousi_enriched_gpu_20261102_070234"
+    },
+    "source_sha256": {
+      "rnn_fd.py": "eeeebd821462fadb52bb9b12a06932f2c9f764e3e7482b316e12a94d26ec9fd0",
+      "ifwi_modules.py": "900adab18822769946a64109fa77314d71d396403e70179b815094cd952bb043",
+      "experiments/residual_ifwi_experiment.py": "bad732ab953041aea397dd55f15c401c5ebc246f1a9f8b4a0ca9cac8b98806a9",
+      "experiments/residual_ifwi_data.py": "e26406adbc2807b2831506d7300066f88406d8e22fff07a68d1b62543a9619e8",
+      "experiments/run_rom_benchmark.py": "cefef05f170fe05e7dd8192ae762f7a63c7e296712b9aa135954869dae441c88",
+      "experiments/rom/paper.py": "d3fcd419967e9ca276f7650bf4a90af7f2e3ddfcdd23501c940f4b29159b1128",
+      "experiments/rom/discrete.py": "8e198457f50c26d14d7f24fbcf0d9c4dbe3ac4a18f8507cfd193de951f071480",
+      "experiments/rom/basis.py": "36ccdd5a50972515dde6a2c540977610fbc66cbff2f4089472a147b1c4ee5f3a",
+      "experiments/rom/solver.py": "0669ae6a3e504bc962fbdab87c92d2e0dea9cd4b3bc442fb75f99bdc3989077e",
+      "experiments/rom/benchmark.py": "f2c2c3304906887c991713476a1773df4e682d65ebbf5c899b5d747a19b4a98b",
+      "experiments/rom/stability.py": "25973bb299197f6bc50f27eb822ae5bf684f52f42dd6c3f3223a54f61df0f23a"
+    }
+  },
+  "arguments": {
+    "run": "F:\\project\\IFWI\\outputs\\rom_marmousi_enriched_gpu_20261102_070234",
+    "rank": 192,
+    "output": "F:\\project\\IFWI\\outputs\\rom_guarded_ifwi_pilot_20261102_070800",
+    "device": "cuda:0",
+    "updates": 3
+  },
+  "basis_sha256": "c2bfa95849535d48839c080a407787263d8f512e3b025638d35e64cbe072b5e8",
+  "source_sha256": "725131eff0607dcbccd58570d7b7b9f9146cd5d127f911ad602f8cf57cbeef7b",
+  "arms": [
+    {
+      "method": "fdtd",
+      "states": [
+        {
+          "completed_updates": 0,
+          "waveform_relative_error": 0.002093396248996621,
+          "velocity_gradient_relative_error": 0.006624558137911204,
+          "parameter_gradient_relative_error": 0.000852154029335165,
+          "fdtd_mse": 0.04228385537862778,
+          "rom_mse": 0.04228391695934621,
+          "passes_local_accuracy_gate": true,
+          "rmse_mps": 518.7527934736858,
+          "mae_mps": 348.3287387559318,
+          "ssim": 0.38109386261418826
+        },
+        {
+          "completed_updates": 1,
+          "waveform_relative_error": 0.022834025379823514,
+          "velocity_gradient_relative_error": 0.1111030929749991,
+          "parameter_gradient_relative_error": 0.14643393749327543,
+          "fdtd_mse": 0.04185162112116814,
+          "rom_mse": 0.041820732681753674,
+          "passes_local_accuracy_gate": false,
+          "rmse_mps": 518.8335471668362,
+          "mae_mps": 350.24896496351164,
+          "ssim": 0.3809800833439409
+        },
+        {
+          "completed_updates": 2,
+          "waveform_relative_error": 0.062784622960513,
+          "velocity_gradient_relative_error": 0.236108324082642,
+          "parameter_gradient_relative_error": 0.27846687388129476,
+          "fdtd_mse": 0.04118996486067772,
+          "rom_mse": 0.04102814781704162,
+          "passes_local_accuracy_gate": false,
+          "rmse_mps": 519.1154183167816,
+          "mae_mps": 352.99866052722257,
+          "ssim": 0.3808000946323835
+        },
+        {
+          "completed_updates": 3,
+          "waveform_relative_error": 0.11538320469391543,
+          "velocity_gradient_relative_error": 0.32142240250280824,
+          "parameter_gradient_relative_error": 0.28470799349267295,
+          "fdtd_mse": 0.040452685207128525,
+          "rom_mse": 0.04010131442687852,
+          "passes_local_accuracy_gate": false,
+          "rmse_mps": 519.666235489947,
+          "mae_mps": 356.4770853615258,
+          "ssim": 0.38057344291849937
+        }
+      ],
+      "update_seconds": [
+        3.219918200004031,
+        3.2239725999970688,
+        3.2311068999988493
+      ],
+      "last_validated_update": 0,
+      "status": "completed_bounded_pilot"
+    },
+    {
+      "method": "rom",
+      "states": [
+        {
+          "completed_updates": 0,
+          "waveform_relative_error": 0.002093396248996621,
+          "velocity_gradient_relative_error": 0.006624558137911204,
+          "parameter_gradient_relative_error": 0.000852154029335165,
+          "fdtd_mse": 0.04228385537862778,
+          "rom_mse": 0.04228391695934621,
+          "passes_local_accuracy_gate": true,
+          "rmse_mps": 518.7527934736858,
+          "mae_mps": 348.3287387559318,
+          "ssim": 0.38109386261418826
+        },
+        {
+          "completed_updates": 1,
+          "waveform_relative_error": 0.02283406364752221,
+          "velocity_gradient_relative_error": 0.11110285558532382,
+          "parameter_gradient_relative_error": 0.14643369224765146,
+          "fdtd_mse": 0.041851628571748734,
+          "rom_mse": 0.04182073269369343,
+          "passes_local_accuracy_gate": false,
+          "rmse_mps": 518.8335471943311,
+          "mae_mps": 350.2489649995844,
+          "ssim": 0.38098008320431276
+        }
+      ],
+      "update_seconds": [
+        0.11979620000056457
+      ],
+      "last_validated_update": 0,
+      "status": "stopped_by_local_accuracy_gate"
+    }
+  ]
+}

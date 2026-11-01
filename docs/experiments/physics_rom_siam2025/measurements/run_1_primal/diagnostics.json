@@ -1,0 +1,118 @@
+[
+  {
+    "rank": 96,
+    "poles": {
+      "rank": 96,
+      "realization_dimension": 3264,
+      "method": "matrix_free_ARPACK_LM",
+      "status": "selected_ritz_values",
+      "message": null,
+      "seconds": 0.037764399996376596,
+      "largest_observed_pole_modulus": 0.9999909010523079,
+      "contour_radius": 1.0067686592927223,
+      "observed_poles_outside_unit_disk": 0,
+      "observed_poles_outside_contour": 0,
+      "values": [
+        [
+          0.8080490384374044,
+          0.5890997824374007
+        ],
+        [
+          0.8080490384374044,
+          -0.5890997824374007
+        ],
+        [
+          0.9299488700509118,
+          0.3676267752277645
+        ],
+        [
+          0.9299488700509118,
+          -0.3676267752277645
+        ],
+        [
+          0.9339473205660013,
+          0.35736589743858527
+        ],
+        [
+          0.9339473205660013,
+          -0.35736589743858527
+        ]
+      ],
+      "ritz_absolute_residuals": [
+        3.014826653781507e-15,
+        3.014826653781507e-15,
+        3.3907490769077883e-11,
+        3.3907490769077883e-11,
+        2.915151910211349e-08,
+        2.915151910211349e-08
+      ],
+      "limit": "Selected numerical eigenvalues are not a certificate; unobserved poles and nonnormal growth remain possible"
+    },
+    "contour_and_bandwidth": [
+      {
+        "alias_tolerance": 1e-08,
+        "max_hz": 32.0,
+        "waveform": {
+          "relative": 0.0018301843892904613,
+          "absolute": 0.12646674101837932,
+          "reference_norm": 69.10054623917365,
+          "cosine": 0.9999983252165912
+        },
+        "velocity_gradient": {
+          "relative": 0.8569648910162326,
+          "absolute": 4.346721478915972e-06,
+          "reference_norm": 5.0722281910072275e-06,
+          "cosine": 0.5174653910737274
+        }
+      },
+      {
+        "alias_tolerance": 1e-12,
+        "max_hz": 32.0,
+        "waveform": {
+          "relative": 0.0018965147821796624,
+          "absolute": 0.1310502073992821,
+          "reference_norm": 69.10054623917365,
+          "cosine": 0.9999982016205108
+        },
+        "velocity_gradient": {
+          "relative": 0.8569649785313048,
+          "absolute": 4.3467219228123875e-06,
+          "reference_norm": 5.0722281910072275e-06,
+          "cosine": 0.5174651554634696
+        }
+      },
+      {
+        "alias_tolerance": 1e-16,
+        "max_hz": 32.0,
+        "waveform": {
+          "relative": 0.004282795121930246,
+          "absolute": 0.29594348235584833,
+          "reference_norm": 69.10054623917365,
+          "cosine": 0.9999908289581195
+        },
+        "velocity_gradient": {
+          "relative": 0.8569688702938557,
+          "absolute": 4.346741662720111e-06,
+          "reference_norm": 5.0722281910072275e-06,
+          "cosine": 0.5174531850831392
+        }
+      },
+      {
+        "alias_tolerance": 1e-12,
+        "max_hz": null,
+        "waveform": {
+          "relative": 0.0018625947469724502,
+          "absolute": 0.12870631443801175,
+          "reference_norm": 69.10054623917365,
+          "cosine": 0.9999982653747695
+        },
+        "velocity_gradient": {
+          "relative": 0.8569648668749077,
+          "absolute": 4.3467213564656625e-06,
+          "reference_norm": 5.0722281910072275e-06,
+          "cosine": 0.5174654380995973
+        }
+      }
+    ]
+  }
+]

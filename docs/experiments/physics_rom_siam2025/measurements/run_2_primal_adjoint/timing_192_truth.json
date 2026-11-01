@@ -1,0 +1,139 @@
+{
+  "forward": {
+    "fdtd": {
+      "samples": [
+        {
+          "seconds": 1.4650625999929616,
+          "resident_allocated_mib": 88.20166015625,
+          "peak_allocated_mib": 92.509765625,
+          "incremental_peak_mib": 4.30810546875,
+          "peak_reserved_mib": 2746.0
+        },
+        {
+          "seconds": 1.489036999992095,
+          "resident_allocated_mib": 91.49755859375,
+          "peak_allocated_mib": 95.8056640625,
+          "incremental_peak_mib": 4.30810546875,
+          "peak_reserved_mib": 2746.0
+        },
+        {
+          "seconds": 1.4808526999986498,
+          "resident_allocated_mib": 91.49755859375,
+          "peak_allocated_mib": 95.8056640625,
+          "incremental_peak_mib": 4.30810546875,
+          "peak_reserved_mib": 2746.0
+        }
+      ],
+      "median_seconds": 1.4808526999986498,
+      "max_peak_allocated_mib": 95.8056640625,
+      "max_incremental_peak_mib": 4.30810546875
+    },
+    "rom": {
+      "samples": [
+        {
+          "seconds": 0.08342790001188405,
+          "resident_allocated_mib": 89.30029296875,
+          "peak_allocated_mib": 386.9716796875,
+          "incremental_peak_mib": 297.67138671875,
+          "peak_reserved_mib": 2746.0
+        },
+        {
+          "seconds": 0.08064719999674708,
+          "resident_allocated_mib": 91.49755859375,
+          "peak_allocated_mib": 389.1689453125,
+          "incremental_peak_mib": 297.67138671875,
+          "peak_reserved_mib": 2746.0
+        },
+        {
+          "seconds": 0.08334100000502076,
+          "resident_allocated_mib": 91.49755859375,
+          "peak_allocated_mib": 389.1689453125,
+          "incremental_peak_mib": 297.67138671875,
+          "peak_reserved_mib": 2746.0
+        }
+      ],
+      "median_seconds": 0.08334100000502076,
+      "max_peak_allocated_mib": 389.1689453125,
+      "max_incremental_peak_mib": 297.67138671875
+    }
+  },
+  "forward_backward": {
+    "fdtd": {
+      "samples": [
+        {
+          "seconds": 3.32721770000353,
+          "resident_allocated_mib": 88.30517578125,
+          "peak_allocated_mib": 1580.33203125,
+          "incremental_peak_mib": 1492.02685546875,
+          "peak_reserved_mib": 2746.0
+        },
+        {
+          "seconds": 3.47805089999747,
+          "resident_allocated_mib": 91.80810546875,
+          "peak_allocated_mib": 1583.8349609375,
+          "incremental_peak_mib": 1492.02685546875,
+          "peak_reserved_mib": 2746.0
+        },
+        {
+          "seconds": 3.4113676999986637,
+          "resident_allocated_mib": 91.86083984375,
+          "peak_allocated_mib": 1583.8349609375,
+          "incremental_peak_mib": 1491.97412109375,
+          "peak_reserved_mib": 2746.0
+        }
+      ],
+      "median_seconds": 3.4113676999986637,
+      "max_peak_allocated_mib": 1583.8349609375,
+      "max_incremental_peak_mib": 1492.02685546875
+    },
+    "rom": {
+      "samples": [
+        {
+          "seconds": 0.10691980000410695,
+          "resident_allocated_mib": 89.50732421875,
+          "peak_allocated_mib": 513.46240234375,
+          "incremental_peak_mib": 423.955078125,
+          "peak_reserved_mib": 2746.0
+        },
+        {
+          "seconds": 0.10725150001235306,
+          "resident_allocated_mib": 91.80810546875,
+          "peak_allocated_mib": 515.55322265625,
+          "incremental_peak_mib": 423.7451171875,
+          "peak_reserved_mib": 2746.0
+        },
+        {
+          "seconds": 0.107652099992265,
+          "resident_allocated_mib": 91.80810546875,
+          "peak_allocated_mib": 515.55322265625,
+          "incremental_peak_mib": 423.7451171875,
+          "peak_reserved_mib": 2746.0
+        }
+      ],
+      "median_seconds": 0.10725150001235306,
+      "max_peak_allocated_mib": 515.55322265625,
+      "max_incremental_peak_mib": 423.955078125
+    }
+  },
+  "rom": {
+    "rank": 192,
+    "full_pressure_dimension": 34662,
+    "padded_shape": [
+      109,
+      318
+    ],
+    "physical_shape": [
+      94,
+      288
+    ],
+    "nt": 1000,
+    "nfft": 4096,
+    "active_frequencies": 250,
+    "max_hz": 32.0,
+    "alias_tolerance": 1e-12,
+    "reference_vmax": 5500.0,
+    "dtype": "torch.float64",
+    "frequency_batch_size": 128,
+    "stability": "PML reduced stability not certified by the elastic FEM theorem"
+  }
+}

@@ -1,0 +1,103 @@
+{
+  "experiment": {
+    "experiment_name": "residual_ifwi_stage1",
+    "parameterization": "residual",
+    "seed": 3,
+    "data": {
+      "model_file": "vel_marmousi_376x1151.csv",
+      "model_units": "m/s",
+      "csv_header": "legacy",
+      "downsample": 4,
+      "crop_shape": null,
+      "grid_spacing_m": 15.0
+    },
+    "initialization": {
+      "sigma": 15.0,
+      "gaussian_mode": "reflect",
+      "gaussian_truncate": 4.0
+    },
+    "model": {
+      "neurons": [
+        2,
+        128,
+        128,
+        128,
+        128,
+        1
+      ],
+      "omega_0": 30.0,
+      "mean_kmps": 3.0,
+      "std_kmps": 1.0
+    },
+    "acquisition": {
+      "num_shots": 1,
+      "source_x_indices": [
+        144
+      ],
+      "source_start_index": 20,
+      "source_spacing_index": 20,
+      "source_end_margin": 10,
+      "source_depth_index": 1,
+      "receiver_depth_index": 2,
+      "receiver_stride": 1
+    },
+    "forward": {
+      "dt_s": 0.0019,
+      "nt": 1000,
+      "frequency_hz": 8.0,
+      "npad": 15,
+      "order": 2,
+      "free_surface": true,
+      "pml_reflection": 1e-06
+    },
+    "training": {
+      "epochs": 3,
+      "learning_rate": 0.0001,
+      "checkpoint_interval": 50,
+      "shot_batch_size": 1
+    }
+  },
+  "rom": {
+    "ranks": [
+      16,
+      32,
+      64,
+      96
+    ],
+    "training_frequencies": 64,
+    "max_hz": 32.0,
+    "alias_tolerance": 1e-12,
+    "pad_factor": 4,
+    "repeats": 3,
+    "states": [
+      "background",
+      "perturbed",
+      "truth"
+    ],
+    "pilot_updates": 3,
+    "waveform_tolerance": 0.01,
+    "gradient_tolerance": 0.05,
+    "source_constraints": true,
+    "frequency_batch_size": 128,
+    "rom_dtype": "float64",
+    "reference_dtype": "float32"
+  },
+  "arguments": {
+    "config": "experiments/configs/rom_marmousi.yaml",
+    "small": false,
+    "device": "cuda:0",
+    "output": "F:\\project\\IFWI\\outputs\\rom_marmousi_single_gpu_20261102_064343"
+  },
+  "source_sha256": {
+    "rnn_fd.py": "eeeebd821462fadb52bb9b12a06932f2c9f764e3e7482b316e12a94d26ec9fd0",
+    "ifwi_modules.py": "900adab18822769946a64109fa77314d71d396403e70179b815094cd952bb043",
+    "experiments/residual_ifwi_experiment.py": "bad732ab953041aea397dd55f15c401c5ebc246f1a9f8b4a0ca9cac8b98806a9",
+    "experiments/residual_ifwi_data.py": "e26406adbc2807b2831506d7300066f88406d8e22fff07a68d1b62543a9619e8",
+    "experiments/run_rom_benchmark.py": "2bb8f4d722fa996e30b5757d2b192e473bd5f91b6a76eda28ab7aeaf5a5e53b6",
+    "experiments/rom/paper.py": "d3fcd419967e9ca276f7650bf4a90af7f2e3ddfcdd23501c940f4b29159b1128",
+    "experiments/rom/discrete.py": "8e198457f50c26d14d7f24fbcf0d9c4dbe3ac4a18f8507cfd193de951f071480",
+    "experiments/rom/basis.py": "76a7dad571d47307bd1b49b1324bb39875fcd0022af5f331f3a31045e47c1316",
+    "experiments/rom/solver.py": "0669ae6a3e504bc962fbdab87c92d2e0dea9cd4b3bc442fb75f99bdc3989077e",
+    "experiments/rom/benchmark.py": "a2afeac7f13717130e3db3d2e684c842d1df4eb75f1940c10dd3733401424232"
+  }
+}

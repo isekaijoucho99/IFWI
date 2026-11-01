@@ -1,0 +1,42 @@
+{
+  "base_commit": "9b0bdf4",
+  "preserved_baseline_files": {
+    "rnn_fd.py": {
+      "base_git_sha256": "eeeebd821462fadb52bb9b12a06932f2c9f764e3e7482b316e12a94d26ec9fd0",
+      "checkout_normalized_sha256": "eeeebd821462fadb52bb9b12a06932f2c9f764e3e7482b316e12a94d26ec9fd0",
+      "identical": true
+    },
+    "ifwi_modules.py": {
+      "base_git_sha256": "900adab18822769946a64109fa77314d71d396403e70179b815094cd952bb043",
+      "checkout_normalized_sha256": "900adab18822769946a64109fa77314d71d396403e70179b815094cd952bb043",
+      "identical": true
+    },
+    "experiment.py": {
+      "base_git_sha256": "f939d4420daa506efbc7ce1700097971bd8ecfecbaea6524300106a6ec6fe6d2",
+      "checkout_normalized_sha256": "f939d4420daa506efbc7ce1700097971bd8ecfecbaea6524300106a6ec6fe6d2",
+      "identical": true
+    },
+    "residual_ifwi.py": {
+      "base_git_sha256": "b48c6736b5aa19b44943c4f94086ac29eae0a2d3c965b531da6e9b86b1c267ea",
+      "checkout_normalized_sha256": "b48c6736b5aa19b44943c4f94086ac29eae0a2d3c965b531da6e9b86b1c267ea",
+      "identical": true
+    },
+    "experiments/residual_ifwi_experiment.py": {
+      "base_git_sha256": "bad732ab953041aea397dd55f15c401c5ebc246f1a9f8b4a0ca9cac8b98806a9",
+      "checkout_normalized_sha256": "bad732ab953041aea397dd55f15c401c5ebc246f1a9f8b4a0ca9cac8b98806a9",
+      "identical": true
+    },
+    "experiments/residual_ifwi_data.py": {
+      "base_git_sha256": "e26406adbc2807b2831506d7300066f88406d8e22fff07a68d1b62543a9619e8",
+      "checkout_normalized_sha256": "e26406adbc2807b2831506d7300066f88406d8e22fff07a68d1b62543a9619e8",
+      "identical": true
+    },
+    "experiments/configs/residual_ifwi_baseline1000.yaml": {
+      "base_git_sha256": "6a379130af9802c05c6f7dfb8ef3514f9c9355c02be21654858a196d4a9cdb90",
+      "checkout_normalized_sha256": "6a379130af9802c05c6f7dfb8ef3514f9c9355c02be21654858a196d4a9cdb90",
+      "identical": true
+    }
+  },
+  "upstream_matlab_files_checked": 40,
+  "upstream_changed_matlab_files": []
+}

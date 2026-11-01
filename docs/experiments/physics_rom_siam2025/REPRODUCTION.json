@@ -1,0 +1,25 @@
+{
+  "paper_doi": "10.1137/24M1667737",
+  "archive_doi": "10.5281/zenodo.15033159",
+  "archive_zip_md5": "6ff9e0dfa1275412fc90875c2aa1d817",
+  "upstream_tag": "v_2",
+  "upstream_archive_revision": "3f4ba89",
+  "runtime": "MATLAB R2020b, 4 local workers, 2 threads per worker",
+  "upstream_tested_runtime": "MATLAB R2023b",
+  "scope": "Unchanged Figure_8_bc_Plot.m fixed-material POD_s/Weeks plus four new full FEM frequency queries; not all multi-material sweeps",
+  "full_elastic_fem_dof": 232248,
+  "reduced_dimension": 80,
+  "figure8_receiver_time_trace_relative_errors": [
+    4.169910835035807e-05,
+    3.616114939562451e-05,
+    3.9001647735484595e-05,
+    3.4165485711133554e-05,
+    4.708583774146268e-05
+  ],
+  "heldout_frequency_receiver_relative_error": 2.2931084877677787e-05,
+  "python_matlab_reduced_solve_relative_error": 1.0215226022502524e-15,
+  "weighted_pod_orthogonality_fro": 1.1827042575776547e-05,
+  "matlab_compute_window_seconds": 185,
+  "reference_timing_limit": "The original figure uses distributed Newmark traces; no new fair Newmark wall-time speedup was measured",
+  "artifact_sha256": "8b87d93313942743f095b4bc15a7ad495e0c81b4ae2f27146cc3af9e69d3c10d"
+}
