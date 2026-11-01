@@ -27,7 +27,7 @@ def main():
     cfg=default_config();options=dict(ranks=[16,32,64,96],training_frequencies=64,max_hz=32.,
         alias_tolerance=1e-12,pad_factor=4,repeats=3,states=['background','perturbed','truth'],pilot_updates=3,
         waveform_tolerance=.01,gradient_tolerance=.05,source_constraints=True,frequency_batch_size=128,
-        rom_dtype='float64',reference_dtype='float32',basis_mode='primal')
+        rom_dtype='float64',reference_dtype='float32',basis_mode='primal',protected_primal_rank=0)
     cfg['acquisition'].update(num_shots=1,source_x_indices=[144]);cfg['training']['shot_batch_size']=1
     if args.config:
         provided=yaml.safe_load(Path(args.config).read_text(encoding='utf-8'));cfg=provided['experiment'];options.update(provided['rom'])
@@ -75,7 +75,7 @@ def main():
                 training_frequencies=options['training_frequencies'],max_hz=options['max_hz'],nfft=nfft,
                 alias_tolerance=options['alias_tolerance'],preserve_sources=options['source_constraints'],
                 progress=lambda v:print(json.dumps(v),flush=True),receiver_indices=receivers,
-                adjoint_residual=adjoint_residual)
+                adjoint_residual=adjoint_residual,protected_primal_rank=options['protected_primal_rank'])
             info['adjoint_calibration_fdtd_seconds']=calibration_seconds
             np.save(out/f'basis_{rank}.npy',basis);save_json(out/f'offline_{rank}.json',info);offline.append(info)
             start=time.perf_counter()

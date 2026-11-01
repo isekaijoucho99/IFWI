@@ -1,0 +1,71 @@
+experiment:
+  experiment_name: residual_ifwi_stage1
+  parameterization: residual
+  seed: 3
+  data:
+    model_file: vel_marmousi_376x1151.csv
+    model_units: m/s
+    csv_header: legacy
+    downsample: 4
+    crop_shape: null
+    grid_spacing_m: 15.0
+  initialization:
+    sigma: 15.0
+    gaussian_mode: reflect
+    gaussian_truncate: 4.0
+  model:
+    neurons:
+    - 2
+    - 128
+    - 128
+    - 128
+    - 128
+    - 1
+    omega_0: 30.0
+    mean_kmps: 3.0
+    std_kmps: 1.0
+  acquisition:
+    num_shots: 1
+    source_x_indices:
+    - 144
+    source_start_index: 20
+    source_spacing_index: 20
+    source_end_margin: 10
+    source_depth_index: 1
+    receiver_depth_index: 2
+    receiver_stride: 1
+  forward:
+    dt_s: 0.0019
+    nt: 1000
+    frequency_hz: 8.0
+    npad: 15
+    order: 2
+    free_surface: true
+    pml_reflection: 1.0e-06
+  training:
+    epochs: 3
+    learning_rate: 0.0001
+    checkpoint_interval: 50
+    shot_batch_size: 1
+rom:
+  ranks:
+  - 160
+  - 192
+  training_frequencies: 64
+  max_hz: 32.0
+  alias_tolerance: 1.0e-12
+  pad_factor: 4
+  repeats: 3
+  states:
+  - background
+  - perturbed
+  - truth
+  pilot_updates: 3
+  waveform_tolerance: 0.01
+  gradient_tolerance: 0.05
+  source_constraints: true
+  frequency_batch_size: 128
+  rom_dtype: float64
+  reference_dtype: float32
+  basis_mode: primal_adjoint
+  protected_primal_rank: 96

@@ -12,7 +12,7 @@ from experiments.rom.paper import weighted_pod
 def build_pressure_basis(system,velocity,source_indices,wavelet,rank,*,
                          training_frequencies=32,max_hz=32.,nfft=None,
                          alias_tolerance=1e-12,preserve_sources=True,progress=None,
-                         receiver_indices=None,adjoint_residual=None):
+                         receiver_indices=None,adjoint_residual=None,protected_primal_rank=0):
     started=time.perf_counter();wavelet=np.asarray(wavelet,dtype=float)
     nfft=int(nfft or 2**int(np.ceil(np.log2(4*len(wavelet)))))
     if nfft<2*len(wavelet) or not 0<alias_tolerance<1:
@@ -59,30 +59,42 @@ def build_pressure_basis(system,velocity,source_indices,wavelet,rank,*,
         for _ in range(2):snapshots-=source_basis@(source_basis.T@(metric@snapshots))
         if dual_snapshots is not None:
             for _ in range(2):dual_snapshots-=source_basis@(source_basis.T@(metric@dual_snapshots))
-    if dual_snapshots is not None:
+    snapshot_count=snapshots.shape[1]+(0 if dual_snapshots is None else dual_snapshots.shape[1])
+    if protected_primal_rank:
+        if dual_snapshots is None or not source_rank<protected_primal_rank<rank:
+            raise ValueError('Protected primal rank needs adjoint snapshots and must fit between source and total ranks')
+        primal,primal_singular=weighted_pod(snapshots,metric,protected_primal_rank-source_rank)
+        primal=np.concatenate([source_basis,primal],axis=1) if preserve_sources else primal
+        for _ in range(2):dual_snapshots-=primal@(primal.T@(metric@dual_snapshots))
+        remainder,singular=weighted_pod(dual_snapshots,metric,rank-protected_primal_rank)
+        basis=np.concatenate([primal,remainder],axis=1)
+        retained_last_singular=float(singular[rank-protected_primal_rank-1])
+    elif dual_snapshots is not None:
         primal_energy=float(np.sum(snapshots*(metric@snapshots)))
         dual_energy=float(np.sum(dual_snapshots*(metric@dual_snapshots)))
         if primal_energy<=0 or dual_energy<=0:raise ValueError('Adjoint calibration has no finite energy')
         dual_scale=np.sqrt(primal_energy/dual_energy)
         snapshots=np.concatenate([snapshots,dual_scale*dual_snapshots],axis=1)
-    if preserve_sources:
+    if not protected_primal_rank and preserve_sources:
         remainder,singular=weighted_pod(snapshots,metric,rank-source_rank)
         basis=np.concatenate([source_basis,remainder],axis=1)
-    else:basis,singular=weighted_pod(snapshots,metric,rank)
+    elif not protected_primal_rank:basis,singular=weighted_pod(snapshots,metric,rank)
+    if not protected_primal_rank:retained_last_singular=float(singular[rank-source_rank-1])
     gram=basis.T@(metric@basis);cholesky=np.linalg.cholesky((gram+gram.T)/2)
     basis=solve_triangular(cholesky,basis.T,lower=True).T
     info=dict(rank=rank,source_count=len(source_indices),source_constraints=source_rank,
-        full_pressure_dimension=system.dimension,snapshot_count=snapshots.shape[1],
+        full_pressure_dimension=system.dimension,snapshot_count=snapshot_count,
         selected_frequency_bins=selected.tolist(),frequencies_hz=(selected/(nfft*system.dt)).tolist(),
         nfft=nfft,max_hz=max_hz,alias_tolerance=alias_tolerance,
         factorization_seconds=factor_seconds,snapshot_solve_seconds=solve_seconds,
         adjoint_solve_seconds=dual_seconds,adjoint_snapshot_count=0 if dual_snapshots is None else dual_snapshots.shape[1],
         data_conditioned_adjoint_calibration=dual_snapshots is not None,
         calibration_residual_sha256=None if dual_snapshots is None else hashlib.sha256(adjoint_residual.tobytes()).hexdigest(),
-        joint_energy_balance=None if dual_snapshots is None else 'Equal primal and dual reference-metric energies after source projection',
+        protected_primal_rank=int(protected_primal_rank),
+        joint_energy_balance=None if dual_snapshots is None else ('Protect primal subspace; POD of orthogonal adjoint complement' if protected_primal_rank else 'Equal primal and dual reference-metric energies after source projection'),
         total_offline_seconds=time.perf_counter()-started,
         weighted_orthogonality_fro=float(np.linalg.norm(basis.T@(metric@basis)-np.eye(rank))),
-        retained_last_singular=float(singular[rank-source_rank-1]),
+        retained_last_singular=retained_last_singular,
         metric='diag(v_background_padded^-2) - original_L_dt',
         material_models_used=1,truth_snapshots_used=False)
     return basis,info

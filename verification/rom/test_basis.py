@@ -29,3 +29,17 @@ def test_joint_basis_includes_declared_adjoint_data_and_keeps_source_constraints
     assert info['adjoint_snapshot_count']==32 and info['snapshot_count']==64
     assert info['data_conditioned_adjoint_calibration'] is True
     assert info['truth_snapshots_used'] is False
+
+
+def test_adjoint_enrichment_preserves_the_requested_primal_subspace():
+    fd,system,sources,receivers,v=case(shots=2)
+    wave=np.sin(np.arange(64)*.3)*np.exp(-np.arange(64)/20)
+    kwargs=dict(training_frequencies=8,max_hz=160.,nfft=256,alias_tolerance=1e-12)
+    primal,_=build_pressure_basis(system,v.numpy()[0],sources,wave,rank=6,**kwargs)
+    enriched,info=build_pressure_basis(system,v.numpy()[0],sources,wave,rank=10,**kwargs,
+        receiver_indices=receivers,adjoint_residual=np.random.default_rng(11).normal(size=(2,64,5)),
+        protected_primal_rank=6)
+    metric=system.stiffness+diags(system.pad_numpy(v.numpy()[0]).ravel()**-2)
+    np.testing.assert_allclose(enriched.T@(metric@enriched),np.eye(10),atol=1e-8)
+    np.testing.assert_allclose(enriched@(enriched.T@(metric@primal)),primal,atol=1e-8)
+    assert info['protected_primal_rank']==6
