@@ -1,0 +1,1538 @@
+[
+  {
+    "run": 1,
+    "method": "fdtd",
+    "completed_updates": 0,
+    "used_for_update": true,
+    "backend": "fdtd",
+    "final_basis_is_preceding_update_basis": false,
+    "waveform": {
+      "relative": 0.0,
+      "absolute": 0.0,
+      "reference_norm": 69.10054623917365,
+      "cosine": 1.0000000000000002
+    },
+    "velocity_gradient": {
+      "relative": 0.0,
+      "absolute": 0.0,
+      "reference_norm": 5.0722281910072275e-06,
+      "cosine": 0.9999999999999999
+    },
+    "parameter_gradient": {
+      "relative": 0.0,
+      "absolute": 0.0,
+      "reference_norm": 0.4438347051704296,
+      "cosine": 1.0
+    },
+    "fdtd_mse": 0.04228385537862778,
+    "rom_mse": 0.04228385537862778,
+    "passes_accuracy_gate": true,
+    "rmse_mps": 518.7527934736858,
+    "mae_mps": 348.3287387559318,
+    "ssim": 0.38109386261418826
+  },
+  {
+    "run": 1,
+    "method": "fdtd",
+    "completed_updates": 1,
+    "used_for_update": true,
+    "backend": "fdtd",
+    "final_basis_is_preceding_update_basis": false,
+    "waveform": {
+      "relative": 0.0,
+      "absolute": 0.0,
+      "reference_norm": 68.37143353559803,
+      "cosine": 1.0
+    },
+    "velocity_gradient": {
+      "relative": 0.0,
+      "absolute": 0.0,
+      "reference_norm": 4.854646919738192e-06,
+      "cosine": 1.0000000000000002
+    },
+    "parameter_gradient": {
+      "relative": 0.0,
+      "absolute": 0.0,
+      "reference_norm": 0.4125852573319909,
+      "cosine": 1.0
+    },
+    "fdtd_mse": 0.04185162112116814,
+    "rom_mse": 0.04185162112116814,
+    "passes_accuracy_gate": true,
+    "rmse_mps": 518.8335471668362,
+    "mae_mps": 350.24896496351164,
+    "ssim": 0.3809800833439409
+  },
+  {
+    "run": 1,
+    "method": "fdtd",
+    "completed_updates": 2,
+    "used_for_update": true,
+    "backend": "fdtd",
+    "final_basis_is_preceding_update_basis": false,
+    "waveform": {
+      "relative": 0.0,
+      "absolute": 0.0,
+      "reference_norm": 67.46188638013997,
+      "cosine": 0.9999999999999998
+    },
+    "velocity_gradient": {
+      "relative": 0.0,
+      "absolute": 0.0,
+      "reference_norm": 4.916279161685367e-06,
+      "cosine": 0.9999999999999999
+    },
+    "parameter_gradient": {
+      "relative": 0.0,
+      "absolute": 0.0,
+      "reference_norm": 0.43882900601533603,
+      "cosine": 1.0000000000000002
+    },
+    "fdtd_mse": 0.04118996486067772,
+    "rom_mse": 0.04118996486067772,
+    "passes_accuracy_gate": true,
+    "rmse_mps": 519.1154183167816,
+    "mae_mps": 352.99866052722257,
+    "ssim": 0.3808000946323835
+  },
+  {
+    "run": 1,
+    "method": "fdtd",
+    "completed_updates": 3,
+    "used_for_update": true,
+    "backend": "fdtd",
+    "final_basis_is_preceding_update_basis": false,
+    "waveform": {
+      "relative": 0.0,
+      "absolute": 0.0,
+      "reference_norm": 66.6253685127542,
+      "cosine": 1.0000000000000002
+    },
+    "velocity_gradient": {
+      "relative": 0.0,
+      "absolute": 0.0,
+      "reference_norm": 5.393431630727217e-06,
+      "cosine": 0.9999999999999999
+    },
+    "parameter_gradient": {
+      "relative": 0.0,
+      "absolute": 0.0,
+      "reference_norm": 0.40126228771737293,
+      "cosine": 1.0000000000000002
+    },
+    "fdtd_mse": 0.040452685207128525,
+    "rom_mse": 0.040452685207128525,
+    "passes_accuracy_gate": true,
+    "rmse_mps": 519.666235489947,
+    "mae_mps": 356.4770853615258,
+    "ssim": 0.38057344291849937
+  },
+  {
+    "run": 1,
+    "method": "fdtd",
+    "completed_updates": 4,
+    "used_for_update": true,
+    "backend": "fdtd",
+    "final_basis_is_preceding_update_basis": false,
+    "waveform": {
+      "relative": 0.0,
+      "absolute": 0.0,
+      "reference_norm": 66.17874016368961,
+      "cosine": 1.0
+    },
+    "velocity_gradient": {
+      "relative": 0.0,
+      "absolute": 0.0,
+      "reference_norm": 6.036174447653322e-06,
+      "cosine": 1.0
+    },
+    "parameter_gradient": {
+      "relative": 0.0,
+      "absolute": 0.0,
+      "reference_norm": 0.32640497947977365,
+      "cosine": 1.0
+    },
+    "fdtd_mse": 0.03975909575819969,
+    "rom_mse": 0.03975909575819969,
+    "passes_accuracy_gate": true,
+    "rmse_mps": 520.4862784709825,
+    "mae_mps": 360.3128965977518,
+    "ssim": 0.3803351375509522
+  },
+  {
+    "run": 1,
+    "method": "fdtd",
+    "completed_updates": 5,
+    "used_for_update": false,
+    "backend": "fdtd",
+    "final_basis_is_preceding_update_basis": true,
+    "waveform": {
+      "relative": 0.0,
+      "absolute": 0.0,
+      "reference_norm": 66.30570710507565,
+      "cosine": 0.9999999999999998
+    },
+    "velocity_gradient": {
+      "relative": 0.0,
+      "absolute": 0.0,
+      "reference_norm": 6.5957906711009165e-06,
+      "cosine": 0.9999999999999999
+    },
+    "parameter_gradient": {
+      "relative": 0.0,
+      "absolute": 0.0,
+      "reference_norm": 0.2685570987236046,
+      "cosine": 1.0000000000000002
+    },
+    "fdtd_mse": 0.03911197558045387,
+    "rom_mse": 0.03911197558045387,
+    "passes_accuracy_gate": true,
+    "rmse_mps": 521.4741732998228,
+    "mae_mps": 363.97525013592224,
+    "ssim": 0.38009966701780507
+  },
+  {
+    "run": 1,
+    "method": "frozen",
+    "completed_updates": 0,
+    "used_for_update": true,
+    "backend": "rom",
+    "final_basis_is_preceding_update_basis": false,
+    "waveform": {
+      "relative": 0.0020939631536808596,
+      "absolute": 0.14469399772405012,
+      "reference_norm": 69.10054623917365,
+      "cosine": 0.999997807665367
+    },
+    "velocity_gradient": {
+      "relative": 0.006597089641347528,
+      "absolute": 3.346194405744469e-08,
+      "reference_norm": 5.0722281910072275e-06,
+      "cosine": 0.9999787104518524
+    },
+    "parameter_gradient": {
+      "relative": 0.0008107781274459003,
+      "absolute": 0.00035985147115358415,
+      "reference_norm": 0.4438347051704296,
+      "cosine": 0.9999996928221924
+    },
+    "fdtd_mse": 0.04228385537862778,
+    "rom_mse": 0.04228381971691878,
+    "passes_accuracy_gate": true,
+    "rmse_mps": 518.7527934736858,
+    "mae_mps": 348.3287387559318,
+    "ssim": 0.38109386261418826
+  },
+  {
+    "run": 1,
+    "method": "frozen",
+    "completed_updates": 1,
+    "used_for_update": true,
+    "backend": "rom",
+    "final_basis_is_preceding_update_basis": false,
+    "waveform": {
+      "relative": 0.022841419824674816,
+      "absolute": 1.5617007232151392,
+      "reference_norm": 68.37143816813378,
+      "cosine": 0.9997404074919054
+    },
+    "velocity_gradient": {
+      "relative": 0.11093283515781208,
+      "absolute": 5.385397328120832e-07,
+      "reference_norm": 4.85464679637874e-06,
+      "cosine": 0.9938703452725903
+    },
+    "parameter_gradient": {
+      "relative": 0.1462203241237527,
+      "absolute": 0.06032831477470215,
+      "reference_norm": 0.41258501604499004,
+      "cosine": 0.9993804688581891
+    },
+    "fdtd_mse": 0.041851624846458435,
+    "rom_mse": 0.04182067606396579,
+    "passes_accuracy_gate": false,
+    "rmse_mps": 518.8335472088439,
+    "mae_mps": 350.24896496351164,
+    "ssim": 0.38098008345737483
+  },
+  {
+    "run": 1,
+    "method": "frozen",
+    "completed_updates": 2,
+    "used_for_update": true,
+    "backend": "rom",
+    "final_basis_is_preceding_update_basis": false,
+    "waveform": {
+      "relative": 0.06335582820891184,
+      "absolute": 4.271962081347888,
+      "reference_norm": 67.42808360521092,
+      "cosine": 0.99801316696498
+    },
+    "velocity_gradient": {
+      "relative": 0.23676890960157035,
+      "absolute": 1.1645102255628955e-06,
+      "reference_norm": 4.918340957529045e-06,
+      "cosine": 0.9716774874822354
+    },
+    "parameter_gradient": {
+      "relative": 0.28546211177948744,
+      "absolute": 0.12463310889714113,
+      "reference_norm": 0.43660122921467487,
+      "cosine": 0.9981024928656478
+    },
+    "fdtd_mse": 0.041192684322595596,
+    "rom_mse": 0.04102666829582728,
+    "passes_accuracy_gate": false,
+    "rmse_mps": 519.1153891403026,
+    "mae_mps": 353.0201048524103,
+    "ssim": 0.3808035629313586
+  },
+  {
+    "run": 1,
+    "method": "frozen",
+    "completed_updates": 3,
+    "used_for_update": true,
+    "backend": "rom",
+    "final_basis_is_preceding_update_basis": false,
+    "waveform": {
+      "relative": 0.11733857113885292,
+      "absolute": 7.801153441483972,
+      "reference_norm": 66.48413531687254,
+      "cosine": 0.9932423460305669
+    },
+    "velocity_gradient": {
+      "relative": 0.32211359254069993,
+      "absolute": 1.7430167288748878e-06,
+      "reference_norm": 5.411186516926177e-06,
+      "cosine": 0.9468260012534575
+    },
+    "parameter_gradient": {
+      "relative": 0.3094013915922887,
+      "absolute": 0.12091608229919916,
+      "reference_norm": 0.3908065237745776,
+      "cosine": 0.996343243358781
+    },
+    "fdtd_mse": 0.04047606512904167,
+    "rom_mse": 0.04010403610104491,
+    "passes_accuracy_gate": false,
+    "rmse_mps": 519.664513064506,
+    "mae_mps": 356.5442700893321,
+    "ssim": 0.3805866458466303
+  },
+  {
+    "run": 1,
+    "method": "frozen",
+    "completed_updates": 4,
+    "used_for_update": true,
+    "backend": "rom",
+    "final_basis_is_preceding_update_basis": false,
+    "waveform": {
+      "relative": 0.1787063539171083,
+      "absolute": 11.771230082246605,
+      "reference_norm": 65.86911894417928,
+      "cosine": 0.9845039036204362
+    },
+    "velocity_gradient": {
+      "relative": 0.3647614798435344,
+      "absolute": 2.214659414604166e-06,
+      "reference_norm": 6.071527661183278e-06,
+      "cosine": 0.9311054345244578
+    },
+    "parameter_gradient": {
+      "relative": 0.13646783515536437,
+      "absolute": 0.04090934490742348,
+      "reference_norm": 0.2997727989225407,
+      "cosine": 0.9938133818939061
+    },
+    "fdtd_mse": 0.03983171656727791,
+    "rom_mse": 0.03932352448562545,
+    "passes_accuracy_gate": false,
+    "rmse_mps": 520.4953413920576,
+    "mae_mps": 360.53382301781477,
+    "ssim": 0.3803580039231849
+  },
+  {
+    "run": 1,
+    "method": "frozen",
+    "completed_updates": 5,
+    "used_for_update": false,
+    "backend": "rom",
+    "final_basis_is_preceding_update_basis": true,
+    "waveform": {
+      "relative": 0.24266067713694828,
+      "absolute": 15.99379067839262,
+      "reference_norm": 65.91010487194158,
+      "cosine": 0.9718159690177796
+    },
+    "velocity_gradient": {
+      "relative": 0.3977284488349651,
+      "absolute": 2.6210578647529045e-06,
+      "reference_norm": 6.590068858364456e-06,
+      "cosine": 0.9180607543339339
+    },
+    "parameter_gradient": {
+      "relative": 0.4641994933864218,
+      "absolute": 0.10667473239299607,
+      "reference_norm": 0.22980363811856844,
+      "cosine": 0.9074607195396966
+    },
+    "fdtd_mse": 0.03926687315106392,
+    "rom_mse": 0.038773921309444855,
+    "passes_accuracy_gate": false,
+    "rmse_mps": 521.4911119517267,
+    "mae_mps": 364.33298855864973,
+    "ssim": 0.38013494745718146
+  },
+  {
+    "run": 1,
+    "method": "fresh",
+    "completed_updates": 0,
+    "used_for_update": true,
+    "backend": "rom",
+    "final_basis_is_preceding_update_basis": false,
+    "waveform": {
+      "relative": 0.0020939631536808596,
+      "absolute": 0.14469399772405012,
+      "reference_norm": 69.10054623917365,
+      "cosine": 0.999997807665367
+    },
+    "velocity_gradient": {
+      "relative": 0.006597089641347528,
+      "absolute": 3.346194405744469e-08,
+      "reference_norm": 5.0722281910072275e-06,
+      "cosine": 0.9999787104518524
+    },
+    "parameter_gradient": {
+      "relative": 0.0008107781274459003,
+      "absolute": 0.00035985147115358415,
+      "reference_norm": 0.4438347051704296,
+      "cosine": 0.9999996928221924
+    },
+    "fdtd_mse": 0.04228385537862778,
+    "rom_mse": 0.04228381971691878,
+    "passes_accuracy_gate": true,
+    "rmse_mps": 518.7527934736858,
+    "mae_mps": 348.3287387559318,
+    "ssim": 0.38109386261418826
+  },
+  {
+    "run": 1,
+    "method": "fresh",
+    "completed_updates": 1,
+    "used_for_update": true,
+    "backend": "rom",
+    "final_basis_is_preceding_update_basis": false,
+    "waveform": {
+      "relative": 0.0020699731330416646,
+      "absolute": 0.14152704007545633,
+      "reference_norm": 68.37143816813378,
+      "cosine": 0.9999978576098848
+    },
+    "velocity_gradient": {
+      "relative": 0.005826304356987267,
+      "absolute": 2.828464978137573e-08,
+      "reference_norm": 4.85464679637874e-06,
+      "cosine": 0.9999834905542021
+    },
+    "parameter_gradient": {
+      "relative": 0.0008425566210712538,
+      "absolute": 0.00034762623702349585,
+      "reference_norm": 0.41258501604499004,
+      "cosine": 0.9999996626333905
+    },
+    "fdtd_mse": 0.041851624846458435,
+    "rom_mse": 0.04185158658073666,
+    "passes_accuracy_gate": true,
+    "rmse_mps": 518.8335472088439,
+    "mae_mps": 350.24896496351164,
+    "ssim": 0.38098008345737483
+  },
+  {
+    "run": 1,
+    "method": "fresh",
+    "completed_updates": 2,
+    "used_for_update": true,
+    "backend": "rom",
+    "final_basis_is_preceding_update_basis": false,
+    "waveform": {
+      "relative": 0.0019946091627055873,
+      "absolute": 0.13456497816603574,
+      "reference_norm": 67.46433370611068,
+      "cosine": 0.9999980107720051
+    },
+    "velocity_gradient": {
+      "relative": 0.004787180838350671,
+      "absolute": 2.353336334193217e-08,
+      "reference_norm": 4.915912754622431e-06,
+      "cosine": 0.9999888968189933
+    },
+    "parameter_gradient": {
+      "relative": 0.0006763327218189991,
+      "absolute": 0.0002968395557065532,
+      "reference_norm": 0.4388957478032443,
+      "cosine": 0.9999998058621989
+    },
+    "fdtd_mse": 0.0411900132894516,
+    "rom_mse": 0.041189985589015404,
+    "passes_accuracy_gate": true,
+    "rmse_mps": 519.1154322761935,
+    "mae_mps": 352.9982643893988,
+    "ssim": 0.38079999706323336
+  },
+  {
+    "run": 1,
+    "method": "fresh",
+    "completed_updates": 3,
+    "used_for_update": true,
+    "backend": "rom",
+    "final_basis_is_preceding_update_basis": false,
+    "waveform": {
+      "relative": 0.001966265149585033,
+      "absolute": 0.13101299958291415,
+      "reference_norm": 66.63038278970848,
+      "cosine": 0.9999980669077799
+    },
+    "velocity_gradient": {
+      "relative": 0.00396921677338026,
+      "absolute": 2.1402498636940876e-08,
+      "reference_norm": 5.392121382857632e-06,
+      "cosine": 0.9999923048310237
+    },
+    "parameter_gradient": {
+      "relative": 0.0007105104978881886,
+      "absolute": 0.0002852203723263833,
+      "reference_norm": 0.4014302014877024,
+      "cosine": 0.99999981029023
+    },
+    "fdtd_mse": 0.04045261815190315,
+    "rom_mse": 0.040452598736563115,
+    "passes_accuracy_gate": true,
+    "rmse_mps": 519.6661360730907,
+    "mae_mps": 356.47599239665004,
+    "ssim": 0.3805733915656219
+  },
+  {
+    "run": 1,
+    "method": "fresh",
+    "completed_updates": 4,
+    "used_for_update": true,
+    "backend": "rom",
+    "final_basis_is_preceding_update_basis": false,
+    "waveform": {
+      "relative": 0.0019959980684870673,
+      "absolute": 0.13210970102695074,
+      "reference_norm": 66.18728901230233,
+      "cosine": 0.9999980080048152
+    },
+    "velocity_gradient": {
+      "relative": 0.003823488262320617,
+      "absolute": 2.3069375352504037e-08,
+      "reference_norm": 6.033593872863723e-06,
+      "cosine": 0.9999928436683209
+    },
+    "parameter_gradient": {
+      "relative": 0.0008831593673453806,
+      "absolute": 0.00028847709068392774,
+      "reference_norm": 0.32664216827710085,
+      "cosine": 0.9999996676945924
+    },
+    "fdtd_mse": 0.039758700877428055,
+    "rom_mse": 0.03975867060191412,
+    "passes_accuracy_gate": true,
+    "rmse_mps": 520.4862154012551,
+    "mae_mps": 360.31136630443814,
+    "ssim": 0.3803348088684844
+  },
+  {
+    "run": 1,
+    "method": "fresh",
+    "completed_updates": 5,
+    "used_for_update": false,
+    "backend": "rom",
+    "final_basis_is_preceding_update_basis": true,
+    "waveform": {
+      "relative": 0.0634360648306465,
+      "absolute": 4.206938663525286,
+      "reference_norm": 66.31777482976653,
+      "cosine": 0.9980226914689658
+    },
+    "velocity_gradient": {
+      "relative": 0.11489396803030626,
+      "absolute": 7.573661579239441e-07,
+      "reference_norm": 6.591870495100049e-06,
+      "cosine": 0.9938774095082
+    },
+    "parameter_gradient": {
+      "relative": 0.5749357454044594,
+      "absolute": 0.15452128505065507,
+      "reference_norm": 0.26876270311206946,
+      "cosine": 0.9717015678666852
+    },
+    "fdtd_mse": 0.03911128640174866,
+    "rom_mse": 0.03900424203029016,
+    "passes_accuracy_gate": false,
+    "rmse_mps": 521.4743554970312,
+    "mae_mps": 363.9739192169045,
+    "ssim": 0.3800989560627047
+  },
+  {
+    "run": 1,
+    "method": "correction1",
+    "completed_updates": 0,
+    "used_for_update": true,
+    "backend": "rom",
+    "final_basis_is_preceding_update_basis": false,
+    "waveform": {
+      "relative": 0.0020939631536808596,
+      "absolute": 0.14469399772405012,
+      "reference_norm": 69.10054623917365,
+      "cosine": 0.999997807665367
+    },
+    "velocity_gradient": {
+      "relative": 0.006597089641347528,
+      "absolute": 3.346194405744469e-08,
+      "reference_norm": 5.0722281910072275e-06,
+      "cosine": 0.9999787104518524
+    },
+    "parameter_gradient": {
+      "relative": 0.0008107781274459003,
+      "absolute": 0.00035985147115358415,
+      "reference_norm": 0.4438347051704296,
+      "cosine": 0.9999996928221924
+    },
+    "fdtd_mse": 0.04228385537862778,
+    "rom_mse": 0.04228381971691878,
+    "passes_accuracy_gate": true,
+    "rmse_mps": 518.7527934736858,
+    "mae_mps": 348.3287387559318,
+    "ssim": 0.38109386261418826
+  },
+  {
+    "run": 1,
+    "method": "correction1",
+    "completed_updates": 1,
+    "used_for_update": true,
+    "backend": "rom",
+    "final_basis_is_preceding_update_basis": false,
+    "waveform": {
+      "relative": 0.0050753970794583615,
+      "absolute": 0.34701219759691415,
+      "reference_norm": 68.37143816813378,
+      "cosine": 0.9999875743215363
+    },
+    "velocity_gradient": {
+      "relative": 0.026507205465575653,
+      "absolute": 1.2868312009440987e-07,
+      "reference_norm": 4.85464679637874e-06,
+      "cosine": 0.9996502424235552
+    },
+    "parameter_gradient": {
+      "relative": 0.00929415955219759,
+      "absolute": 0.00383463096796814,
+      "reference_norm": 0.41258501604499004,
+      "cosine": 0.9999882042521777
+    },
+    "fdtd_mse": 0.041851624846458435,
+    "rom_mse": 0.04185274583605671,
+    "passes_accuracy_gate": true,
+    "rmse_mps": 518.8335472088439,
+    "mae_mps": 350.24896496351164,
+    "ssim": 0.38098008345737483
+  },
+  {
+    "run": 1,
+    "method": "correction1",
+    "completed_updates": 2,
+    "used_for_update": true,
+    "backend": "rom",
+    "final_basis_is_preceding_update_basis": false,
+    "waveform": {
+      "relative": 0.0019945579626224506,
+      "absolute": 0.1345719979900341,
+      "reference_norm": 67.46958499671699,
+      "cosine": 0.9999980108741657
+    },
+    "velocity_gradient": {
+      "relative": 0.0047894696187426354,
+      "absolute": 2.3539396983131207e-08,
+      "reference_norm": 4.914823322193018e-06,
+      "cosine": 0.9999888858289396
+    },
+    "parameter_gradient": {
+      "relative": 0.000676218122859116,
+      "absolute": 0.00029689915406383124,
+      "reference_norm": 0.43905826245607366,
+      "cosine": 0.9999998055107298
+    },
+    "fdtd_mse": 0.04119047150015831,
+    "rom_mse": 0.04119045244723494,
+    "passes_accuracy_gate": true,
+    "rmse_mps": 519.1153743214365,
+    "mae_mps": 352.9964286136853,
+    "ssim": 0.3808000113277391
+  },
+  {
+    "run": 1,
+    "method": "correction1",
+    "completed_updates": 3,
+    "used_for_update": true,
+    "backend": "rom",
+    "final_basis_is_preceding_update_basis": false,
+    "waveform": {
+      "relative": 0.001966011485848313,
+      "absolute": 0.13101453096552096,
+      "reference_norm": 66.63975867312371,
+      "cosine": 0.9999980674054125
+    },
+    "velocity_gradient": {
+      "relative": 0.003973207232319231,
+      "absolute": 2.1410967332825634e-08,
+      "reference_norm": 5.388837299666263e-06,
+      "cosine": 0.9999922892745161
+    },
+    "parameter_gradient": {
+      "relative": 0.0007073580779697518,
+      "absolute": 0.00028413877360125323,
+      "reference_norm": 0.4016901516368965,
+      "cosine": 0.9999998102430199
+    },
+    "fdtd_mse": 0.04045336693525314,
+    "rom_mse": 0.04045334732138948,
+    "passes_accuracy_gate": true,
+    "rmse_mps": 519.6653393486935,
+    "mae_mps": 356.47192248892276,
+    "ssim": 0.3805734414594839
+  },
+  {
+    "run": 1,
+    "method": "correction1",
+    "completed_updates": 4,
+    "used_for_update": true,
+    "backend": "rom",
+    "final_basis_is_preceding_update_basis": false,
+    "waveform": {
+      "relative": 0.0019954952490965155,
+      "absolute": 0.13209911066921962,
+      "reference_norm": 66.19865957036434,
+      "cosine": 0.9999980090075526
+    },
+    "velocity_gradient": {
+      "relative": 0.0038258007334196695,
+      "absolute": 2.3065283441463976e-08,
+      "reference_norm": 6.028877364150434e-06,
+      "cosine": 0.9999928356009727
+    },
+    "parameter_gradient": {
+      "relative": 0.0008796211563049979,
+      "absolute": 0.0002874672553500257,
+      "reference_norm": 0.32680802785324314,
+      "cosine": 0.9999996686838182
+    },
+    "fdtd_mse": 0.03975936770439148,
+    "rom_mse": 0.039759350133114504,
+    "passes_accuracy_gate": true,
+    "rmse_mps": 520.484762005091,
+    "mae_mps": 360.30539118989986,
+    "ssim": 0.3803341469028104
+  },
+  {
+    "run": 1,
+    "method": "correction1",
+    "completed_updates": 5,
+    "used_for_update": false,
+    "backend": "rom",
+    "final_basis_is_preceding_update_basis": true,
+    "waveform": {
+      "relative": 0.06340921125033135,
+      "absolute": 4.205911243766464,
+      "reference_norm": 66.3296571717644,
+      "cosine": 0.9980242709332724
+    },
+    "velocity_gradient": {
+      "relative": 0.115029961133294,
+      "absolute": 7.57649669335517e-07,
+      "reference_norm": 6.586541991938695e-06,
+      "cosine": 0.99386004563874
+    },
+    "parameter_gradient": {
+      "relative": 0.5754377383748163,
+      "absolute": 0.1545862544291303,
+      "reference_norm": 0.26864114763435837,
+      "cosine": 0.9717629613864471
+    },
+    "fdtd_mse": 0.03911194950342178,
+    "rom_mse": 0.03900482766238216,
+    "passes_accuracy_gate": false,
+    "rmse_mps": 521.472926201624,
+    "mae_mps": 363.96827024545513,
+    "ssim": 0.380096869712024
+  },
+  {
+    "run": 1,
+    "method": "correction2",
+    "completed_updates": 0,
+    "used_for_update": true,
+    "backend": "rom",
+    "final_basis_is_preceding_update_basis": false,
+    "waveform": {
+      "relative": 0.0020939631536808596,
+      "absolute": 0.14469399772405012,
+      "reference_norm": 69.10054623917365,
+      "cosine": 0.999997807665367
+    },
+    "velocity_gradient": {
+      "relative": 0.006597089641347528,
+      "absolute": 3.346194405744469e-08,
+      "reference_norm": 5.0722281910072275e-06,
+      "cosine": 0.9999787104518524
+    },
+    "parameter_gradient": {
+      "relative": 0.0008107781274459003,
+      "absolute": 0.00035985147115358415,
+      "reference_norm": 0.4438347051704296,
+      "cosine": 0.9999996928221924
+    },
+    "fdtd_mse": 0.04228385537862778,
+    "rom_mse": 0.04228381971691878,
+    "passes_accuracy_gate": true,
+    "rmse_mps": 518.7527934736858,
+    "mae_mps": 348.3287387559318,
+    "ssim": 0.38109386261418826
+  },
+  {
+    "run": 1,
+    "method": "correction2",
+    "completed_updates": 1,
+    "used_for_update": true,
+    "backend": "rom",
+    "final_basis_is_preceding_update_basis": false,
+    "waveform": {
+      "relative": 0.002173292756882409,
+      "absolute": 0.14859115134843862,
+      "reference_norm": 68.37143816813378,
+      "cosine": 0.9999976386221591
+    },
+    "velocity_gradient": {
+      "relative": 0.007396020074555423,
+      "absolute": 3.590506516089333e-08,
+      "reference_norm": 4.85464679637874e-06,
+      "cosine": 0.999974040759645
+    },
+    "parameter_gradient": {
+      "relative": 0.003516851996401667,
+      "absolute": 0.001451000437363237,
+      "reference_norm": 0.41258501604499004,
+      "cosine": 0.9999982588649938
+    },
+    "fdtd_mse": 0.041851624846458435,
+    "rom_mse": 0.04185158196735995,
+    "passes_accuracy_gate": true,
+    "rmse_mps": 518.8335472088439,
+    "mae_mps": 350.24896496351164,
+    "ssim": 0.38098008345737483
+  },
+  {
+    "run": 1,
+    "method": "correction2",
+    "completed_updates": 2,
+    "used_for_update": true,
+    "backend": "rom",
+    "final_basis_is_preceding_update_basis": false,
+    "waveform": {
+      "relative": 0.009830154839546317,
+      "absolute": 0.6631997168529343,
+      "reference_norm": 67.46584643661039,
+      "cosine": 0.9999516847183774
+    },
+    "velocity_gradient": {
+      "relative": 0.05956766679425164,
+      "absolute": 2.928166597261845e-07,
+      "reference_norm": 4.915697986586939e-06,
+      "cosine": 0.9982406922388636
+    },
+    "parameter_gradient": {
+      "relative": 0.06634459804577728,
+      "absolute": 0.02912475102647437,
+      "reference_norm": 0.4389920488534501,
+      "cosine": 0.9998380085686178
+    },
+    "fdtd_mse": 0.041190024465322495,
+    "rom_mse": 0.04118683082321163,
+    "passes_accuracy_gate": false,
+    "rmse_mps": 519.1153788844072,
+    "mae_mps": 352.99770887749133,
+    "ssim": 0.3807999892095088
+  },
+  {
+    "run": 1,
+    "method": "correction2",
+    "completed_updates": 3,
+    "used_for_update": true,
+    "backend": "rom",
+    "final_basis_is_preceding_update_basis": false,
+    "waveform": {
+      "relative": 0.001966375179894694,
+      "absolute": 0.13109937815772213,
+      "reference_norm": 66.67058224603045,
+      "cosine": 0.999998066691097
+    },
+    "velocity_gradient": {
+      "relative": 0.003979959611646346,
+      "absolute": 2.1425623890919427e-08,
+      "reference_norm": 5.38337721524177e-06,
+      "cosine": 0.9999922643995955
+    },
+    "parameter_gradient": {
+      "relative": 0.0006994789031952953,
+      "absolute": 0.00028227953909175585,
+      "reference_norm": 0.40355690186261856,
+      "cosine": 0.9999998106877731
+    },
+    "fdtd_mse": 0.04044998809695244,
+    "rom_mse": 0.040449973012153737,
+    "passes_accuracy_gate": true,
+    "rmse_mps": 519.6663309476116,
+    "mae_mps": 356.4638454130637,
+    "ssim": 0.3805724545636445
+  },
+  {
+    "run": 1,
+    "method": "correction2",
+    "completed_updates": 4,
+    "used_for_update": true,
+    "backend": "rom",
+    "final_basis_is_preceding_update_basis": false,
+    "waveform": {
+      "relative": 0.0044219579972820545,
+      "absolute": 0.29294229114352194,
+      "reference_norm": 66.24718989270775,
+      "cosine": 0.999990224115448
+    },
+    "velocity_gradient": {
+      "relative": 0.01971705765553989,
+      "absolute": 1.186761508556568e-07,
+      "reference_norm": 6.0189584535861225e-06,
+      "cosine": 0.9998057661889665
+    },
+    "parameter_gradient": {
+      "relative": 0.042987889835871,
+      "absolute": 0.01416642515493921,
+      "reference_norm": 0.32954455799126287,
+      "cosine": 0.9998600885170033
+    },
+    "fdtd_mse": 0.039752326905727386,
+    "rom_mse": 0.03975208850278394,
+    "passes_accuracy_gate": true,
+    "rmse_mps": 520.4862323987469,
+    "mae_mps": 360.2916621034591,
+    "ssim": 0.38033279582090557
+  },
+  {
+    "run": 1,
+    "method": "correction2",
+    "completed_updates": 5,
+    "used_for_update": false,
+    "backend": "rom",
+    "final_basis_is_preceding_update_basis": true,
+    "waveform": {
+      "relative": 0.059658527017031976,
+      "absolute": 3.961832150255932,
+      "reference_norm": 66.40848087189387,
+      "cosine": 0.9982521154331195
+    },
+    "velocity_gradient": {
+      "relative": 0.10654916263681216,
+      "absolute": 6.998407159374127e-07,
+      "reference_norm": 6.568242289457669e-06,
+      "cosine": 0.9949146991256641
+    },
+    "parameter_gradient": {
+      "relative": 0.5273649141028998,
+      "absolute": 0.14377597542830084,
+      "reference_norm": 0.2726309080930765,
+      "cosine": 0.9746488230333885
+    },
+    "fdtd_mse": 0.039100613445043564,
+    "rom_mse": 0.03901239821465624,
+    "passes_accuracy_gate": false,
+    "rmse_mps": 521.4691945493615,
+    "mae_mps": 363.9218992679677,
+    "ssim": 0.38009742757487963
+  },
+  {
+    "run": 2,
+    "method": "fdtd",
+    "completed_updates": 0,
+    "used_for_update": true,
+    "backend": "fdtd",
+    "final_basis_is_preceding_update_basis": false,
+    "waveform": {
+      "relative": 0.0,
+      "absolute": 0.0,
+      "reference_norm": 69.10054623917355,
+      "cosine": 1.0
+    },
+    "velocity_gradient": {
+      "relative": 0.0,
+      "absolute": 0.0,
+      "reference_norm": 5.072228191007223e-06,
+      "cosine": 1.0000000000000002
+    },
+    "parameter_gradient": {
+      "relative": 0.0,
+      "absolute": 0.0,
+      "reference_norm": 0.44383470517042967,
+      "cosine": 0.9999999999999999
+    },
+    "fdtd_mse": 0.04228385537862778,
+    "rom_mse": 0.04228385537862778,
+    "passes_accuracy_gate": true,
+    "rmse_mps": 518.7527934736858,
+    "mae_mps": 348.3287387559318,
+    "ssim": 0.38109386261418826
+  },
+  {
+    "run": 2,
+    "method": "fdtd",
+    "completed_updates": 1,
+    "used_for_update": true,
+    "backend": "fdtd",
+    "final_basis_is_preceding_update_basis": false,
+    "waveform": {
+      "relative": 0.0,
+      "absolute": 0.0,
+      "reference_norm": 68.37143353559792,
+      "cosine": 1.0000000000000002
+    },
+    "velocity_gradient": {
+      "relative": 0.0,
+      "absolute": 0.0,
+      "reference_norm": 4.854646919738192e-06,
+      "cosine": 0.9999999999999999
+    },
+    "parameter_gradient": {
+      "relative": 0.0,
+      "absolute": 0.0,
+      "reference_norm": 0.4125852573319909,
+      "cosine": 1.0
+    },
+    "fdtd_mse": 0.04185162112116814,
+    "rom_mse": 0.04185162112116814,
+    "passes_accuracy_gate": true,
+    "rmse_mps": 518.8335471668362,
+    "mae_mps": 350.24896496351164,
+    "ssim": 0.3809800833439409
+  },
+  {
+    "run": 2,
+    "method": "fdtd",
+    "completed_updates": 2,
+    "used_for_update": true,
+    "backend": "fdtd",
+    "final_basis_is_preceding_update_basis": false,
+    "waveform": {
+      "relative": 0.0,
+      "absolute": 0.0,
+      "reference_norm": 67.46188638013983,
+      "cosine": 0.9999999999999998
+    },
+    "velocity_gradient": {
+      "relative": 0.0,
+      "absolute": 0.0,
+      "reference_norm": 4.916279161685362e-06,
+      "cosine": 1.0
+    },
+    "parameter_gradient": {
+      "relative": 0.0,
+      "absolute": 0.0,
+      "reference_norm": 0.43882900601533603,
+      "cosine": 1.0000000000000002
+    },
+    "fdtd_mse": 0.04118996486067772,
+    "rom_mse": 0.04118996486067772,
+    "passes_accuracy_gate": true,
+    "rmse_mps": 519.1154183167816,
+    "mae_mps": 352.99866052722257,
+    "ssim": 0.3808000946323835
+  },
+  {
+    "run": 2,
+    "method": "fdtd",
+    "completed_updates": 3,
+    "used_for_update": true,
+    "backend": "fdtd",
+    "final_basis_is_preceding_update_basis": false,
+    "waveform": {
+      "relative": 0.0,
+      "absolute": 0.0,
+      "reference_norm": 66.62536851275416,
+      "cosine": 1.0
+    },
+    "velocity_gradient": {
+      "relative": 0.0,
+      "absolute": 0.0,
+      "reference_norm": 5.393431630727215e-06,
+      "cosine": 0.9999999999999999
+    },
+    "parameter_gradient": {
+      "relative": 0.0,
+      "absolute": 0.0,
+      "reference_norm": 0.40126228771737293,
+      "cosine": 1.0000000000000002
+    },
+    "fdtd_mse": 0.040452685207128525,
+    "rom_mse": 0.040452685207128525,
+    "passes_accuracy_gate": true,
+    "rmse_mps": 519.666235489947,
+    "mae_mps": 356.4770853615258,
+    "ssim": 0.38057344291849937
+  },
+  {
+    "run": 2,
+    "method": "fdtd",
+    "completed_updates": 4,
+    "used_for_update": true,
+    "backend": "fdtd",
+    "final_basis_is_preceding_update_basis": false,
+    "waveform": {
+      "relative": 0.0,
+      "absolute": 0.0,
+      "reference_norm": 66.17874016368948,
+      "cosine": 1.0
+    },
+    "velocity_gradient": {
+      "relative": 0.0,
+      "absolute": 0.0,
+      "reference_norm": 6.036174447653319e-06,
+      "cosine": 1.0000000000000002
+    },
+    "parameter_gradient": {
+      "relative": 0.0,
+      "absolute": 0.0,
+      "reference_norm": 0.32640497947977365,
+      "cosine": 1.0000000000000002
+    },
+    "fdtd_mse": 0.03975909575819969,
+    "rom_mse": 0.03975909575819969,
+    "passes_accuracy_gate": true,
+    "rmse_mps": 520.4862784709825,
+    "mae_mps": 360.3128965977518,
+    "ssim": 0.3803351375509522
+  },
+  {
+    "run": 2,
+    "method": "fdtd",
+    "completed_updates": 5,
+    "used_for_update": false,
+    "backend": "fdtd",
+    "final_basis_is_preceding_update_basis": true,
+    "waveform": {
+      "relative": 0.0,
+      "absolute": 0.0,
+      "reference_norm": 66.3057071050756,
+      "cosine": 0.9999999999999998
+    },
+    "velocity_gradient": {
+      "relative": 0.0,
+      "absolute": 0.0,
+      "reference_norm": 6.5957906711009114e-06,
+      "cosine": 1.0000000000000002
+    },
+    "parameter_gradient": {
+      "relative": 0.0,
+      "absolute": 0.0,
+      "reference_norm": 0.2685570987236046,
+      "cosine": 1.0
+    },
+    "fdtd_mse": 0.03911197558045387,
+    "rom_mse": 0.03911197558045387,
+    "passes_accuracy_gate": true,
+    "rmse_mps": 521.4741732998228,
+    "mae_mps": 363.97525013592224,
+    "ssim": 0.38009966701780507
+  },
+  {
+    "run": 2,
+    "method": "fresh",
+    "completed_updates": 0,
+    "used_for_update": true,
+    "backend": "rom",
+    "final_basis_is_preceding_update_basis": false,
+    "waveform": {
+      "relative": 0.0020939631532900264,
+      "absolute": 0.14469399769704314,
+      "reference_norm": 69.10054623917355,
+      "cosine": 0.999997807665369
+    },
+    "velocity_gradient": {
+      "relative": 0.006597089641349612,
+      "absolute": 3.346194405745523e-08,
+      "reference_norm": 5.072228191007223e-06,
+      "cosine": 0.9999787104518539
+    },
+    "parameter_gradient": {
+      "relative": 0.0008107781274459001,
+      "absolute": 0.00035985147115358415,
+      "reference_norm": 0.44383470517042967,
+      "cosine": 0.9999996928221923
+    },
+    "fdtd_mse": 0.04228385537862778,
+    "rom_mse": 0.04228381971691877,
+    "passes_accuracy_gate": true,
+    "rmse_mps": 518.7527934736858,
+    "mae_mps": 348.3287387559318,
+    "ssim": 0.38109386261418826
+  },
+  {
+    "run": 2,
+    "method": "fresh",
+    "completed_updates": 1,
+    "used_for_update": true,
+    "backend": "rom",
+    "final_basis_is_preceding_update_basis": false,
+    "waveform": {
+      "relative": 0.0020699731344277477,
+      "absolute": 0.141527040170225,
+      "reference_norm": 68.37143816813386,
+      "cosine": 0.9999978576098822
+    },
+    "velocity_gradient": {
+      "relative": 0.005826304356776086,
+      "absolute": 2.82846497803505e-08,
+      "reference_norm": 4.854646796378736e-06,
+      "cosine": 0.9999834905542048
+    },
+    "parameter_gradient": {
+      "relative": 0.0008425566210533086,
+      "absolute": 0.0003476262370160919,
+      "reference_norm": 0.41258501604499004,
+      "cosine": 0.9999996626333902
+    },
+    "fdtd_mse": 0.041851624846458435,
+    "rom_mse": 0.041851586580736864,
+    "passes_accuracy_gate": true,
+    "rmse_mps": 518.8335472088439,
+    "mae_mps": 350.24896496351164,
+    "ssim": 0.38098008345737483
+  },
+  {
+    "run": 2,
+    "method": "fresh",
+    "completed_updates": 2,
+    "used_for_update": true,
+    "backend": "rom",
+    "final_basis_is_preceding_update_basis": false,
+    "waveform": {
+      "relative": 0.0019946091633737135,
+      "absolute": 0.13456497821111044,
+      "reference_norm": 67.46433370611068,
+      "cosine": 0.9999980107720025
+    },
+    "velocity_gradient": {
+      "relative": 0.004787180838350898,
+      "absolute": 2.353336334193325e-08,
+      "reference_norm": 4.915912754622425e-06,
+      "cosine": 0.9999888968189953
+    },
+    "parameter_gradient": {
+      "relative": 0.0006763370762301144,
+      "absolute": 0.000296841467053891,
+      "reference_norm": 0.43889574812085974,
+      "cosine": 0.9999998058597239
+    },
+    "fdtd_mse": 0.0411900132894516,
+    "rom_mse": 0.04118998558901567,
+    "passes_accuracy_gate": true,
+    "rmse_mps": 519.1154322761935,
+    "mae_mps": 352.9982643893988,
+    "ssim": 0.38079999706323336
+  },
+  {
+    "run": 2,
+    "method": "fresh",
+    "completed_updates": 3,
+    "used_for_update": true,
+    "backend": "rom",
+    "final_basis_is_preceding_update_basis": false,
+    "waveform": {
+      "relative": 0.0019662524047188525,
+      "absolute": 0.13101216034003804,
+      "reference_norm": 66.6303878513354,
+      "cosine": 0.9999980669325238
+    },
+    "velocity_gradient": {
+      "relative": 0.003969396071437026,
+      "absolute": 2.1403464701134876e-08,
+      "reference_norm": 5.392121198272427e-06,
+      "cosine": 0.9999923040979372
+    },
+    "parameter_gradient": {
+      "relative": 0.000709638869694662,
+      "absolute": 0.0002848698548972236,
+      "reference_norm": 0.4014293284410918,
+      "cosine": 0.9999998101371478
+    },
+    "fdtd_mse": 0.04045262187719345,
+    "rom_mse": 0.0404525988086799,
+    "passes_accuracy_gate": true,
+    "rmse_mps": 519.6661360564536,
+    "mae_mps": 356.4759924552683,
+    "ssim": 0.3805733914056912
+  },
+  {
+    "run": 2,
+    "method": "fresh",
+    "completed_updates": 4,
+    "used_for_update": true,
+    "backend": "rom",
+    "final_basis_is_preceding_update_basis": false,
+    "waveform": {
+      "relative": 0.0019959937203141613,
+      "absolute": 0.13210941944557564,
+      "reference_norm": 66.18729212473782,
+      "cosine": 0.9999980080132687
+    },
+    "velocity_gradient": {
+      "relative": 0.0038235124549915117,
+      "absolute": 2.3069530141741084e-08,
+      "reference_norm": 6.033596179770336e-06,
+      "cosine": 0.9999928437922531
+    },
+    "parameter_gradient": {
+      "relative": 0.0008830865931793313,
+      "absolute": 0.000288453422373797,
+      "reference_norm": 0.32664228468840517,
+      "cosine": 0.9999996678666214
+    },
+    "fdtd_mse": 0.039758697152137756,
+    "rom_mse": 0.03975867060275568,
+    "passes_accuracy_gate": true,
+    "rmse_mps": 520.486215360118,
+    "mae_mps": 360.3113662999291,
+    "ssim": 0.38033480932016595
+  },
+  {
+    "run": 2,
+    "method": "fresh",
+    "completed_updates": 5,
+    "used_for_update": false,
+    "backend": "rom",
+    "final_basis_is_preceding_update_basis": true,
+    "waveform": {
+      "relative": 0.06343590802287534,
+      "absolute": 4.206928267375831,
+      "reference_norm": 66.31777487694808,
+      "cosine": 0.9980227013561297
+    },
+    "velocity_gradient": {
+      "relative": 0.11489369281887424,
+      "absolute": 7.573641763007348e-07,
+      "reference_norm": 6.591869037534481e-06,
+      "cosine": 0.9938774338451054
+    },
+    "parameter_gradient": {
+      "relative": 0.5749303582389957,
+      "absolute": 0.15452029390255398,
+      "reference_norm": 0.2687634975057634,
+      "cosine": 0.9717021202890362
+    },
+    "fdtd_mse": 0.03911128640174866,
+    "rom_mse": 0.039004241906778,
+    "passes_accuracy_gate": false,
+    "rmse_mps": 521.4743555843717,
+    "mae_mps": 363.97391924395913,
+    "ssim": 0.38009895597984394
+  },
+  {
+    "run": 2,
+    "method": "correction3",
+    "completed_updates": 0,
+    "used_for_update": true,
+    "backend": "rom",
+    "final_basis_is_preceding_update_basis": false,
+    "waveform": {
+      "relative": 0.0020939631532900264,
+      "absolute": 0.14469399769704314,
+      "reference_norm": 69.10054623917355,
+      "cosine": 0.999997807665369
+    },
+    "velocity_gradient": {
+      "relative": 0.006597089641349612,
+      "absolute": 3.346194405745523e-08,
+      "reference_norm": 5.072228191007223e-06,
+      "cosine": 0.9999787104518539
+    },
+    "parameter_gradient": {
+      "relative": 0.0008107781274459001,
+      "absolute": 0.00035985147115358415,
+      "reference_norm": 0.44383470517042967,
+      "cosine": 0.9999996928221923
+    },
+    "fdtd_mse": 0.04228385537862778,
+    "rom_mse": 0.04228381971691877,
+    "passes_accuracy_gate": true,
+    "rmse_mps": 518.7527934736858,
+    "mae_mps": 348.3287387559318,
+    "ssim": 0.38109386261418826
+  },
+  {
+    "run": 2,
+    "method": "correction3",
+    "completed_updates": 1,
+    "used_for_update": true,
+    "backend": "rom",
+    "final_basis_is_preceding_update_basis": false,
+    "waveform": {
+      "relative": 0.0020794125907941806,
+      "absolute": 0.14217242937752336,
+      "reference_norm": 68.37143816813386,
+      "cosine": 0.999997838019887
+    },
+    "velocity_gradient": {
+      "relative": 0.005640457717083146,
+      "absolute": 2.7382429986347415e-08,
+      "reference_norm": 4.854646796378736e-06,
+      "cosine": 0.9999845297766066
+    },
+    "parameter_gradient": {
+      "relative": 0.0007910545231168041,
+      "absolute": 0.0003263772431126086,
+      "reference_norm": 0.41258501604499004,
+      "cosine": 0.9999996903221284
+    },
+    "fdtd_mse": 0.041851624846458435,
+    "rom_mse": 0.041851586512622066,
+    "passes_accuracy_gate": true,
+    "rmse_mps": 518.8335472088439,
+    "mae_mps": 350.24896496351164,
+    "ssim": 0.38098008345737483
+  },
+  {
+    "run": 2,
+    "method": "correction3",
+    "completed_updates": 2,
+    "used_for_update": true,
+    "backend": "rom",
+    "final_basis_is_preceding_update_basis": false,
+    "waveform": {
+      "relative": 0.0032042274860085594,
+      "absolute": 0.2161707422418577,
+      "reference_norm": 67.46423067206666,
+      "cosine": 0.999994891283388
+    },
+    "velocity_gradient": {
+      "relative": 0.007445238404719731,
+      "absolute": 3.660024471294781e-08,
+      "reference_norm": 4.915926491990634e-06,
+      "cosine": 0.9999724527024165
+    },
+    "parameter_gradient": {
+      "relative": 0.0025787068801967437,
+      "absolute": 0.001131776388841386,
+      "reference_norm": 0.4388929961496968,
+      "cosine": 0.9999993966291882
+    },
+    "fdtd_mse": 0.0411900132894516,
+    "rom_mse": 0.04119003519164176,
+    "passes_accuracy_gate": true,
+    "rmse_mps": 519.1154361182996,
+    "mae_mps": 352.99831178904145,
+    "ssim": 0.3807999926330214
+  },
+  {
+    "run": 2,
+    "method": "correction3",
+    "completed_updates": 3,
+    "used_for_update": true,
+    "backend": "rom",
+    "final_basis_is_preceding_update_basis": false,
+    "waveform": {
+      "relative": 0.0019663405308511022,
+      "absolute": 0.1310141730863558,
+      "reference_norm": 66.62842525533875,
+      "cosine": 0.9999980667595156
+    },
+    "velocity_gradient": {
+      "relative": 0.003968677627204529,
+      "absolute": 2.1401489403956787e-08,
+      "reference_norm": 5.392599604778593e-06,
+      "cosine": 0.9999923073640657
+    },
+    "parameter_gradient": {
+      "relative": 0.0007084250128822964,
+      "absolute": 0.0002843424483750592,
+      "reference_norm": 0.40137268335315285,
+      "cosine": 0.9999998100580668
+    },
+    "fdtd_mse": 0.04045272246003151,
+    "rom_mse": 0.040452701900653185,
+    "passes_accuracy_gate": true,
+    "rmse_mps": 519.666188205662,
+    "mae_mps": 356.47633312667233,
+    "ssim": 0.380573314645189
+  },
+  {
+    "run": 2,
+    "method": "correction3",
+    "completed_updates": 4,
+    "used_for_update": true,
+    "backend": "rom",
+    "final_basis_is_preceding_update_basis": false,
+    "waveform": {
+      "relative": 0.0021616635934576913,
+      "absolute": 0.1430682169395989,
+      "reference_norm": 66.18431164432667,
+      "cosine": 0.9999976665409459
+    },
+    "velocity_gradient": {
+      "relative": 0.0030724177792566237,
+      "absolute": 1.8540335924545895e-08,
+      "reference_norm": 6.034444940958439e-06,
+      "cosine": 0.9999952820927638
+    },
+    "parameter_gradient": {
+      "relative": 0.0013342677951323752,
+      "absolute": 0.00043578002263386823,
+      "reference_norm": 0.32660611627115954,
+      "cosine": 0.9999996609973284
+    },
+    "fdtd_mse": 0.03975890204310417,
+    "rom_mse": 0.039758877348751505,
+    "passes_accuracy_gate": true,
+    "rmse_mps": 520.4863015063185,
+    "mae_mps": 360.31173826447616,
+    "ssim": 0.3803347859709287
+  },
+  {
+    "run": 2,
+    "method": "correction3",
+    "completed_updates": 5,
+    "used_for_update": false,
+    "backend": "rom",
+    "final_basis_is_preceding_update_basis": true,
+    "waveform": {
+      "relative": 0.06324151064995324,
+      "absolute": 4.193755920506919,
+      "reference_norm": 66.31334193959549,
+      "cosine": 0.9980342928153134
+    },
+    "velocity_gradient": {
+      "relative": 0.11477641256659928,
+      "absolute": 7.567609722629572e-07,
+      "reference_norm": 6.593349237360463e-06,
+      "cosine": 0.9938682554433924
+    },
+    "parameter_gradient": {
+      "relative": 0.5796009412412811,
+      "absolute": 0.1557781916319095,
+      "reference_norm": 0.2687680101041466,
+      "cosine": 0.971441648519645
+    },
+    "fdtd_mse": 0.03911148011684418,
+    "rom_mse": 0.03900326200441814,
+    "passes_accuracy_gate": false,
+    "rmse_mps": 521.4745991522236,
+    "mae_mps": 363.9749352791067,
+    "ssim": 0.3800989291617384
+  }
+]

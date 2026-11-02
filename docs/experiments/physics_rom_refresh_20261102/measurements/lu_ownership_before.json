@@ -1,0 +1,119 @@
+[
+  {
+    "mode": "worker_create_main_delete",
+    "cycle": 1,
+    "before": {
+      "rss_mib": 52.51171875,
+      "private_mib": 37.41796875
+    },
+    "after": {
+      "rss_mib": 104.40625,
+      "private_mib": 395.10546875
+    },
+    "nnz": 2857360
+  },
+  {
+    "mode": "worker_create_main_delete",
+    "cycle": 2,
+    "before": {
+      "rss_mib": 104.4140625,
+      "private_mib": 395.10546875
+    },
+    "after": {
+      "rss_mib": 155.7890625,
+      "private_mib": 623.33984375
+    },
+    "nnz": 2857360
+  },
+  {
+    "mode": "worker_create_main_delete",
+    "cycle": 3,
+    "before": {
+      "rss_mib": 155.7890625,
+      "private_mib": 623.33984375
+    },
+    "after": {
+      "rss_mib": 207.03125,
+      "private_mib": 851.88671875
+    },
+    "nnz": 2857360
+  },
+  {
+    "mode": "worker_create_worker_delete",
+    "cycle": 1,
+    "before": {
+      "rss_mib": 207.03125,
+      "private_mib": 851.88671875
+    },
+    "after": {
+      "rss_mib": 207.0703125,
+      "private_mib": 851.87109375
+    },
+    "nnz": 2857360
+  },
+  {
+    "mode": "worker_create_worker_delete",
+    "cycle": 2,
+    "before": {
+      "rss_mib": 207.0703125,
+      "private_mib": 851.87109375
+    },
+    "after": {
+      "rss_mib": 207.32421875,
+      "private_mib": 852.875
+    },
+    "nnz": 2857360
+  },
+  {
+    "mode": "worker_create_worker_delete",
+    "cycle": 3,
+    "before": {
+      "rss_mib": 207.32421875,
+      "private_mib": 852.875
+    },
+    "after": {
+      "rss_mib": 207.22265625,
+      "private_mib": 854.38671875
+    },
+    "nnz": 2857360
+  },
+  {
+    "mode": "main_create_main_delete",
+    "cycle": 1,
+    "before": {
+      "rss_mib": 207.22265625,
+      "private_mib": 854.38671875
+    },
+    "after": {
+      "rss_mib": 207.0,
+      "private_mib": 851.7578125
+    },
+    "nnz": 2857360
+  },
+  {
+    "mode": "main_create_main_delete",
+    "cycle": 2,
+    "before": {
+      "rss_mib": 207.0,
+      "private_mib": 851.7578125
+    },
+    "after": {
+      "rss_mib": 207.0,
+      "private_mib": 851.7578125
+    },
+    "nnz": 2857360
+  },
+  {
+    "mode": "main_create_main_delete",
+    "cycle": 3,
+    "before": {
+      "rss_mib": 207.0,
+      "private_mib": 851.7578125
+    },
+    "after": {
+      "rss_mib": 207.0,
+      "private_mib": 851.7578125
+    },
+    "nnz": 2857360
+  }
+]

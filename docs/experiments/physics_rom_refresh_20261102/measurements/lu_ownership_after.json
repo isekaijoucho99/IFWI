@@ -1,0 +1,22 @@
+[
+  {
+    "cycle": 1,
+    "rss_mib": 53.578125,
+    "private_mib": 71.20703125
+  },
+  {
+    "cycle": 2,
+    "rss_mib": 53.578125,
+    "private_mib": 71.04296875
+  },
+  {
+    "cycle": 3,
+    "rss_mib": 53.453125,
+    "private_mib": 70.54296875
+  },
+  {
+    "cycle": 4,
+    "rss_mib": 53.58984375,
+    "private_mib": 71.20703125
+  }
+]

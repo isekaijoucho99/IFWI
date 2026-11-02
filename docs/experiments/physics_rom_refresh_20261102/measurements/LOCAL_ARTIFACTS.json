@@ -1,0 +1,12 @@
+[
+  {
+    "run": "F:\\project\\IFWI\\outputs\\rom_refresh_gpu_20261102_081238",
+    "source_hashes_unchanged": true,
+    "process_wall_seconds": 293.80117339998833
+  },
+  {
+    "run": "F:\\project\\IFWI\\outputs\\rom_refresh_owned_gpu_20261102_083126",
+    "source_hashes_unchanged": true,
+    "process_wall_seconds": 138.49331729998812
+  }
+]

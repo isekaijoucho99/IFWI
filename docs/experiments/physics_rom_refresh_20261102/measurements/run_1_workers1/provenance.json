@@ -1,0 +1,123 @@
+{
+  "schema_version": 1,
+  "source": {
+    "path": "F:\\project\\IFWI\\.worktrees\\ifwi-physics-rom-20261102\\data\\vel_marmousi_376x1151.csv",
+    "sha256": "9b79c401fb161d0edb58a668b572cac7de29f18e1d141f08caee9b55377cfb4d",
+    "raw_shape": [
+      376,
+      1151
+    ],
+    "loaded_shape": [
+      375,
+      1151
+    ],
+    "model_units": "m/s",
+    "csv_header": "legacy",
+    "consumed_numeric_first_row": true
+  },
+  "sampling": {
+    "downsample": 4,
+    "sampled_shape": [
+      94,
+      288
+    ],
+    "crop_shape": null,
+    "crop_origin": [
+      0,
+      0
+    ],
+    "output_shape": [
+      94,
+      288
+    ]
+  },
+  "grid": {
+    "axis_order": [
+      "z",
+      "x"
+    ],
+    "grid_spacing_m": 15.0,
+    "raw_grid_spacing_m": null,
+    "node_extent_m": {
+      "x": [
+        0.0,
+        4305.0
+      ],
+      "z": [
+        0.0,
+        1395.0
+      ]
+    },
+    "display_extent_m": [
+      0.0,
+      4320.0,
+      1410.0,
+      0.0
+    ]
+  },
+  "initialization": {
+    "method": "scipy.ndimage.gaussian_filter",
+    "filter_order": [
+      "read_csv",
+      "convert_units_to_m/s",
+      "downsample",
+      "crop",
+      "float32",
+      "gaussian_filter"
+    ],
+    "sigma_gridpoints": 15.0,
+    "sigma_physical_m": 225.0,
+    "gaussian_mode": "reflect",
+    "gaussian_truncate": 4.0,
+    "scipy_version": "1.15.3"
+  },
+  "truth": {
+    "units": "m/s",
+    "dtype": "float32",
+    "shape": [
+      94,
+      288
+    ],
+    "sha256": "c02de6f85b1d9125768c6aa4dabab2bd619b2128e659ac2f353ccba7f8b7ee9f",
+    "sha256_encoding": "C-order little-endian float32 array bytes",
+    "min_mps": 1500.0,
+    "max_mps": 5500.0
+  },
+  "initial": {
+    "units": "m/s",
+    "dtype": "float32",
+    "shape": [
+      94,
+      288
+    ],
+    "sha256": "054e117aadd5af051cb7484e81cc444c4b0a7b18e4942e551b1f228ec2bfcdda",
+    "sha256_encoding": "C-order little-endian float32 array bytes",
+    "min_mps": 1726.138671875,
+    "max_mps": 4029.408203125
+  },
+  "smooth400_audit": {
+    "available": true,
+    "path": "F:\\project\\IFWI\\.worktrees\\ifwi-physics-rom-20261102\\data\\vel_marmousi_smooth400_376x1151.csv",
+    "generation_recipe": "unknown",
+    "comparable_grid": true,
+    "rmse_difference_mps": 126.85251752821193,
+    "max_abs_difference_mps": 379.5,
+    "sha256": "8220a2666941d0025c3757a23aa7d0e713f71f9f2d17bc47a0258a37b644fbaf",
+    "raw_shape": [
+      376,
+      1151
+    ],
+    "loaded_shape": [
+      375,
+      1151
+    ],
+    "model_units": "m/s",
+    "csv_header": "legacy",
+    "consumed_numeric_first_row": true,
+    "output_shape": [
+      94,
+      288
+    ],
+    "comparison_target": "generated_background_mps"
+  }
+}

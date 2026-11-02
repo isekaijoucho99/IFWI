@@ -1,0 +1,34 @@
+{
+  "rnn_fd.py": {
+    "unchanged": true,
+    "sha256_normalized": "eeeebd821462fadb52bb9b12a06932f2c9f764e3e7482b316e12a94d26ec9fd0"
+  },
+  "ifwi_modules.py": {
+    "unchanged": true,
+    "sha256_normalized": "900adab18822769946a64109fa77314d71d396403e70179b815094cd952bb043"
+  },
+  "experiment.py": {
+    "unchanged": true,
+    "sha256_normalized": "f939d4420daa506efbc7ce1700097971bd8ecfecbaea6524300106a6ec6fe6d2"
+  },
+  "residual_ifwi.py": {
+    "unchanged": true,
+    "sha256_normalized": "b48c6736b5aa19b44943c4f94086ac29eae0a2d3c965b531da6e9b86b1c267ea"
+  },
+  "experiments/residual_ifwi_experiment.py": {
+    "unchanged": true,
+    "sha256_normalized": "bad732ab953041aea397dd55f15c401c5ebc246f1a9f8b4a0ca9cac8b98806a9"
+  },
+  "experiments/residual_ifwi_data.py": {
+    "unchanged": true,
+    "sha256_normalized": "e26406adbc2807b2831506d7300066f88406d8e22fff07a68d1b62543a9619e8"
+  },
+  "experiments/residual_ifwi_report.py": {
+    "unchanged": true,
+    "sha256_normalized": "81fbe0677599b8ca7b034d4fcba3a27cace1f6c4bb3d879b3f0547ab26f23a83"
+  },
+  "experiments/configs/residual_ifwi_baseline1000.yaml": {
+    "unchanged": true,
+    "sha256_normalized": "6a379130af9802c05c6f7dfb8ef3514f9c9355c02be21654858a196d4a9cdb90"
+  }
+}

@@ -1,0 +1,1749 @@
+{
+  "initial_preparation_seconds": 6.011225700000068,
+  "common_data_seconds": 8.712318700010655,
+  "warmup_seconds": 3.7055600000021514,
+  "methods": [
+    {
+      "method": "fdtd",
+      "completed_updates": 5,
+      "status": "completed",
+      "steps": [
+        {
+          "update": 1,
+          "backend": "fdtd",
+          "online_seconds": 3.2941600999911316,
+          "events": [],
+          "memory": {
+            "host_resident_mib": 6404.60546875,
+            "host_process_peak_mib": 6404.60546875,
+            "host_private_commit_mib": 20013.0625,
+            "host_peak_commit_mib": 20013.0625,
+            "cuda_allocated_mib": 88.8662109375,
+            "cuda_reserved_mib": 2418.0,
+            "cuda_peak_allocated_mib": 1686.1279296875
+          }
+        },
+        {
+          "update": 2,
+          "backend": "fdtd",
+          "online_seconds": 3.249228000000585,
+          "events": [],
+          "memory": {
+            "host_resident_mib": 6461.60546875,
+            "host_process_peak_mib": 6464.328125,
+            "host_private_commit_mib": 20071.3515625,
+            "host_peak_commit_mib": 20074.10546875,
+            "cuda_allocated_mib": 89.2490234375,
+            "cuda_reserved_mib": 2418.0,
+            "cuda_peak_allocated_mib": 1686.8935546875
+          }
+        },
+        {
+          "update": 3,
+          "backend": "fdtd",
+          "online_seconds": 3.202000400007819,
+          "events": [],
+          "memory": {
+            "host_resident_mib": 6466.76171875,
+            "host_process_peak_mib": 6467.921875,
+            "host_private_commit_mib": 20076.6875,
+            "host_peak_commit_mib": 20077.9453125,
+            "cuda_allocated_mib": 89.2490234375,
+            "cuda_reserved_mib": 2418.0,
+            "cuda_peak_allocated_mib": 1686.8935546875
+          }
+        },
+        {
+          "update": 4,
+          "backend": "fdtd",
+          "online_seconds": 3.246373100002529,
+          "events": [],
+          "memory": {
+            "host_resident_mib": 6468.375,
+            "host_process_peak_mib": 6470.40625,
+            "host_private_commit_mib": 20078.33203125,
+            "host_peak_commit_mib": 20080.3984375,
+            "cuda_allocated_mib": 89.2490234375,
+            "cuda_reserved_mib": 2418.0,
+            "cuda_peak_allocated_mib": 1686.8935546875
+          }
+        },
+        {
+          "update": 5,
+          "backend": "fdtd",
+          "online_seconds": 3.376001199998427,
+          "events": [],
+          "memory": {
+            "host_resident_mib": 6469.36328125,
+            "host_process_peak_mib": 6470.87890625,
+            "host_private_commit_mib": 20079.3359375,
+            "host_peak_commit_mib": 20080.8984375,
+            "cuda_allocated_mib": 89.2490234375,
+            "cuda_reserved_mib": 2418.0,
+            "cuda_peak_allocated_mib": 1686.8935546875
+          }
+        }
+      ],
+      "online_total_seconds": 16.39638279999781,
+      "memory_after_online": {
+        "host_resident_mib": 6469.36328125,
+        "host_process_peak_mib": 6470.87890625,
+        "host_private_commit_mib": 20079.3359375,
+        "host_peak_commit_mib": 20080.8984375,
+        "cuda_allocated_mib": 89.2490234375,
+        "cuda_reserved_mib": 2418.0,
+        "cuda_peak_allocated_mib": 1686.8935546875
+      },
+      "audit_artifact_export_seconds": 0.013677199996891432,
+      "audit_seconds": 19.38542009999219,
+      "audits": [
+        {
+          "completed_updates": 0,
+          "used_for_update": true,
+          "backend": "fdtd",
+          "final_basis_is_preceding_update_basis": false,
+          "waveform": {
+            "relative": 0.0,
+            "absolute": 0.0,
+            "reference_norm": 69.10054623917355,
+            "cosine": 1.0
+          },
+          "velocity_gradient": {
+            "relative": 0.0,
+            "absolute": 0.0,
+            "reference_norm": 5.072228191007223e-06,
+            "cosine": 1.0000000000000002
+          },
+          "parameter_gradient": {
+            "relative": 0.0,
+            "absolute": 0.0,
+            "reference_norm": 0.44383470517042967,
+            "cosine": 0.9999999999999999
+          },
+          "fdtd_mse": 0.04228385537862778,
+          "rom_mse": 0.04228385537862778,
+          "passes_accuracy_gate": true,
+          "rmse_mps": 518.7527934736858,
+          "mae_mps": 348.3287387559318,
+          "ssim": 0.38109386261418826
+        },
+        {
+          "completed_updates": 1,
+          "used_for_update": true,
+          "backend": "fdtd",
+          "final_basis_is_preceding_update_basis": false,
+          "waveform": {
+            "relative": 0.0,
+            "absolute": 0.0,
+            "reference_norm": 68.37143353559792,
+            "cosine": 1.0000000000000002
+          },
+          "velocity_gradient": {
+            "relative": 0.0,
+            "absolute": 0.0,
+            "reference_norm": 4.854646919738192e-06,
+            "cosine": 0.9999999999999999
+          },
+          "parameter_gradient": {
+            "relative": 0.0,
+            "absolute": 0.0,
+            "reference_norm": 0.4125852573319909,
+            "cosine": 1.0
+          },
+          "fdtd_mse": 0.04185162112116814,
+          "rom_mse": 0.04185162112116814,
+          "passes_accuracy_gate": true,
+          "rmse_mps": 518.8335471668362,
+          "mae_mps": 350.24896496351164,
+          "ssim": 0.3809800833439409
+        },
+        {
+          "completed_updates": 2,
+          "used_for_update": true,
+          "backend": "fdtd",
+          "final_basis_is_preceding_update_basis": false,
+          "waveform": {
+            "relative": 0.0,
+            "absolute": 0.0,
+            "reference_norm": 67.46188638013983,
+            "cosine": 0.9999999999999998
+          },
+          "velocity_gradient": {
+            "relative": 0.0,
+            "absolute": 0.0,
+            "reference_norm": 4.916279161685362e-06,
+            "cosine": 1.0
+          },
+          "parameter_gradient": {
+            "relative": 0.0,
+            "absolute": 0.0,
+            "reference_norm": 0.43882900601533603,
+            "cosine": 1.0000000000000002
+          },
+          "fdtd_mse": 0.04118996486067772,
+          "rom_mse": 0.04118996486067772,
+          "passes_accuracy_gate": true,
+          "rmse_mps": 519.1154183167816,
+          "mae_mps": 352.99866052722257,
+          "ssim": 0.3808000946323835
+        },
+        {
+          "completed_updates": 3,
+          "used_for_update": true,
+          "backend": "fdtd",
+          "final_basis_is_preceding_update_basis": false,
+          "waveform": {
+            "relative": 0.0,
+            "absolute": 0.0,
+            "reference_norm": 66.62536851275416,
+            "cosine": 1.0
+          },
+          "velocity_gradient": {
+            "relative": 0.0,
+            "absolute": 0.0,
+            "reference_norm": 5.393431630727215e-06,
+            "cosine": 0.9999999999999999
+          },
+          "parameter_gradient": {
+            "relative": 0.0,
+            "absolute": 0.0,
+            "reference_norm": 0.40126228771737293,
+            "cosine": 1.0000000000000002
+          },
+          "fdtd_mse": 0.040452685207128525,
+          "rom_mse": 0.040452685207128525,
+          "passes_accuracy_gate": true,
+          "rmse_mps": 519.666235489947,
+          "mae_mps": 356.4770853615258,
+          "ssim": 0.38057344291849937
+        },
+        {
+          "completed_updates": 4,
+          "used_for_update": true,
+          "backend": "fdtd",
+          "final_basis_is_preceding_update_basis": false,
+          "waveform": {
+            "relative": 0.0,
+            "absolute": 0.0,
+            "reference_norm": 66.17874016368948,
+            "cosine": 1.0
+          },
+          "velocity_gradient": {
+            "relative": 0.0,
+            "absolute": 0.0,
+            "reference_norm": 6.036174447653319e-06,
+            "cosine": 1.0000000000000002
+          },
+          "parameter_gradient": {
+            "relative": 0.0,
+            "absolute": 0.0,
+            "reference_norm": 0.32640497947977365,
+            "cosine": 1.0000000000000002
+          },
+          "fdtd_mse": 0.03975909575819969,
+          "rom_mse": 0.03975909575819969,
+          "passes_accuracy_gate": true,
+          "rmse_mps": 520.4862784709825,
+          "mae_mps": 360.3128965977518,
+          "ssim": 0.3803351375509522
+        },
+        {
+          "completed_updates": 5,
+          "used_for_update": false,
+          "backend": "fdtd",
+          "final_basis_is_preceding_update_basis": true,
+          "waveform": {
+            "relative": 0.0,
+            "absolute": 0.0,
+            "reference_norm": 66.3057071050756,
+            "cosine": 0.9999999999999998
+          },
+          "velocity_gradient": {
+            "relative": 0.0,
+            "absolute": 0.0,
+            "reference_norm": 6.5957906711009114e-06,
+            "cosine": 1.0000000000000002
+          },
+          "parameter_gradient": {
+            "relative": 0.0,
+            "absolute": 0.0,
+            "reference_norm": 0.2685570987236046,
+            "cosine": 1.0
+          },
+          "fdtd_mse": 0.03911197558045387,
+          "rom_mse": 0.03911197558045387,
+          "passes_accuracy_gate": true,
+          "rmse_mps": 521.4741732998228,
+          "mae_mps": 363.97525013592224,
+          "ssim": 0.38009966701780507
+        }
+      ],
+      "all_used_gradients_pass": true,
+      "online_speedup": 1.0,
+      "including_initial_preparation_seconds": 16.39638279999781,
+      "including_preparation_audit_export_seconds": 35.79548009998689,
+      "same_accuracy_online_acceleration": false
+    },
+    {
+      "method": "fresh",
+      "completed_updates": 5,
+      "status": "completed",
+      "steps": [
+        {
+          "update": 1,
+          "backend": "rom",
+          "online_seconds": 0.14284449999104254,
+          "events": [],
+          "memory": {
+            "host_resident_mib": 6588.62109375,
+            "host_process_peak_mib": 6588.62109375,
+            "host_private_commit_mib": 20227.24609375,
+            "host_peak_commit_mib": 20227.24609375,
+            "cuda_allocated_mib": 89.6318359375,
+            "cuda_reserved_mib": 2418.0,
+            "cuda_peak_allocated_mib": 618.84716796875
+          }
+        },
+        {
+          "update": 2,
+          "backend": "rom",
+          "online_seconds": 5.830146799999056,
+          "events": [
+            {
+              "event": "full_refactorization",
+              "cache": {
+                "training_frequencies": 64,
+                "frequency_workers": 4,
+                "worker_blas_context": [
+                  {
+                    "user_api": "blas",
+                    "internal_api": "openblas",
+                    "num_threads": 1,
+                    "prefix": "libscipy_openblas",
+                    "version": "0.3.29",
+                    "threading_layer": "pthreads",
+                    "architecture": "Haswell"
+                  },
+                  {
+                    "user_api": "openmp",
+                    "internal_api": "openmp",
+                    "num_threads": 1,
+                    "prefix": "libiomp",
+                    "version": null
+                  },
+                  {
+                    "user_api": "openmp",
+                    "internal_api": "openmp",
+                    "num_threads": 1,
+                    "prefix": "libiomp",
+                    "version": null
+                  },
+                  {
+                    "user_api": "blas",
+                    "internal_api": "openblas",
+                    "num_threads": 1,
+                    "prefix": "libscipy_openblas",
+                    "version": "0.3.28",
+                    "threading_layer": "pthreads",
+                    "architecture": "Haswell"
+                  }
+                ],
+                "lu_lifetime": "Creation, solves and destruction confined to owner threads when parallel",
+                "factorization_seconds": 14.001616300010937,
+                "factor_and_snapshot_wall_seconds": 3.7957980999926804,
+                "parallel_timing_note": "factorization_seconds and snapshot_solve_seconds are task sums; wall/enclosing timers determine cost",
+                "snapshot_solve_seconds": 0.7624721000320278,
+                "total_seconds": 3.84025219999603,
+                "full_pressure_dimension": 34662,
+                "selected_bins": [
+                  0,
+                  4,
+                  8,
+                  12,
+                  16,
+                  20,
+                  24,
+                  28,
+                  32,
+                  36,
+                  40,
+                  43,
+                  47,
+                  51,
+                  55,
+                  59,
+                  63,
+                  67,
+                  71,
+                  75,
+                  79,
+                  83,
+                  87,
+                  91,
+                  95,
+                  99,
+                  103,
+                  107,
+                  111,
+                  115,
+                  119,
+                  123,
+                  126,
+                  130,
+                  134,
+                  138,
+                  142,
+                  146,
+                  150,
+                  154,
+                  158,
+                  162,
+                  166,
+                  170,
+                  174,
+                  178,
+                  182,
+                  186,
+                  190,
+                  194,
+                  198,
+                  202,
+                  206,
+                  209,
+                  213,
+                  217,
+                  221,
+                  225,
+                  229,
+                  233,
+                  237,
+                  241,
+                  245,
+                  249
+                ],
+                "lu_reported_nnz": 204445205,
+                "lu_storage_estimate_bytes": 4124399012,
+                "lu_storage_estimate_limit": "Complex128 values plus estimated int32 sparse indices/permutations; excludes native SuperLU workspaces; process RSS/peak also reported",
+                "snapshot_storage_bytes": 141975552,
+                "fft_adjoint_weighting": "Exact real-irfft bin multiplicity, 1/Nfft, and waveform-MSE 2/Ndata",
+                "adjoint_completion_seconds": 0.19787420000648126
+              },
+              "seconds": 5.687091600004351,
+              "events": [],
+              "adjoint_source_discrepancy_before": 0.003914754984375963,
+              "adjoint_source_discrepancy_after": 0.003914754984375963,
+              "probe": {
+                "selected_bins": [
+                  1,
+                  35,
+                  72,
+                  106,
+                  143,
+                  177,
+                  214,
+                  248
+                ],
+                "primal": 6.742309492349536e-05,
+                "adjoint": 0.015167259174072207,
+                "interpretation": "Held-out final-space residual indicators, not certified gradient bounds"
+              },
+              "heldout_probe_growth": 0.987336812607055
+            }
+          ],
+          "memory": {
+            "host_resident_mib": 10494.9140625,
+            "host_process_peak_mib": 10583.796875,
+            "host_private_commit_mib": 34339.34765625,
+            "host_peak_commit_mib": 34415.26171875,
+            "cuda_allocated_mib": 150.5205078125,
+            "cuda_reserved_mib": 2418.0,
+            "cuda_peak_allocated_mib": 680.11865234375
+          }
+        },
+        {
+          "update": 3,
+          "backend": "rom",
+          "online_seconds": 5.989902599991183,
+          "events": [
+            {
+              "event": "full_refactorization",
+              "cache": {
+                "training_frequencies": 64,
+                "frequency_workers": 4,
+                "worker_blas_context": [
+                  {
+                    "user_api": "blas",
+                    "internal_api": "openblas",
+                    "num_threads": 1,
+                    "prefix": "libscipy_openblas",
+                    "version": "0.3.29",
+                    "threading_layer": "pthreads",
+                    "architecture": "Haswell"
+                  },
+                  {
+                    "user_api": "openmp",
+                    "internal_api": "openmp",
+                    "num_threads": 1,
+                    "prefix": "libiomp",
+                    "version": null
+                  },
+                  {
+                    "user_api": "openmp",
+                    "internal_api": "openmp",
+                    "num_threads": 1,
+                    "prefix": "libiomp",
+                    "version": null
+                  },
+                  {
+                    "user_api": "blas",
+                    "internal_api": "openblas",
+                    "num_threads": 1,
+                    "prefix": "libscipy_openblas",
+                    "version": "0.3.28",
+                    "threading_layer": "pthreads",
+                    "architecture": "Haswell"
+                  }
+                ],
+                "lu_lifetime": "Creation, solves and destruction confined to owner threads when parallel",
+                "factorization_seconds": 14.102562499974738,
+                "factor_and_snapshot_wall_seconds": 3.8120669000054477,
+                "parallel_timing_note": "factorization_seconds and snapshot_solve_seconds are task sums; wall/enclosing timers determine cost",
+                "snapshot_solve_seconds": 0.7535013999295188,
+                "total_seconds": 3.8517195000022184,
+                "full_pressure_dimension": 34662,
+                "selected_bins": [
+                  0,
+                  4,
+                  8,
+                  12,
+                  16,
+                  20,
+                  24,
+                  28,
+                  32,
+                  36,
+                  40,
+                  43,
+                  47,
+                  51,
+                  55,
+                  59,
+                  63,
+                  67,
+                  71,
+                  75,
+                  79,
+                  83,
+                  87,
+                  91,
+                  95,
+                  99,
+                  103,
+                  107,
+                  111,
+                  115,
+                  119,
+                  123,
+                  126,
+                  130,
+                  134,
+                  138,
+                  142,
+                  146,
+                  150,
+                  154,
+                  158,
+                  162,
+                  166,
+                  170,
+                  174,
+                  178,
+                  182,
+                  186,
+                  190,
+                  194,
+                  198,
+                  202,
+                  206,
+                  209,
+                  213,
+                  217,
+                  221,
+                  225,
+                  229,
+                  233,
+                  237,
+                  241,
+                  245,
+                  249
+                ],
+                "lu_reported_nnz": 204417467,
+                "lu_storage_estimate_bytes": 4123844252,
+                "lu_storage_estimate_limit": "Complex128 values plus estimated int32 sparse indices/permutations; excludes native SuperLU workspaces; process RSS/peak also reported",
+                "snapshot_storage_bytes": 141975552,
+                "fft_adjoint_weighting": "Exact real-irfft bin multiplicity, 1/Nfft, and waveform-MSE 2/Ndata",
+                "adjoint_completion_seconds": 0.20171570000820793
+              },
+              "seconds": 5.833775199993397,
+              "events": [],
+              "adjoint_source_discrepancy_before": 0.0036174990663737435,
+              "adjoint_source_discrepancy_after": 0.0036174990663737435,
+              "probe": {
+                "selected_bins": [
+                  1,
+                  35,
+                  72,
+                  106,
+                  143,
+                  177,
+                  214,
+                  248
+                ],
+                "primal": 6.571417436818343e-05,
+                "adjoint": 0.014675921443790704,
+                "interpretation": "Held-out final-space residual indicators, not certified gradient bounds"
+              },
+              "heldout_probe_growth": 0.9623115571512664
+            }
+          ],
+          "memory": {
+            "host_resident_mib": 10563.3046875,
+            "host_process_peak_mib": 14450.0625,
+            "host_private_commit_mib": 34446.20703125,
+            "host_peak_commit_mib": 48487.9921875,
+            "cuda_allocated_mib": 150.5205078125,
+            "cuda_reserved_mib": 2418.0,
+            "cuda_peak_allocated_mib": 680.11865234375
+          }
+        },
+        {
+          "update": 4,
+          "backend": "rom",
+          "online_seconds": 5.956439200002933,
+          "events": [
+            {
+              "event": "full_refactorization",
+              "cache": {
+                "training_frequencies": 64,
+                "frequency_workers": 4,
+                "worker_blas_context": [
+                  {
+                    "user_api": "blas",
+                    "internal_api": "openblas",
+                    "num_threads": 1,
+                    "prefix": "libscipy_openblas",
+                    "version": "0.3.29",
+                    "threading_layer": "pthreads",
+                    "architecture": "Haswell"
+                  },
+                  {
+                    "user_api": "openmp",
+                    "internal_api": "openmp",
+                    "num_threads": 1,
+                    "prefix": "libiomp",
+                    "version": null
+                  },
+                  {
+                    "user_api": "openmp",
+                    "internal_api": "openmp",
+                    "num_threads": 1,
+                    "prefix": "libiomp",
+                    "version": null
+                  },
+                  {
+                    "user_api": "blas",
+                    "internal_api": "openblas",
+                    "num_threads": 1,
+                    "prefix": "libscipy_openblas",
+                    "version": "0.3.28",
+                    "threading_layer": "pthreads",
+                    "architecture": "Haswell"
+                  }
+                ],
+                "lu_lifetime": "Creation, solves and destruction confined to owner threads when parallel",
+                "factorization_seconds": 14.157218199936324,
+                "factor_and_snapshot_wall_seconds": 3.827624099998502,
+                "parallel_timing_note": "factorization_seconds and snapshot_solve_seconds are task sums; wall/enclosing timers determine cost",
+                "snapshot_solve_seconds": 0.7307191999425413,
+                "total_seconds": 3.871981100004632,
+                "full_pressure_dimension": 34662,
+                "selected_bins": [
+                  0,
+                  4,
+                  8,
+                  12,
+                  16,
+                  20,
+                  24,
+                  28,
+                  32,
+                  36,
+                  40,
+                  43,
+                  47,
+                  51,
+                  55,
+                  59,
+                  63,
+                  67,
+                  71,
+                  75,
+                  79,
+                  83,
+                  87,
+                  91,
+                  95,
+                  99,
+                  103,
+                  107,
+                  111,
+                  115,
+                  119,
+                  123,
+                  126,
+                  130,
+                  134,
+                  138,
+                  142,
+                  146,
+                  150,
+                  154,
+                  158,
+                  162,
+                  166,
+                  170,
+                  174,
+                  178,
+                  182,
+                  186,
+                  190,
+                  194,
+                  198,
+                  202,
+                  206,
+                  209,
+                  213,
+                  217,
+                  221,
+                  225,
+                  229,
+                  233,
+                  237,
+                  241,
+                  245,
+                  249
+                ],
+                "lu_reported_nnz": 204384692,
+                "lu_storage_estimate_bytes": 4123188752,
+                "lu_storage_estimate_limit": "Complex128 values plus estimated int32 sparse indices/permutations; excludes native SuperLU workspaces; process RSS/peak also reported",
+                "snapshot_storage_bytes": 141975552,
+                "fft_adjoint_weighting": "Exact real-irfft bin multiplicity, 1/Nfft, and waveform-MSE 2/Ndata",
+                "adjoint_completion_seconds": 0.19326219998765737
+              },
+              "seconds": 5.8062504999979865,
+              "events": [],
+              "adjoint_source_discrepancy_before": 0.0035181838381970784,
+              "adjoint_source_discrepancy_after": 0.0035181838381970784,
+              "probe": {
+                "selected_bins": [
+                  1,
+                  35,
+                  72,
+                  106,
+                  143,
+                  177,
+                  214,
+                  248
+                ],
+                "primal": 6.427914215163061e-05,
+                "adjoint": 0.014275425837549783,
+                "interpretation": "Held-out final-space residual indicators, not certified gradient bounds"
+              },
+              "heldout_probe_growth": 0.9412970941354792
+            }
+          ],
+          "memory": {
+            "host_resident_mib": 10605.6328125,
+            "host_process_peak_mib": 14542.55078125,
+            "host_private_commit_mib": 34510.15625,
+            "host_peak_commit_mib": 48611.921875,
+            "cuda_allocated_mib": 150.5205078125,
+            "cuda_reserved_mib": 2418.0,
+            "cuda_peak_allocated_mib": 680.11865234375
+          }
+        },
+        {
+          "update": 5,
+          "backend": "rom",
+          "online_seconds": 5.985645900000236,
+          "events": [
+            {
+              "event": "full_refactorization",
+              "cache": {
+                "training_frequencies": 64,
+                "frequency_workers": 4,
+                "worker_blas_context": [
+                  {
+                    "user_api": "blas",
+                    "internal_api": "openblas",
+                    "num_threads": 1,
+                    "prefix": "libscipy_openblas",
+                    "version": "0.3.29",
+                    "threading_layer": "pthreads",
+                    "architecture": "Haswell"
+                  },
+                  {
+                    "user_api": "openmp",
+                    "internal_api": "openmp",
+                    "num_threads": 1,
+                    "prefix": "libiomp",
+                    "version": null
+                  },
+                  {
+                    "user_api": "openmp",
+                    "internal_api": "openmp",
+                    "num_threads": 1,
+                    "prefix": "libiomp",
+                    "version": null
+                  },
+                  {
+                    "user_api": "blas",
+                    "internal_api": "openblas",
+                    "num_threads": 1,
+                    "prefix": "libscipy_openblas",
+                    "version": "0.3.28",
+                    "threading_layer": "pthreads",
+                    "architecture": "Haswell"
+                  }
+                ],
+                "lu_lifetime": "Creation, solves and destruction confined to owner threads when parallel",
+                "factorization_seconds": 14.218088799956604,
+                "factor_and_snapshot_wall_seconds": 3.8270475000026636,
+                "parallel_timing_note": "factorization_seconds and snapshot_solve_seconds are task sums; wall/enclosing timers determine cost",
+                "snapshot_solve_seconds": 0.6931435000296915,
+                "total_seconds": 3.871181599999545,
+                "full_pressure_dimension": 34662,
+                "selected_bins": [
+                  0,
+                  4,
+                  8,
+                  12,
+                  16,
+                  20,
+                  24,
+                  28,
+                  32,
+                  36,
+                  40,
+                  43,
+                  47,
+                  51,
+                  55,
+                  59,
+                  63,
+                  67,
+                  71,
+                  75,
+                  79,
+                  83,
+                  87,
+                  91,
+                  95,
+                  99,
+                  103,
+                  107,
+                  111,
+                  115,
+                  119,
+                  123,
+                  126,
+                  130,
+                  134,
+                  138,
+                  142,
+                  146,
+                  150,
+                  154,
+                  158,
+                  162,
+                  166,
+                  170,
+                  174,
+                  178,
+                  182,
+                  186,
+                  190,
+                  194,
+                  198,
+                  202,
+                  206,
+                  209,
+                  213,
+                  217,
+                  221,
+                  225,
+                  229,
+                  233,
+                  237,
+                  241,
+                  245,
+                  249
+                ],
+                "lu_reported_nnz": 204361966,
+                "lu_storage_estimate_bytes": 4122734232,
+                "lu_storage_estimate_limit": "Complex128 values plus estimated int32 sparse indices/permutations; excludes native SuperLU workspaces; process RSS/peak also reported",
+                "snapshot_storage_bytes": 141975552,
+                "fft_adjoint_weighting": "Exact real-irfft bin multiplicity, 1/Nfft, and waveform-MSE 2/Ndata",
+                "adjoint_completion_seconds": 0.19944560001022182
+              },
+              "seconds": 5.835035100011737,
+              "events": [],
+              "adjoint_source_discrepancy_before": 0.003505385710251232,
+              "adjoint_source_discrepancy_after": 0.003505385710251232,
+              "probe": {
+                "selected_bins": [
+                  1,
+                  35,
+                  72,
+                  106,
+                  143,
+                  177,
+                  214,
+                  248
+                ],
+                "primal": 6.382253126924962e-05,
+                "adjoint": 0.014083833296787153,
+                "interpretation": "Held-out final-space residual indicators, not certified gradient bounds"
+              },
+              "heldout_probe_growth": 0.934610531708713
+            }
+          ],
+          "memory": {
+            "host_resident_mib": 10663.49609375,
+            "host_process_peak_mib": 14589.578125,
+            "host_private_commit_mib": 34581.8984375,
+            "host_peak_commit_mib": 48672.2578125,
+            "cuda_allocated_mib": 150.5205078125,
+            "cuda_reserved_mib": 2418.0,
+            "cuda_peak_allocated_mib": 680.11865234375
+          }
+        }
+      ],
+      "online_total_seconds": 24.057038099999772,
+      "memory_after_online": {
+        "host_resident_mib": 7026.52734375,
+        "host_process_peak_mib": 14589.578125,
+        "host_private_commit_mib": 20746.21875,
+        "host_peak_commit_mib": 48672.2578125,
+        "cuda_allocated_mib": 150.5205078125,
+        "cuda_reserved_mib": 2418.0,
+        "cuda_peak_allocated_mib": 680.11865234375
+      },
+      "audit_artifact_export_seconds": 0.3311195999995107,
+      "audit_seconds": 20.272704699993483,
+      "audits": [
+        {
+          "completed_updates": 0,
+          "used_for_update": true,
+          "backend": "rom",
+          "final_basis_is_preceding_update_basis": false,
+          "waveform": {
+            "relative": 0.0020939631532900264,
+            "absolute": 0.14469399769704314,
+            "reference_norm": 69.10054623917355,
+            "cosine": 0.999997807665369
+          },
+          "velocity_gradient": {
+            "relative": 0.006597089641349612,
+            "absolute": 3.346194405745523e-08,
+            "reference_norm": 5.072228191007223e-06,
+            "cosine": 0.9999787104518539
+          },
+          "parameter_gradient": {
+            "relative": 0.0008107781274459001,
+            "absolute": 0.00035985147115358415,
+            "reference_norm": 0.44383470517042967,
+            "cosine": 0.9999996928221923
+          },
+          "fdtd_mse": 0.04228385537862778,
+          "rom_mse": 0.04228381971691877,
+          "passes_accuracy_gate": true,
+          "rmse_mps": 518.7527934736858,
+          "mae_mps": 348.3287387559318,
+          "ssim": 0.38109386261418826
+        },
+        {
+          "completed_updates": 1,
+          "used_for_update": true,
+          "backend": "rom",
+          "final_basis_is_preceding_update_basis": false,
+          "waveform": {
+            "relative": 0.0020699731344277477,
+            "absolute": 0.141527040170225,
+            "reference_norm": 68.37143816813386,
+            "cosine": 0.9999978576098822
+          },
+          "velocity_gradient": {
+            "relative": 0.005826304356776086,
+            "absolute": 2.82846497803505e-08,
+            "reference_norm": 4.854646796378736e-06,
+            "cosine": 0.9999834905542048
+          },
+          "parameter_gradient": {
+            "relative": 0.0008425566210533086,
+            "absolute": 0.0003476262370160919,
+            "reference_norm": 0.41258501604499004,
+            "cosine": 0.9999996626333902
+          },
+          "fdtd_mse": 0.041851624846458435,
+          "rom_mse": 0.041851586580736864,
+          "passes_accuracy_gate": true,
+          "rmse_mps": 518.8335472088439,
+          "mae_mps": 350.24896496351164,
+          "ssim": 0.38098008345737483
+        },
+        {
+          "completed_updates": 2,
+          "used_for_update": true,
+          "backend": "rom",
+          "final_basis_is_preceding_update_basis": false,
+          "waveform": {
+            "relative": 0.0019946091633737135,
+            "absolute": 0.13456497821111044,
+            "reference_norm": 67.46433370611068,
+            "cosine": 0.9999980107720025
+          },
+          "velocity_gradient": {
+            "relative": 0.004787180838350898,
+            "absolute": 2.353336334193325e-08,
+            "reference_norm": 4.915912754622425e-06,
+            "cosine": 0.9999888968189953
+          },
+          "parameter_gradient": {
+            "relative": 0.0006763370762301144,
+            "absolute": 0.000296841467053891,
+            "reference_norm": 0.43889574812085974,
+            "cosine": 0.9999998058597239
+          },
+          "fdtd_mse": 0.0411900132894516,
+          "rom_mse": 0.04118998558901567,
+          "passes_accuracy_gate": true,
+          "rmse_mps": 519.1154322761935,
+          "mae_mps": 352.9982643893988,
+          "ssim": 0.38079999706323336
+        },
+        {
+          "completed_updates": 3,
+          "used_for_update": true,
+          "backend": "rom",
+          "final_basis_is_preceding_update_basis": false,
+          "waveform": {
+            "relative": 0.0019662524047188525,
+            "absolute": 0.13101216034003804,
+            "reference_norm": 66.6303878513354,
+            "cosine": 0.9999980669325238
+          },
+          "velocity_gradient": {
+            "relative": 0.003969396071437026,
+            "absolute": 2.1403464701134876e-08,
+            "reference_norm": 5.392121198272427e-06,
+            "cosine": 0.9999923040979372
+          },
+          "parameter_gradient": {
+            "relative": 0.000709638869694662,
+            "absolute": 0.0002848698548972236,
+            "reference_norm": 0.4014293284410918,
+            "cosine": 0.9999998101371478
+          },
+          "fdtd_mse": 0.04045262187719345,
+          "rom_mse": 0.0404525988086799,
+          "passes_accuracy_gate": true,
+          "rmse_mps": 519.6661360564536,
+          "mae_mps": 356.4759924552683,
+          "ssim": 0.3805733914056912
+        },
+        {
+          "completed_updates": 4,
+          "used_for_update": true,
+          "backend": "rom",
+          "final_basis_is_preceding_update_basis": false,
+          "waveform": {
+            "relative": 0.0019959937203141613,
+            "absolute": 0.13210941944557564,
+            "reference_norm": 66.18729212473782,
+            "cosine": 0.9999980080132687
+          },
+          "velocity_gradient": {
+            "relative": 0.0038235124549915117,
+            "absolute": 2.3069530141741084e-08,
+            "reference_norm": 6.033596179770336e-06,
+            "cosine": 0.9999928437922531
+          },
+          "parameter_gradient": {
+            "relative": 0.0008830865931793313,
+            "absolute": 0.000288453422373797,
+            "reference_norm": 0.32664228468840517,
+            "cosine": 0.9999996678666214
+          },
+          "fdtd_mse": 0.039758697152137756,
+          "rom_mse": 0.03975867060275568,
+          "passes_accuracy_gate": true,
+          "rmse_mps": 520.486215360118,
+          "mae_mps": 360.3113662999291,
+          "ssim": 0.38033480932016595
+        },
+        {
+          "completed_updates": 5,
+          "used_for_update": false,
+          "backend": "rom",
+          "final_basis_is_preceding_update_basis": true,
+          "waveform": {
+            "relative": 0.06343590802287534,
+            "absolute": 4.206928267375831,
+            "reference_norm": 66.31777487694808,
+            "cosine": 0.9980227013561297
+          },
+          "velocity_gradient": {
+            "relative": 0.11489369281887424,
+            "absolute": 7.573641763007348e-07,
+            "reference_norm": 6.591869037534481e-06,
+            "cosine": 0.9938774338451054
+          },
+          "parameter_gradient": {
+            "relative": 0.5749303582389957,
+            "absolute": 0.15452029390255398,
+            "reference_norm": 0.2687634975057634,
+            "cosine": 0.9717021202890362
+          },
+          "fdtd_mse": 0.03911128640174866,
+          "rom_mse": 0.039004241906778,
+          "passes_accuracy_gate": false,
+          "rmse_mps": 521.4743555843717,
+          "mae_mps": 363.97391924395913,
+          "ssim": 0.38009895597984394
+        }
+      ],
+      "all_used_gradients_pass": true,
+      "online_speedup": 0.6815628229810204,
+      "including_initial_preparation_seconds": 30.06826379999984,
+      "including_preparation_audit_export_seconds": 50.672088099992834,
+      "same_accuracy_online_acceleration": false
+    },
+    {
+      "method": "correction3",
+      "completed_updates": 5,
+      "status": "completed",
+      "steps": [
+        {
+          "update": 1,
+          "backend": "rom",
+          "online_seconds": 0.14015809999546036,
+          "events": [],
+          "memory": {
+            "host_resident_mib": 6902.61328125,
+            "host_process_peak_mib": 14589.578125,
+            "host_private_commit_mib": 20626.640625,
+            "host_peak_commit_mib": 48672.2578125,
+            "cuda_allocated_mib": 89.6318359375,
+            "cuda_reserved_mib": 2418.0,
+            "cuda_peak_allocated_mib": 618.84716796875
+          }
+        },
+        {
+          "update": 2,
+          "backend": "rom",
+          "online_seconds": 2.9642487000091933,
+          "events": [
+            {
+              "events": [
+                {
+                  "event": "primal_transport",
+                  "correction_order": 3,
+                  "solve_count": 192,
+                  "aggregate_relative_residual": 5.404797589695382e-07,
+                  "max_frequency_relative_residual": 0.00010127176421274571,
+                  "seconds": 0.6188580000016373
+                },
+                {
+                  "event": "adjoint_transport",
+                  "correction_order": 3,
+                  "solve_count": 192,
+                  "aggregate_relative_residual": 6.098009319644622e-06,
+                  "max_frequency_relative_residual": 2.892829211027644e-05,
+                  "seconds": 0.5333788999996614
+                }
+              ],
+              "construction": {
+                "events": [],
+                "adjoint_source_discrepancy_before": 0.003942540406024157,
+                "adjoint_source_discrepancy_after": 0.003942540406024157,
+                "probe": {
+                  "selected_bins": [
+                    1,
+                    35,
+                    72,
+                    106,
+                    143,
+                    177,
+                    214,
+                    248
+                  ],
+                  "primal": 6.737841776869463e-05,
+                  "adjoint": 0.015184061352738486,
+                  "interpretation": "Held-out final-space residual indicators, not certified gradient bounds"
+                }
+              },
+              "seconds": 2.8188783999939915,
+              "heldout_probe_growth": 0.9873348996858105
+            }
+          ],
+          "memory": {
+            "host_resident_mib": 7009.79296875,
+            "host_process_peak_mib": 14589.578125,
+            "host_private_commit_mib": 20733.4609375,
+            "host_peak_commit_mib": 48672.2578125,
+            "cuda_allocated_mib": 150.5205078125,
+            "cuda_reserved_mib": 2418.0,
+            "cuda_peak_allocated_mib": 680.11865234375
+          }
+        },
+        {
+          "update": 3,
+          "backend": "rom",
+          "online_seconds": 2.9969362999981968,
+          "events": [
+            {
+              "events": [
+                {
+                  "event": "primal_transport",
+                  "correction_order": 3,
+                  "solve_count": 192,
+                  "aggregate_relative_residual": 1.828165692098107e-05,
+                  "max_frequency_relative_residual": 0.0033034309359540664,
+                  "seconds": 0.6229605000116862
+                },
+                {
+                  "event": "adjoint_transport",
+                  "correction_order": 3,
+                  "solve_count": 192,
+                  "aggregate_relative_residual": 0.00020881812892317839,
+                  "max_frequency_relative_residual": 0.0009740494821449029,
+                  "seconds": 0.5159751000028336
+                }
+              ],
+              "construction": {
+                "events": [],
+                "adjoint_source_discrepancy_before": 0.006293463729755065,
+                "adjoint_source_discrepancy_after": 0.006293463729755065,
+                "probe": {
+                  "selected_bins": [
+                    1,
+                    35,
+                    72,
+                    106,
+                    143,
+                    177,
+                    214,
+                    248
+                  ],
+                  "primal": 6.726310118415725e-05,
+                  "adjoint": 0.016498963525556902,
+                  "interpretation": "Held-out final-space residual indicators, not certified gradient bounds"
+                }
+              },
+              "seconds": 2.8381815000029746,
+              "heldout_probe_growth": 1.0728356609602097
+            }
+          ],
+          "memory": {
+            "host_resident_mib": 7113.6015625,
+            "host_process_peak_mib": 14589.578125,
+            "host_private_commit_mib": 20865.8828125,
+            "host_peak_commit_mib": 48672.2578125,
+            "cuda_allocated_mib": 150.5205078125,
+            "cuda_reserved_mib": 2418.0,
+            "cuda_peak_allocated_mib": 680.11865234375
+          }
+        },
+        {
+          "update": 4,
+          "backend": "rom",
+          "online_seconds": 9.481310899995151,
+          "events": [
+            {
+              "events": [
+                {
+                  "event": "primal_transport",
+                  "correction_order": 3,
+                  "solve_count": 192,
+                  "aggregate_relative_residual": 0.0001504308805108009,
+                  "max_frequency_relative_residual": 0.02669226228965666,
+                  "seconds": 0.6143109999975422
+                },
+                {
+                  "event": "adjoint_transport",
+                  "correction_order": 3,
+                  "solve_count": 192,
+                  "aggregate_relative_residual": 0.0017719619647516916,
+                  "max_frequency_relative_residual": 0.009156447008118214,
+                  "seconds": 0.5206620000099065
+                }
+              ],
+              "construction": {
+                "events": [
+                  {
+                    "event": "adjoint_source_consistency_pass",
+                    "correction_order": 3,
+                    "solve_count": 192,
+                    "aggregate_relative_residual": 0.001736214532931743,
+                    "max_frequency_relative_residual": 0.009197813248665929,
+                    "seconds": 0.5180185999925015
+                  }
+                ],
+                "adjoint_source_discrepancy_before": 0.04064470064559118,
+                "adjoint_source_discrepancy_after": 0.008157484706507599,
+                "probe": {
+                  "selected_bins": [
+                    1,
+                    35,
+                    72,
+                    106,
+                    143,
+                    177,
+                    214,
+                    248
+                  ],
+                  "primal": 0.00016731400713390838,
+                  "adjoint": 0.016996954009921003,
+                  "interpretation": "Held-out final-space residual indicators, not certified gradient bounds"
+                }
+              },
+              "seconds": 3.6710429999948246,
+              "heldout_probe_growth": 2.450128975769407
+            },
+            {
+              "reason": "heldout_final_space_probe_growth",
+              "growth": 2.450128975769407
+            },
+            {
+              "event": "full_refactorization",
+              "cache": {
+                "training_frequencies": 64,
+                "frequency_workers": 4,
+                "worker_blas_context": [
+                  {
+                    "user_api": "blas",
+                    "internal_api": "openblas",
+                    "num_threads": 1,
+                    "prefix": "libscipy_openblas",
+                    "version": "0.3.29",
+                    "threading_layer": "pthreads",
+                    "architecture": "Haswell"
+                  },
+                  {
+                    "user_api": "openmp",
+                    "internal_api": "openmp",
+                    "num_threads": 1,
+                    "prefix": "libiomp",
+                    "version": null
+                  },
+                  {
+                    "user_api": "openmp",
+                    "internal_api": "openmp",
+                    "num_threads": 1,
+                    "prefix": "libiomp",
+                    "version": null
+                  },
+                  {
+                    "user_api": "blas",
+                    "internal_api": "openblas",
+                    "num_threads": 1,
+                    "prefix": "libscipy_openblas",
+                    "version": "0.3.28",
+                    "threading_layer": "pthreads",
+                    "architecture": "Haswell"
+                  }
+                ],
+                "lu_lifetime": "Creation, solves and destruction confined to owner threads when parallel",
+                "factorization_seconds": 14.102685599951656,
+                "factor_and_snapshot_wall_seconds": 3.799582999999984,
+                "parallel_timing_note": "factorization_seconds and snapshot_solve_seconds are task sums; wall/enclosing timers determine cost",
+                "snapshot_solve_seconds": 0.676209499957622,
+                "total_seconds": 3.8397464000008767,
+                "full_pressure_dimension": 34662,
+                "selected_bins": [
+                  0,
+                  4,
+                  8,
+                  12,
+                  16,
+                  20,
+                  24,
+                  28,
+                  32,
+                  36,
+                  40,
+                  43,
+                  47,
+                  51,
+                  55,
+                  59,
+                  63,
+                  67,
+                  71,
+                  75,
+                  79,
+                  83,
+                  87,
+                  91,
+                  95,
+                  99,
+                  103,
+                  107,
+                  111,
+                  115,
+                  119,
+                  123,
+                  126,
+                  130,
+                  134,
+                  138,
+                  142,
+                  146,
+                  150,
+                  154,
+                  158,
+                  162,
+                  166,
+                  170,
+                  174,
+                  178,
+                  182,
+                  186,
+                  190,
+                  194,
+                  198,
+                  202,
+                  206,
+                  209,
+                  213,
+                  217,
+                  221,
+                  225,
+                  229,
+                  233,
+                  237,
+                  241,
+                  245,
+                  249
+                ],
+                "lu_reported_nnz": 204385002,
+                "lu_storage_estimate_bytes": 4123194952,
+                "lu_storage_estimate_limit": "Complex128 values plus estimated int32 sparse indices/permutations; excludes native SuperLU workspaces; process RSS/peak also reported",
+                "snapshot_storage_bytes": 141975552,
+                "fft_adjoint_weighting": "Exact real-irfft bin multiplicity, 1/Nfft, and waveform-MSE 2/Ndata",
+                "adjoint_completion_seconds": 0.19323309999890625
+              },
+              "seconds": 5.6623103999882005,
+              "events": [],
+              "adjoint_source_discrepancy_before": 0.003518227899668198,
+              "adjoint_source_discrepancy_after": 0.003518227899668198,
+              "probe": {
+                "selected_bins": [
+                  1,
+                  35,
+                  72,
+                  106,
+                  143,
+                  177,
+                  214,
+                  248
+                ],
+                "primal": 6.427887907216193e-05,
+                "adjoint": 0.014275435764221637,
+                "interpretation": "Held-out final-space residual indicators, not certified gradient bounds"
+              },
+              "heldout_probe_growth": 0.9412932416270122
+            }
+          ],
+          "memory": {
+            "host_resident_mib": 10955.98828125,
+            "host_process_peak_mib": 14589.578125,
+            "host_private_commit_mib": 34913.1328125,
+            "host_peak_commit_mib": 48672.2578125,
+            "cuda_allocated_mib": 150.5205078125,
+            "cuda_reserved_mib": 2418.0,
+            "cuda_peak_allocated_mib": 680.11865234375
+          }
+        },
+        {
+          "update": 5,
+          "backend": "rom",
+          "online_seconds": 3.065399900006014,
+          "events": [
+            {
+              "events": [
+                {
+                  "event": "primal_transport",
+                  "correction_order": 3,
+                  "solve_count": 192,
+                  "aggregate_relative_residual": 4.585814009979448e-06,
+                  "max_frequency_relative_residual": 0.0008073514024363765,
+                  "seconds": 0.6256930000090506
+                },
+                {
+                  "event": "adjoint_transport",
+                  "correction_order": 3,
+                  "solve_count": 192,
+                  "aggregate_relative_residual": 6.064364475172021e-05,
+                  "max_frequency_relative_residual": 0.00033738342122665904,
+                  "seconds": 0.5680457999987993
+                }
+              ],
+              "construction": {
+                "events": [],
+                "adjoint_source_discrepancy_before": 0.003906681702842251,
+                "adjoint_source_discrepancy_after": 0.003906681702842251,
+                "probe": {
+                  "selected_bins": [
+                    1,
+                    35,
+                    72,
+                    106,
+                    143,
+                    177,
+                    214,
+                    248
+                  ],
+                  "primal": 6.40261170219223e-05,
+                  "adjoint": 0.014384178950381535,
+                  "interpretation": "Held-out final-space residual indicators, not certified gradient bounds"
+                }
+              },
+              "seconds": 2.9137576000066474,
+              "heldout_probe_growth": 0.9375918203660215
+            }
+          ],
+          "memory": {
+            "host_resident_mib": 10979.4296875,
+            "host_process_peak_mib": 14589.578125,
+            "host_private_commit_mib": 34949.91015625,
+            "host_peak_commit_mib": 48672.2578125,
+            "cuda_allocated_mib": 150.5205078125,
+            "cuda_reserved_mib": 2418.0,
+            "cuda_peak_allocated_mib": 680.11865234375
+          }
+        }
+      ],
+      "online_total_seconds": 18.803486500008148,
+      "memory_after_online": {
+        "host_resident_mib": 7341.13671875,
+        "host_process_peak_mib": 14589.578125,
+        "host_private_commit_mib": 21128.703125,
+        "host_peak_commit_mib": 48672.2578125,
+        "cuda_allocated_mib": 150.5205078125,
+        "cuda_reserved_mib": 2418.0,
+        "cuda_peak_allocated_mib": 680.11865234375
+      },
+      "audit_artifact_export_seconds": 0.3672962000127882,
+      "audit_seconds": 20.200224700005492,
+      "audits": [
+        {
+          "completed_updates": 0,
+          "used_for_update": true,
+          "backend": "rom",
+          "final_basis_is_preceding_update_basis": false,
+          "waveform": {
+            "relative": 0.0020939631532900264,
+            "absolute": 0.14469399769704314,
+            "reference_norm": 69.10054623917355,
+            "cosine": 0.999997807665369
+          },
+          "velocity_gradient": {
+            "relative": 0.006597089641349612,
+            "absolute": 3.346194405745523e-08,
+            "reference_norm": 5.072228191007223e-06,
+            "cosine": 0.9999787104518539
+          },
+          "parameter_gradient": {
+            "relative": 0.0008107781274459001,
+            "absolute": 0.00035985147115358415,
+            "reference_norm": 0.44383470517042967,
+            "cosine": 0.9999996928221923
+          },
+          "fdtd_mse": 0.04228385537862778,
+          "rom_mse": 0.04228381971691877,
+          "passes_accuracy_gate": true,
+          "rmse_mps": 518.7527934736858,
+          "mae_mps": 348.3287387559318,
+          "ssim": 0.38109386261418826
+        },
+        {
+          "completed_updates": 1,
+          "used_for_update": true,
+          "backend": "rom",
+          "final_basis_is_preceding_update_basis": false,
+          "waveform": {
+            "relative": 0.0020794125907941806,
+            "absolute": 0.14217242937752336,
+            "reference_norm": 68.37143816813386,
+            "cosine": 0.999997838019887
+          },
+          "velocity_gradient": {
+            "relative": 0.005640457717083146,
+            "absolute": 2.7382429986347415e-08,
+            "reference_norm": 4.854646796378736e-06,
+            "cosine": 0.9999845297766066
+          },
+          "parameter_gradient": {
+            "relative": 0.0007910545231168041,
+            "absolute": 0.0003263772431126086,
+            "reference_norm": 0.41258501604499004,
+            "cosine": 0.9999996903221284
+          },
+          "fdtd_mse": 0.041851624846458435,
+          "rom_mse": 0.041851586512622066,
+          "passes_accuracy_gate": true,
+          "rmse_mps": 518.8335472088439,
+          "mae_mps": 350.24896496351164,
+          "ssim": 0.38098008345737483
+        },
+        {
+          "completed_updates": 2,
+          "used_for_update": true,
+          "backend": "rom",
+          "final_basis_is_preceding_update_basis": false,
+          "waveform": {
+            "relative": 0.0032042274860085594,
+            "absolute": 0.2161707422418577,
+            "reference_norm": 67.46423067206666,
+            "cosine": 0.999994891283388
+          },
+          "velocity_gradient": {
+            "relative": 0.007445238404719731,
+            "absolute": 3.660024471294781e-08,
+            "reference_norm": 4.915926491990634e-06,
+            "cosine": 0.9999724527024165
+          },
+          "parameter_gradient": {
+            "relative": 0.0025787068801967437,
+            "absolute": 0.001131776388841386,
+            "reference_norm": 0.4388929961496968,
+            "cosine": 0.9999993966291882
+          },
+          "fdtd_mse": 0.0411900132894516,
+          "rom_mse": 0.04119003519164176,
+          "passes_accuracy_gate": true,
+          "rmse_mps": 519.1154361182996,
+          "mae_mps": 352.99831178904145,
+          "ssim": 0.3807999926330214
+        },
+        {
+          "completed_updates": 3,
+          "used_for_update": true,
+          "backend": "rom",
+          "final_basis_is_preceding_update_basis": false,
+          "waveform": {
+            "relative": 0.0019663405308511022,
+            "absolute": 0.1310141730863558,
+            "reference_norm": 66.62842525533875,
+            "cosine": 0.9999980667595156
+          },
+          "velocity_gradient": {
+            "relative": 0.003968677627204529,
+            "absolute": 2.1401489403956787e-08,
+            "reference_norm": 5.392599604778593e-06,
+            "cosine": 0.9999923073640657
+          },
+          "parameter_gradient": {
+            "relative": 0.0007084250128822964,
+            "absolute": 0.0002843424483750592,
+            "reference_norm": 0.40137268335315285,
+            "cosine": 0.9999998100580668
+          },
+          "fdtd_mse": 0.04045272246003151,
+          "rom_mse": 0.040452701900653185,
+          "passes_accuracy_gate": true,
+          "rmse_mps": 519.666188205662,
+          "mae_mps": 356.47633312667233,
+          "ssim": 0.380573314645189
+        },
+        {
+          "completed_updates": 4,
+          "used_for_update": true,
+          "backend": "rom",
+          "final_basis_is_preceding_update_basis": false,
+          "waveform": {
+            "relative": 0.0021616635934576913,
+            "absolute": 0.1430682169395989,
+            "reference_norm": 66.18431164432667,
+            "cosine": 0.9999976665409459
+          },
+          "velocity_gradient": {
+            "relative": 0.0030724177792566237,
+            "absolute": 1.8540335924545895e-08,
+            "reference_norm": 6.034444940958439e-06,
+            "cosine": 0.9999952820927638
+          },
+          "parameter_gradient": {
+            "relative": 0.0013342677951323752,
+            "absolute": 0.00043578002263386823,
+            "reference_norm": 0.32660611627115954,
+            "cosine": 0.9999996609973284
+          },
+          "fdtd_mse": 0.03975890204310417,
+          "rom_mse": 0.039758877348751505,
+          "passes_accuracy_gate": true,
+          "rmse_mps": 520.4863015063185,
+          "mae_mps": 360.31173826447616,
+          "ssim": 0.3803347859709287
+        },
+        {
+          "completed_updates": 5,
+          "used_for_update": false,
+          "backend": "rom",
+          "final_basis_is_preceding_update_basis": true,
+          "waveform": {
+            "relative": 0.06324151064995324,
+            "absolute": 4.193755920506919,
+            "reference_norm": 66.31334193959549,
+            "cosine": 0.9980342928153134
+          },
+          "velocity_gradient": {
+            "relative": 0.11477641256659928,
+            "absolute": 7.567609722629572e-07,
+            "reference_norm": 6.593349237360463e-06,
+            "cosine": 0.9938682554433924
+          },
+          "parameter_gradient": {
+            "relative": 0.5796009412412811,
+            "absolute": 0.1557781916319095,
+            "reference_norm": 0.2687680101041466,
+            "cosine": 0.971441648519645
+          },
+          "fdtd_mse": 0.03911148011684418,
+          "rom_mse": 0.03900326200441814,
+          "passes_accuracy_gate": false,
+          "rmse_mps": 521.4745991522236,
+          "mae_mps": 363.9749352791067,
+          "ssim": 0.3800989291617384
+        }
+      ],
+      "all_used_gradients_pass": true,
+      "online_speedup": 0.8719863095597035,
+      "including_initial_preparation_seconds": 24.814712200008216,
+      "including_preparation_audit_export_seconds": 45.3822331000265,
+      "same_accuracy_online_acceleration": false
+    }
+  ],
+  "experiment_wall_seconds": 138.49331729998812,
+  "source_hashes_unchanged": true,
+  "accounting": "Online totals include refresh, indicators, transfers, basis snapshots, optimizer and fallbacks; ex-post audit and artifact export separate",
+  "limits": [
+    "Five updates maximum; no long inversion convergence claim",
+    "PDE/probe residuals are indicators without a certified PML stability constant",
+    "Probe growth always uses the initial-basis reference, even after LU reanchoring",
+    "Final post-update state is also audited with the preceding update basis; it would be refreshed before another update",
+    "Shared initial LU cache remains resident across paired arms; process memory is not standalone deployment memory"
+  ]
+}

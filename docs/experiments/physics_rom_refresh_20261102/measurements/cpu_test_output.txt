@@ -1,0 +1,10 @@
+........................................................................ [ 34%]
+........................................................................ [ 68%]
+...................................................................      [100%]
+============================== warnings summary ===============================
+verification/residual_ifwi/test_experiment.py::test_absolute_step_matches_original_ifwi_training
+  F:\project\IFWI\.worktrees\ifwi-physics-rom-20261102\ifwi_modules.py:362: UserWarning: `parameters` is an empty generator, no gradient clipping will occur.
+    torch.nn.utils.clip_grad_norm_(self.params, self.clip)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+211 passed, 1 warning in 48.43s

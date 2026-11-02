@@ -111,8 +111,11 @@ def run_arm(name,base,initial_cache,initial_rom,initial_probe,prototype,problem,
         backend='rom' if last_rom is not None else 'fdtd',model=cpu_state(model),rom=last_rom))
     export_start=time.perf_counter()
     for index,record in enumerate(records):torch.save(record,arm/f'state_{index:03d}.pt')
-    torch.save(dict(model=cpu_state(model),optimizer=optimizer.state_dict(),completed_updates=result['completed_updates'],
-        cache_anchor_velocity=controller.cache.velocity,cache_requires_refactorization_on_resume=True),arm/'checkpoint.pt')
+    if not (arm/'checkpoint.pt').exists():
+        temporary=arm/'checkpoint.tmp'
+        torch.save(dict(model=cpu_state(model),optimizer=optimizer.state_dict(),completed_updates=result['completed_updates'],
+            cache_anchor_velocity=controller.cache.velocity,cache_requires_refactorization_on_resume=True),temporary)
+        temporary.replace(arm/'checkpoint.pt')
     result['audit_artifact_export_seconds']=time.perf_counter()-export_start
     save_json(arm/'online.json',result)
     return result,records

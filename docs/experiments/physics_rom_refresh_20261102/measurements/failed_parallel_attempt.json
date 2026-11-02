@@ -1,0 +1,13 @@
+{
+  "run": "F:\\project\\IFWI\\outputs\\rom_refresh_parallel_gpu_20261102_082247",
+  "status": "failed_and_not_an_acceleration_result",
+  "source_commit": "72e0197",
+  "error": "MemoryError in SciPy SuperLU refactorization",
+  "completed_fdtd_updates": 5,
+  "completed_fresh_updates": 4,
+  "correction3_started": false,
+  "gradient_audit_completed": false,
+  "root_cause": "Native LU allocated on worker but destroyed on main; SciPy1.15 TLS allocator skips cross-thread frees",
+  "fix": "Creation, solve and destruction on single owner threads; source checkpoint creation each update and MemoryError fallback added",
+  "limit": "Failed attempt elapsed time is not a complete per-arm online total; progress and stderr preserved locally"
+}

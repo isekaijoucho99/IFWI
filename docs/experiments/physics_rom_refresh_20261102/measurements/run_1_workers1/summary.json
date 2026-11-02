@@ -1,0 +1,2593 @@
+{
+  "initial_preparation_seconds": 14.113109800004167,
+  "common_data_seconds": 8.847131699993042,
+  "warmup_seconds": 3.670303699997021,
+  "methods": [
+    {
+      "method": "fdtd",
+      "completed_updates": 5,
+      "status": "completed",
+      "steps": [
+        {
+          "update": 1,
+          "backend": "fdtd",
+          "online_seconds": 3.281907600001432,
+          "events": [],
+          "memory": {
+            "host_resident_mib": 6355.5078125,
+            "host_process_peak_mib": 6355.5078125,
+            "cuda_allocated_mib": 88.8662109375,
+            "cuda_reserved_mib": 2418.0,
+            "cuda_peak_allocated_mib": 1686.1279296875
+          }
+        },
+        {
+          "update": 2,
+          "backend": "fdtd",
+          "online_seconds": 3.242835400000331,
+          "events": [],
+          "memory": {
+            "host_resident_mib": 6362.87890625,
+            "host_process_peak_mib": 6418.88671875,
+            "cuda_allocated_mib": 89.2490234375,
+            "cuda_reserved_mib": 2418.0,
+            "cuda_peak_allocated_mib": 1686.8935546875
+          }
+        },
+        {
+          "update": 3,
+          "backend": "fdtd",
+          "online_seconds": 3.181695999999647,
+          "events": [],
+          "memory": {
+            "host_resident_mib": 6413.328125,
+            "host_process_peak_mib": 6419.0625,
+            "cuda_allocated_mib": 89.2490234375,
+            "cuda_reserved_mib": 2418.0,
+            "cuda_peak_allocated_mib": 1686.8935546875
+          }
+        },
+        {
+          "update": 4,
+          "backend": "fdtd",
+          "online_seconds": 3.1823046000063187,
+          "events": [],
+          "memory": {
+            "host_resident_mib": 6419.625,
+            "host_process_peak_mib": 6421.6328125,
+            "cuda_allocated_mib": 89.2490234375,
+            "cuda_reserved_mib": 2418.0,
+            "cuda_peak_allocated_mib": 1686.8935546875
+          }
+        },
+        {
+          "update": 5,
+          "backend": "fdtd",
+          "online_seconds": 3.216605299996445,
+          "events": [],
+          "memory": {
+            "host_resident_mib": 6421.58203125,
+            "host_process_peak_mib": 6423.65625,
+            "cuda_allocated_mib": 89.2490234375,
+            "cuda_reserved_mib": 2418.0,
+            "cuda_peak_allocated_mib": 1686.8935546875
+          }
+        }
+      ],
+      "online_total_seconds": 16.13872440000705,
+      "memory_after_online": {
+        "host_resident_mib": 6421.58203125,
+        "host_process_peak_mib": 6423.65625,
+        "cuda_allocated_mib": 89.2490234375,
+        "cuda_reserved_mib": 2418.0,
+        "cuda_peak_allocated_mib": 1686.8935546875
+      },
+      "audit_artifact_export_seconds": 0.016432399992481805,
+      "audit_seconds": 19.341593200006173,
+      "audits": [
+        {
+          "completed_updates": 0,
+          "used_for_update": true,
+          "backend": "fdtd",
+          "final_basis_is_preceding_update_basis": false,
+          "waveform": {
+            "relative": 0.0,
+            "absolute": 0.0,
+            "reference_norm": 69.10054623917365,
+            "cosine": 1.0000000000000002
+          },
+          "velocity_gradient": {
+            "relative": 0.0,
+            "absolute": 0.0,
+            "reference_norm": 5.0722281910072275e-06,
+            "cosine": 0.9999999999999999
+          },
+          "parameter_gradient": {
+            "relative": 0.0,
+            "absolute": 0.0,
+            "reference_norm": 0.4438347051704296,
+            "cosine": 1.0
+          },
+          "fdtd_mse": 0.04228385537862778,
+          "rom_mse": 0.04228385537862778,
+          "passes_accuracy_gate": true,
+          "rmse_mps": 518.7527934736858,
+          "mae_mps": 348.3287387559318,
+          "ssim": 0.38109386261418826
+        },
+        {
+          "completed_updates": 1,
+          "used_for_update": true,
+          "backend": "fdtd",
+          "final_basis_is_preceding_update_basis": false,
+          "waveform": {
+            "relative": 0.0,
+            "absolute": 0.0,
+            "reference_norm": 68.37143353559803,
+            "cosine": 1.0
+          },
+          "velocity_gradient": {
+            "relative": 0.0,
+            "absolute": 0.0,
+            "reference_norm": 4.854646919738192e-06,
+            "cosine": 1.0000000000000002
+          },
+          "parameter_gradient": {
+            "relative": 0.0,
+            "absolute": 0.0,
+            "reference_norm": 0.4125852573319909,
+            "cosine": 1.0
+          },
+          "fdtd_mse": 0.04185162112116814,
+          "rom_mse": 0.04185162112116814,
+          "passes_accuracy_gate": true,
+          "rmse_mps": 518.8335471668362,
+          "mae_mps": 350.24896496351164,
+          "ssim": 0.3809800833439409
+        },
+        {
+          "completed_updates": 2,
+          "used_for_update": true,
+          "backend": "fdtd",
+          "final_basis_is_preceding_update_basis": false,
+          "waveform": {
+            "relative": 0.0,
+            "absolute": 0.0,
+            "reference_norm": 67.46188638013997,
+            "cosine": 0.9999999999999998
+          },
+          "velocity_gradient": {
+            "relative": 0.0,
+            "absolute": 0.0,
+            "reference_norm": 4.916279161685367e-06,
+            "cosine": 0.9999999999999999
+          },
+          "parameter_gradient": {
+            "relative": 0.0,
+            "absolute": 0.0,
+            "reference_norm": 0.43882900601533603,
+            "cosine": 1.0000000000000002
+          },
+          "fdtd_mse": 0.04118996486067772,
+          "rom_mse": 0.04118996486067772,
+          "passes_accuracy_gate": true,
+          "rmse_mps": 519.1154183167816,
+          "mae_mps": 352.99866052722257,
+          "ssim": 0.3808000946323835
+        },
+        {
+          "completed_updates": 3,
+          "used_for_update": true,
+          "backend": "fdtd",
+          "final_basis_is_preceding_update_basis": false,
+          "waveform": {
+            "relative": 0.0,
+            "absolute": 0.0,
+            "reference_norm": 66.6253685127542,
+            "cosine": 1.0000000000000002
+          },
+          "velocity_gradient": {
+            "relative": 0.0,
+            "absolute": 0.0,
+            "reference_norm": 5.393431630727217e-06,
+            "cosine": 0.9999999999999999
+          },
+          "parameter_gradient": {
+            "relative": 0.0,
+            "absolute": 0.0,
+            "reference_norm": 0.40126228771737293,
+            "cosine": 1.0000000000000002
+          },
+          "fdtd_mse": 0.040452685207128525,
+          "rom_mse": 0.040452685207128525,
+          "passes_accuracy_gate": true,
+          "rmse_mps": 519.666235489947,
+          "mae_mps": 356.4770853615258,
+          "ssim": 0.38057344291849937
+        },
+        {
+          "completed_updates": 4,
+          "used_for_update": true,
+          "backend": "fdtd",
+          "final_basis_is_preceding_update_basis": false,
+          "waveform": {
+            "relative": 0.0,
+            "absolute": 0.0,
+            "reference_norm": 66.17874016368961,
+            "cosine": 1.0
+          },
+          "velocity_gradient": {
+            "relative": 0.0,
+            "absolute": 0.0,
+            "reference_norm": 6.036174447653322e-06,
+            "cosine": 1.0
+          },
+          "parameter_gradient": {
+            "relative": 0.0,
+            "absolute": 0.0,
+            "reference_norm": 0.32640497947977365,
+            "cosine": 1.0
+          },
+          "fdtd_mse": 0.03975909575819969,
+          "rom_mse": 0.03975909575819969,
+          "passes_accuracy_gate": true,
+          "rmse_mps": 520.4862784709825,
+          "mae_mps": 360.3128965977518,
+          "ssim": 0.3803351375509522
+        },
+        {
+          "completed_updates": 5,
+          "used_for_update": false,
+          "backend": "fdtd",
+          "final_basis_is_preceding_update_basis": true,
+          "waveform": {
+            "relative": 0.0,
+            "absolute": 0.0,
+            "reference_norm": 66.30570710507565,
+            "cosine": 0.9999999999999998
+          },
+          "velocity_gradient": {
+            "relative": 0.0,
+            "absolute": 0.0,
+            "reference_norm": 6.5957906711009165e-06,
+            "cosine": 0.9999999999999999
+          },
+          "parameter_gradient": {
+            "relative": 0.0,
+            "absolute": 0.0,
+            "reference_norm": 0.2685570987236046,
+            "cosine": 1.0000000000000002
+          },
+          "fdtd_mse": 0.03911197558045387,
+          "rom_mse": 0.03911197558045387,
+          "passes_accuracy_gate": true,
+          "rmse_mps": 521.4741732998228,
+          "mae_mps": 363.97525013592224,
+          "ssim": 0.38009966701780507
+        }
+      ],
+      "all_used_gradients_pass": true,
+      "online_speedup": 1.0,
+      "including_initial_preparation_seconds": 16.13872440000705,
+      "including_preparation_audit_export_seconds": 35.496750000005704,
+      "same_accuracy_online_acceleration": false
+    },
+    {
+      "method": "frozen",
+      "completed_updates": 5,
+      "status": "completed",
+      "steps": [
+        {
+          "update": 1,
+          "backend": "rom",
+          "online_seconds": 0.1347645000059856,
+          "events": [],
+          "memory": {
+            "host_resident_mib": 6533.21484375,
+            "host_process_peak_mib": 6533.21484375,
+            "cuda_allocated_mib": 89.6318359375,
+            "cuda_reserved_mib": 2418.0,
+            "cuda_peak_allocated_mib": 618.84716796875
+          }
+        },
+        {
+          "update": 2,
+          "backend": "rom",
+          "online_seconds": 0.1388194999890402,
+          "events": [],
+          "memory": {
+            "host_resident_mib": 6634.90234375,
+            "host_process_peak_mib": 6634.90234375,
+            "cuda_allocated_mib": 89.6318359375,
+            "cuda_reserved_mib": 2418.0,
+            "cuda_peak_allocated_mib": 619.22998046875
+          }
+        },
+        {
+          "update": 3,
+          "backend": "rom",
+          "online_seconds": 0.13472830000682734,
+          "events": [],
+          "memory": {
+            "host_resident_mib": 6685.77734375,
+            "host_process_peak_mib": 6685.77734375,
+            "cuda_allocated_mib": 89.6318359375,
+            "cuda_reserved_mib": 2418.0,
+            "cuda_peak_allocated_mib": 619.22998046875
+          }
+        },
+        {
+          "update": 4,
+          "backend": "rom",
+          "online_seconds": 0.13417669999762438,
+          "events": [],
+          "memory": {
+            "host_resident_mib": 6736.62109375,
+            "host_process_peak_mib": 6736.62109375,
+            "cuda_allocated_mib": 89.6318359375,
+            "cuda_reserved_mib": 2418.0,
+            "cuda_peak_allocated_mib": 619.22998046875
+          }
+        },
+        {
+          "update": 5,
+          "backend": "rom",
+          "online_seconds": 0.13721600000280887,
+          "events": [],
+          "memory": {
+            "host_resident_mib": 6789.16015625,
+            "host_process_peak_mib": 6789.16015625,
+            "cuda_allocated_mib": 89.6318359375,
+            "cuda_reserved_mib": 2418.0,
+            "cuda_peak_allocated_mib": 619.22998046875
+          }
+        }
+      ],
+      "online_total_seconds": 0.686949300012202,
+      "memory_after_online": {
+        "host_resident_mib": 6789.16015625,
+        "host_process_peak_mib": 6789.16015625,
+        "cuda_allocated_mib": 89.6318359375,
+        "cuda_reserved_mib": 2418.0,
+        "cuda_peak_allocated_mib": 619.22998046875
+      },
+      "audit_artifact_export_seconds": 0.32491019999724813,
+      "audit_seconds": 20.245049099990865,
+      "audits": [
+        {
+          "completed_updates": 0,
+          "used_for_update": true,
+          "backend": "rom",
+          "final_basis_is_preceding_update_basis": false,
+          "waveform": {
+            "relative": 0.0020939631536808596,
+            "absolute": 0.14469399772405012,
+            "reference_norm": 69.10054623917365,
+            "cosine": 0.999997807665367
+          },
+          "velocity_gradient": {
+            "relative": 0.006597089641347528,
+            "absolute": 3.346194405744469e-08,
+            "reference_norm": 5.0722281910072275e-06,
+            "cosine": 0.9999787104518524
+          },
+          "parameter_gradient": {
+            "relative": 0.0008107781274459003,
+            "absolute": 0.00035985147115358415,
+            "reference_norm": 0.4438347051704296,
+            "cosine": 0.9999996928221924
+          },
+          "fdtd_mse": 0.04228385537862778,
+          "rom_mse": 0.04228381971691878,
+          "passes_accuracy_gate": true,
+          "rmse_mps": 518.7527934736858,
+          "mae_mps": 348.3287387559318,
+          "ssim": 0.38109386261418826
+        },
+        {
+          "completed_updates": 1,
+          "used_for_update": true,
+          "backend": "rom",
+          "final_basis_is_preceding_update_basis": false,
+          "waveform": {
+            "relative": 0.022841419824674816,
+            "absolute": 1.5617007232151392,
+            "reference_norm": 68.37143816813378,
+            "cosine": 0.9997404074919054
+          },
+          "velocity_gradient": {
+            "relative": 0.11093283515781208,
+            "absolute": 5.385397328120832e-07,
+            "reference_norm": 4.85464679637874e-06,
+            "cosine": 0.9938703452725903
+          },
+          "parameter_gradient": {
+            "relative": 0.1462203241237527,
+            "absolute": 0.06032831477470215,
+            "reference_norm": 0.41258501604499004,
+            "cosine": 0.9993804688581891
+          },
+          "fdtd_mse": 0.041851624846458435,
+          "rom_mse": 0.04182067606396579,
+          "passes_accuracy_gate": false,
+          "rmse_mps": 518.8335472088439,
+          "mae_mps": 350.24896496351164,
+          "ssim": 0.38098008345737483
+        },
+        {
+          "completed_updates": 2,
+          "used_for_update": true,
+          "backend": "rom",
+          "final_basis_is_preceding_update_basis": false,
+          "waveform": {
+            "relative": 0.06335582820891184,
+            "absolute": 4.271962081347888,
+            "reference_norm": 67.42808360521092,
+            "cosine": 0.99801316696498
+          },
+          "velocity_gradient": {
+            "relative": 0.23676890960157035,
+            "absolute": 1.1645102255628955e-06,
+            "reference_norm": 4.918340957529045e-06,
+            "cosine": 0.9716774874822354
+          },
+          "parameter_gradient": {
+            "relative": 0.28546211177948744,
+            "absolute": 0.12463310889714113,
+            "reference_norm": 0.43660122921467487,
+            "cosine": 0.9981024928656478
+          },
+          "fdtd_mse": 0.041192684322595596,
+          "rom_mse": 0.04102666829582728,
+          "passes_accuracy_gate": false,
+          "rmse_mps": 519.1153891403026,
+          "mae_mps": 353.0201048524103,
+          "ssim": 0.3808035629313586
+        },
+        {
+          "completed_updates": 3,
+          "used_for_update": true,
+          "backend": "rom",
+          "final_basis_is_preceding_update_basis": false,
+          "waveform": {
+            "relative": 0.11733857113885292,
+            "absolute": 7.801153441483972,
+            "reference_norm": 66.48413531687254,
+            "cosine": 0.9932423460305669
+          },
+          "velocity_gradient": {
+            "relative": 0.32211359254069993,
+            "absolute": 1.7430167288748878e-06,
+            "reference_norm": 5.411186516926177e-06,
+            "cosine": 0.9468260012534575
+          },
+          "parameter_gradient": {
+            "relative": 0.3094013915922887,
+            "absolute": 0.12091608229919916,
+            "reference_norm": 0.3908065237745776,
+            "cosine": 0.996343243358781
+          },
+          "fdtd_mse": 0.04047606512904167,
+          "rom_mse": 0.04010403610104491,
+          "passes_accuracy_gate": false,
+          "rmse_mps": 519.664513064506,
+          "mae_mps": 356.5442700893321,
+          "ssim": 0.3805866458466303
+        },
+        {
+          "completed_updates": 4,
+          "used_for_update": true,
+          "backend": "rom",
+          "final_basis_is_preceding_update_basis": false,
+          "waveform": {
+            "relative": 0.1787063539171083,
+            "absolute": 11.771230082246605,
+            "reference_norm": 65.86911894417928,
+            "cosine": 0.9845039036204362
+          },
+          "velocity_gradient": {
+            "relative": 0.3647614798435344,
+            "absolute": 2.214659414604166e-06,
+            "reference_norm": 6.071527661183278e-06,
+            "cosine": 0.9311054345244578
+          },
+          "parameter_gradient": {
+            "relative": 0.13646783515536437,
+            "absolute": 0.04090934490742348,
+            "reference_norm": 0.2997727989225407,
+            "cosine": 0.9938133818939061
+          },
+          "fdtd_mse": 0.03983171656727791,
+          "rom_mse": 0.03932352448562545,
+          "passes_accuracy_gate": false,
+          "rmse_mps": 520.4953413920576,
+          "mae_mps": 360.53382301781477,
+          "ssim": 0.3803580039231849
+        },
+        {
+          "completed_updates": 5,
+          "used_for_update": false,
+          "backend": "rom",
+          "final_basis_is_preceding_update_basis": true,
+          "waveform": {
+            "relative": 0.24266067713694828,
+            "absolute": 15.99379067839262,
+            "reference_norm": 65.91010487194158,
+            "cosine": 0.9718159690177796
+          },
+          "velocity_gradient": {
+            "relative": 0.3977284488349651,
+            "absolute": 2.6210578647529045e-06,
+            "reference_norm": 6.590068858364456e-06,
+            "cosine": 0.9180607543339339
+          },
+          "parameter_gradient": {
+            "relative": 0.4641994933864218,
+            "absolute": 0.10667473239299607,
+            "reference_norm": 0.22980363811856844,
+            "cosine": 0.9074607195396966
+          },
+          "fdtd_mse": 0.03926687315106392,
+          "rom_mse": 0.038773921309444855,
+          "passes_accuracy_gate": false,
+          "rmse_mps": 521.4911119517267,
+          "mae_mps": 364.33298855864973,
+          "ssim": 0.38013494745718146
+        }
+      ],
+      "all_used_gradients_pass": false,
+      "online_speedup": 23.493326799693055,
+      "including_initial_preparation_seconds": 14.80005910001637,
+      "including_preparation_audit_export_seconds": 35.37001840000448,
+      "same_accuracy_online_acceleration": false
+    },
+    {
+      "method": "fresh",
+      "completed_updates": 5,
+      "status": "completed",
+      "steps": [
+        {
+          "update": 1,
+          "backend": "rom",
+          "online_seconds": 0.1332812000036938,
+          "events": [],
+          "memory": {
+            "host_resident_mib": 6851.703125,
+            "host_process_peak_mib": 6851.703125,
+            "cuda_allocated_mib": 89.6318359375,
+            "cuda_reserved_mib": 2418.0,
+            "cuda_peak_allocated_mib": 618.84716796875
+          }
+        },
+        {
+          "update": 2,
+          "backend": "rom",
+          "online_seconds": 14.802764499996556,
+          "events": [
+            {
+              "event": "full_refactorization",
+              "cache": {
+                "training_frequencies": 64,
+                "factorization_seconds": 11.282352599941078,
+                "snapshot_solve_seconds": 0.4540510000224458,
+                "total_seconds": 11.782245599999442,
+                "full_pressure_dimension": 34662,
+                "selected_bins": [
+                  0,
+                  4,
+                  8,
+                  12,
+                  16,
+                  20,
+                  24,
+                  28,
+                  32,
+                  36,
+                  40,
+                  43,
+                  47,
+                  51,
+                  55,
+                  59,
+                  63,
+                  67,
+                  71,
+                  75,
+                  79,
+                  83,
+                  87,
+                  91,
+                  95,
+                  99,
+                  103,
+                  107,
+                  111,
+                  115,
+                  119,
+                  123,
+                  126,
+                  130,
+                  134,
+                  138,
+                  142,
+                  146,
+                  150,
+                  154,
+                  158,
+                  162,
+                  166,
+                  170,
+                  174,
+                  178,
+                  182,
+                  186,
+                  190,
+                  194,
+                  198,
+                  202,
+                  206,
+                  209,
+                  213,
+                  217,
+                  221,
+                  225,
+                  229,
+                  233,
+                  237,
+                  241,
+                  245,
+                  249
+                ],
+                "lu_reported_nnz": 204445205,
+                "lu_storage_estimate_bytes": 4124399012,
+                "lu_storage_estimate_limit": "Complex128 values plus estimated int32 sparse indices/permutations; excludes native SuperLU workspaces; process RSS/peak also reported",
+                "snapshot_storage_bytes": 141975552,
+                "fft_adjoint_weighting": "Exact real-irfft bin multiplicity, 1/Nfft, and waveform-MSE 2/Ndata",
+                "adjoint_completion_seconds": 0.4685959000053117
+              },
+              "seconds": 14.653944100005901,
+              "events": [],
+              "adjoint_source_discrepancy_before": 0.003914754977538438,
+              "adjoint_source_discrepancy_after": 0.003914754977538438,
+              "probe": {
+                "selected_bins": [
+                  1,
+                  35,
+                  72,
+                  106,
+                  143,
+                  177,
+                  214,
+                  248
+                ],
+                "primal": 6.742309501080284e-05,
+                "adjoint": 0.015167259169916951,
+                "interpretation": "Held-out final-space residual indicators, not certified gradient bounds"
+              },
+              "heldout_probe_growth": 0.9873368093246296
+            }
+          ],
+          "memory": {
+            "host_resident_mib": 10726.12109375,
+            "host_process_peak_mib": 10817.3515625,
+            "cuda_allocated_mib": 150.5205078125,
+            "cuda_reserved_mib": 2418.0,
+            "cuda_peak_allocated_mib": 680.11865234375
+          }
+        },
+        {
+          "update": 3,
+          "backend": "rom",
+          "online_seconds": 15.247105400005239,
+          "events": [
+            {
+              "event": "full_refactorization",
+              "cache": {
+                "training_frequencies": 64,
+                "factorization_seconds": 11.511658200019156,
+                "snapshot_solve_seconds": 0.45315689998096786,
+                "total_seconds": 12.013101000004099,
+                "full_pressure_dimension": 34662,
+                "selected_bins": [
+                  0,
+                  4,
+                  8,
+                  12,
+                  16,
+                  20,
+                  24,
+                  28,
+                  32,
+                  36,
+                  40,
+                  43,
+                  47,
+                  51,
+                  55,
+                  59,
+                  63,
+                  67,
+                  71,
+                  75,
+                  79,
+                  83,
+                  87,
+                  91,
+                  95,
+                  99,
+                  103,
+                  107,
+                  111,
+                  115,
+                  119,
+                  123,
+                  126,
+                  130,
+                  134,
+                  138,
+                  142,
+                  146,
+                  150,
+                  154,
+                  158,
+                  162,
+                  166,
+                  170,
+                  174,
+                  178,
+                  182,
+                  186,
+                  190,
+                  194,
+                  198,
+                  202,
+                  206,
+                  209,
+                  213,
+                  217,
+                  221,
+                  225,
+                  229,
+                  233,
+                  237,
+                  241,
+                  245,
+                  249
+                ],
+                "lu_reported_nnz": 204417467,
+                "lu_storage_estimate_bytes": 4123844252,
+                "lu_storage_estimate_limit": "Complex128 values plus estimated int32 sparse indices/permutations; excludes native SuperLU workspaces; process RSS/peak also reported",
+                "snapshot_storage_bytes": 141975552,
+                "fft_adjoint_weighting": "Exact real-irfft bin multiplicity, 1/Nfft, and waveform-MSE 2/Ndata",
+                "adjoint_completion_seconds": 0.4667473000008613
+              },
+              "seconds": 15.099985700013349,
+              "events": [],
+              "adjoint_source_discrepancy_before": 0.0036174990639343597,
+              "adjoint_source_discrepancy_after": 0.0036174990639343597,
+              "probe": {
+                "selected_bins": [
+                  1,
+                  35,
+                  72,
+                  106,
+                  143,
+                  177,
+                  214,
+                  248
+                ],
+                "primal": 6.571417438358345e-05,
+                "adjoint": 0.014675921443370725,
+                "interpretation": "Held-out final-space residual indicators, not certified gradient bounds"
+              },
+              "heldout_probe_growth": 0.9623115529314384
+            }
+          ],
+          "memory": {
+            "host_resident_mib": 10798.98828125,
+            "host_process_peak_mib": 14685.17578125,
+            "cuda_allocated_mib": 150.5205078125,
+            "cuda_reserved_mib": 2418.0,
+            "cuda_peak_allocated_mib": 680.11865234375
+          }
+        },
+        {
+          "update": 4,
+          "backend": "rom",
+          "online_seconds": 14.229189100005897,
+          "events": [
+            {
+              "event": "full_refactorization",
+              "cache": {
+                "training_frequencies": 64,
+                "factorization_seconds": 10.930951299989829,
+                "snapshot_solve_seconds": 0.46272280007542577,
+                "total_seconds": 11.4398199999996,
+                "full_pressure_dimension": 34662,
+                "selected_bins": [
+                  0,
+                  4,
+                  8,
+                  12,
+                  16,
+                  20,
+                  24,
+                  28,
+                  32,
+                  36,
+                  40,
+                  43,
+                  47,
+                  51,
+                  55,
+                  59,
+                  63,
+                  67,
+                  71,
+                  75,
+                  79,
+                  83,
+                  87,
+                  91,
+                  95,
+                  99,
+                  103,
+                  107,
+                  111,
+                  115,
+                  119,
+                  123,
+                  126,
+                  130,
+                  134,
+                  138,
+                  142,
+                  146,
+                  150,
+                  154,
+                  158,
+                  162,
+                  166,
+                  170,
+                  174,
+                  178,
+                  182,
+                  186,
+                  190,
+                  194,
+                  198,
+                  202,
+                  206,
+                  209,
+                  213,
+                  217,
+                  221,
+                  225,
+                  229,
+                  233,
+                  237,
+                  241,
+                  245,
+                  249
+                ],
+                "lu_reported_nnz": 204384692,
+                "lu_storage_estimate_bytes": 4123188752,
+                "lu_storage_estimate_limit": "Complex128 values plus estimated int32 sparse indices/permutations; excludes native SuperLU workspaces; process RSS/peak also reported",
+                "snapshot_storage_bytes": 141975552,
+                "fft_adjoint_weighting": "Exact real-irfft bin multiplicity, 1/Nfft, and waveform-MSE 2/Ndata",
+                "adjoint_completion_seconds": 0.4458479000022635
+              },
+              "seconds": 14.08563800000411,
+              "events": [],
+              "adjoint_source_discrepancy_before": 0.0035181834472742483,
+              "adjoint_source_discrepancy_after": 0.0035181834472742483,
+              "probe": {
+                "selected_bins": [
+                  1,
+                  35,
+                  72,
+                  106,
+                  143,
+                  177,
+                  214,
+                  248
+                ],
+                "primal": 6.42791499043429e-05,
+                "adjoint": 0.014275425680683268,
+                "interpretation": "Held-out final-space residual indicators, not certified gradient bounds"
+              },
+              "heldout_probe_growth": 0.9412972033171246
+            }
+          ],
+          "memory": {
+            "host_resident_mib": 10847.1328125,
+            "host_process_peak_mib": 14772.6640625,
+            "cuda_allocated_mib": 150.5205078125,
+            "cuda_reserved_mib": 2418.0,
+            "cuda_peak_allocated_mib": 680.11865234375
+          }
+        },
+        {
+          "update": 5,
+          "backend": "rom",
+          "online_seconds": 13.996761999995215,
+          "events": [
+            {
+              "event": "full_refactorization",
+              "cache": {
+                "training_frequencies": 64,
+                "factorization_seconds": 10.829470599986962,
+                "snapshot_solve_seconds": 0.45896879995416384,
+                "total_seconds": 11.33342619999894,
+                "full_pressure_dimension": 34662,
+                "selected_bins": [
+                  0,
+                  4,
+                  8,
+                  12,
+                  16,
+                  20,
+                  24,
+                  28,
+                  32,
+                  36,
+                  40,
+                  43,
+                  47,
+                  51,
+                  55,
+                  59,
+                  63,
+                  67,
+                  71,
+                  75,
+                  79,
+                  83,
+                  87,
+                  91,
+                  95,
+                  99,
+                  103,
+                  107,
+                  111,
+                  115,
+                  119,
+                  123,
+                  126,
+                  130,
+                  134,
+                  138,
+                  142,
+                  146,
+                  150,
+                  154,
+                  158,
+                  162,
+                  166,
+                  170,
+                  174,
+                  178,
+                  182,
+                  186,
+                  190,
+                  194,
+                  198,
+                  202,
+                  206,
+                  209,
+                  213,
+                  217,
+                  221,
+                  225,
+                  229,
+                  233,
+                  237,
+                  241,
+                  245,
+                  249
+                ],
+                "lu_reported_nnz": 204361966,
+                "lu_storage_estimate_bytes": 4122734232,
+                "lu_storage_estimate_limit": "Complex128 values plus estimated int32 sparse indices/permutations; excludes native SuperLU workspaces; process RSS/peak also reported",
+                "snapshot_storage_bytes": 141975552,
+                "fft_adjoint_weighting": "Exact real-irfft bin multiplicity, 1/Nfft, and waveform-MSE 2/Ndata",
+                "adjoint_completion_seconds": 0.44994089999818243
+              },
+              "seconds": 13.854274400000577,
+              "events": [],
+              "adjoint_source_discrepancy_before": 0.0035053852424115246,
+              "adjoint_source_discrepancy_after": 0.0035053852424115246,
+              "probe": {
+                "selected_bins": [
+                  1,
+                  35,
+                  72,
+                  106,
+                  143,
+                  177,
+                  214,
+                  248
+                ],
+                "primal": 6.382254247066008e-05,
+                "adjoint": 0.014083833280968832,
+                "interpretation": "Held-out final-space residual indicators, not certified gradient bounds"
+              },
+              "heldout_probe_growth": 0.9346106914236249
+            }
+          ],
+          "memory": {
+            "host_resident_mib": 10912.09765625,
+            "host_process_peak_mib": 14821.3046875,
+            "cuda_allocated_mib": 150.5205078125,
+            "cuda_reserved_mib": 2418.0,
+            "cuda_peak_allocated_mib": 680.11865234375
+          }
+        }
+      ],
+      "online_total_seconds": 58.43691499999841,
+      "memory_after_online": {
+        "host_resident_mib": 10912.125,
+        "host_process_peak_mib": 14821.3046875,
+        "cuda_allocated_mib": 150.5205078125,
+        "cuda_reserved_mib": 2418.0,
+        "cuda_peak_allocated_mib": 680.11865234375
+      },
+      "audit_artifact_export_seconds": 0.32586860000446904,
+      "audit_seconds": 20.049781699999585,
+      "audits": [
+        {
+          "completed_updates": 0,
+          "used_for_update": true,
+          "backend": "rom",
+          "final_basis_is_preceding_update_basis": false,
+          "waveform": {
+            "relative": 0.0020939631536808596,
+            "absolute": 0.14469399772405012,
+            "reference_norm": 69.10054623917365,
+            "cosine": 0.999997807665367
+          },
+          "velocity_gradient": {
+            "relative": 0.006597089641347528,
+            "absolute": 3.346194405744469e-08,
+            "reference_norm": 5.0722281910072275e-06,
+            "cosine": 0.9999787104518524
+          },
+          "parameter_gradient": {
+            "relative": 0.0008107781274459003,
+            "absolute": 0.00035985147115358415,
+            "reference_norm": 0.4438347051704296,
+            "cosine": 0.9999996928221924
+          },
+          "fdtd_mse": 0.04228385537862778,
+          "rom_mse": 0.04228381971691878,
+          "passes_accuracy_gate": true,
+          "rmse_mps": 518.7527934736858,
+          "mae_mps": 348.3287387559318,
+          "ssim": 0.38109386261418826
+        },
+        {
+          "completed_updates": 1,
+          "used_for_update": true,
+          "backend": "rom",
+          "final_basis_is_preceding_update_basis": false,
+          "waveform": {
+            "relative": 0.0020699731330416646,
+            "absolute": 0.14152704007545633,
+            "reference_norm": 68.37143816813378,
+            "cosine": 0.9999978576098848
+          },
+          "velocity_gradient": {
+            "relative": 0.005826304356987267,
+            "absolute": 2.828464978137573e-08,
+            "reference_norm": 4.85464679637874e-06,
+            "cosine": 0.9999834905542021
+          },
+          "parameter_gradient": {
+            "relative": 0.0008425566210712538,
+            "absolute": 0.00034762623702349585,
+            "reference_norm": 0.41258501604499004,
+            "cosine": 0.9999996626333905
+          },
+          "fdtd_mse": 0.041851624846458435,
+          "rom_mse": 0.04185158658073666,
+          "passes_accuracy_gate": true,
+          "rmse_mps": 518.8335472088439,
+          "mae_mps": 350.24896496351164,
+          "ssim": 0.38098008345737483
+        },
+        {
+          "completed_updates": 2,
+          "used_for_update": true,
+          "backend": "rom",
+          "final_basis_is_preceding_update_basis": false,
+          "waveform": {
+            "relative": 0.0019946091627055873,
+            "absolute": 0.13456497816603574,
+            "reference_norm": 67.46433370611068,
+            "cosine": 0.9999980107720051
+          },
+          "velocity_gradient": {
+            "relative": 0.004787180838350671,
+            "absolute": 2.353336334193217e-08,
+            "reference_norm": 4.915912754622431e-06,
+            "cosine": 0.9999888968189933
+          },
+          "parameter_gradient": {
+            "relative": 0.0006763327218189991,
+            "absolute": 0.0002968395557065532,
+            "reference_norm": 0.4388957478032443,
+            "cosine": 0.9999998058621989
+          },
+          "fdtd_mse": 0.0411900132894516,
+          "rom_mse": 0.041189985589015404,
+          "passes_accuracy_gate": true,
+          "rmse_mps": 519.1154322761935,
+          "mae_mps": 352.9982643893988,
+          "ssim": 0.38079999706323336
+        },
+        {
+          "completed_updates": 3,
+          "used_for_update": true,
+          "backend": "rom",
+          "final_basis_is_preceding_update_basis": false,
+          "waveform": {
+            "relative": 0.001966265149585033,
+            "absolute": 0.13101299958291415,
+            "reference_norm": 66.63038278970848,
+            "cosine": 0.9999980669077799
+          },
+          "velocity_gradient": {
+            "relative": 0.00396921677338026,
+            "absolute": 2.1402498636940876e-08,
+            "reference_norm": 5.392121382857632e-06,
+            "cosine": 0.9999923048310237
+          },
+          "parameter_gradient": {
+            "relative": 0.0007105104978881886,
+            "absolute": 0.0002852203723263833,
+            "reference_norm": 0.4014302014877024,
+            "cosine": 0.99999981029023
+          },
+          "fdtd_mse": 0.04045261815190315,
+          "rom_mse": 0.040452598736563115,
+          "passes_accuracy_gate": true,
+          "rmse_mps": 519.6661360730907,
+          "mae_mps": 356.47599239665004,
+          "ssim": 0.3805733915656219
+        },
+        {
+          "completed_updates": 4,
+          "used_for_update": true,
+          "backend": "rom",
+          "final_basis_is_preceding_update_basis": false,
+          "waveform": {
+            "relative": 0.0019959980684870673,
+            "absolute": 0.13210970102695074,
+            "reference_norm": 66.18728901230233,
+            "cosine": 0.9999980080048152
+          },
+          "velocity_gradient": {
+            "relative": 0.003823488262320617,
+            "absolute": 2.3069375352504037e-08,
+            "reference_norm": 6.033593872863723e-06,
+            "cosine": 0.9999928436683209
+          },
+          "parameter_gradient": {
+            "relative": 0.0008831593673453806,
+            "absolute": 0.00028847709068392774,
+            "reference_norm": 0.32664216827710085,
+            "cosine": 0.9999996676945924
+          },
+          "fdtd_mse": 0.039758700877428055,
+          "rom_mse": 0.03975867060191412,
+          "passes_accuracy_gate": true,
+          "rmse_mps": 520.4862154012551,
+          "mae_mps": 360.31136630443814,
+          "ssim": 0.3803348088684844
+        },
+        {
+          "completed_updates": 5,
+          "used_for_update": false,
+          "backend": "rom",
+          "final_basis_is_preceding_update_basis": true,
+          "waveform": {
+            "relative": 0.0634360648306465,
+            "absolute": 4.206938663525286,
+            "reference_norm": 66.31777482976653,
+            "cosine": 0.9980226914689658
+          },
+          "velocity_gradient": {
+            "relative": 0.11489396803030626,
+            "absolute": 7.573661579239441e-07,
+            "reference_norm": 6.591870495100049e-06,
+            "cosine": 0.9938774095082
+          },
+          "parameter_gradient": {
+            "relative": 0.5749357454044594,
+            "absolute": 0.15452128505065507,
+            "reference_norm": 0.26876270311206946,
+            "cosine": 0.9717015678666852
+          },
+          "fdtd_mse": 0.03911128640174866,
+          "rom_mse": 0.03900424203029016,
+          "passes_accuracy_gate": false,
+          "rmse_mps": 521.4743554970312,
+          "mae_mps": 363.9739192169045,
+          "ssim": 0.3800989560627047
+        }
+      ],
+      "all_used_gradients_pass": true,
+      "online_speedup": 0.27617344960813706,
+      "including_initial_preparation_seconds": 72.55002480000257,
+      "including_preparation_audit_export_seconds": 92.92567510000663,
+      "same_accuracy_online_acceleration": false
+    },
+    {
+      "method": "correction1",
+      "completed_updates": 5,
+      "status": "completed",
+      "steps": [
+        {
+          "update": 1,
+          "backend": "rom",
+          "online_seconds": 0.13372050000180025,
+          "events": [],
+          "memory": {
+            "host_resident_mib": 7140.96875,
+            "host_process_peak_mib": 14821.3046875,
+            "cuda_allocated_mib": 89.6318359375,
+            "cuda_reserved_mib": 2418.0,
+            "cuda_peak_allocated_mib": 618.84716796875
+          }
+        },
+        {
+          "update": 2,
+          "backend": "rom",
+          "online_seconds": 3.1085318999976153,
+          "events": [
+            {
+              "events": [
+                {
+                  "event": "primal_transport",
+                  "correction_order": 1,
+                  "solve_count": 64,
+                  "aggregate_relative_residual": 0.00013390041936293292,
+                  "max_frequency_relative_residual": 0.003633694996059679,
+                  "seconds": 0.530807699993602
+                },
+                {
+                  "event": "adjoint_transport",
+                  "correction_order": 1,
+                  "solve_count": 64,
+                  "aggregate_relative_residual": 0.0013284006535136993,
+                  "max_frequency_relative_residual": 0.004009802218653228,
+                  "seconds": 0.5234393999999156
+                }
+              ],
+              "construction": {
+                "events": [],
+                "adjoint_source_discrepancy_before": 0.00909479197766625,
+                "adjoint_source_discrepancy_after": 0.00909479197766625,
+                "probe": {
+                  "selected_bins": [
+                    1,
+                    35,
+                    72,
+                    106,
+                    143,
+                    177,
+                    214,
+                    248
+                  ],
+                  "primal": 8.390323541426564e-05,
+                  "adjoint": 0.02070515789103371,
+                  "interpretation": "Held-out final-space residual indicators, not certified gradient bounds"
+                }
+              },
+              "seconds": 2.968760299991118,
+              "heldout_probe_growth": 1.346341042558573
+            }
+          ],
+          "memory": {
+            "host_resident_mib": 7252.90625,
+            "host_process_peak_mib": 14821.3046875,
+            "cuda_allocated_mib": 150.5205078125,
+            "cuda_reserved_mib": 2418.0,
+            "cuda_peak_allocated_mib": 680.11865234375
+          }
+        },
+        {
+          "update": 3,
+          "backend": "rom",
+          "online_seconds": 17.745954800004256,
+          "events": [
+            {
+              "events": [
+                {
+                  "event": "primal_transport",
+                  "correction_order": 1,
+                  "solve_count": 64,
+                  "aggregate_relative_residual": 0.0007331804536094712,
+                  "max_frequency_relative_residual": 0.02028800836978399,
+                  "seconds": 0.5376785999978893
+                },
+                {
+                  "event": "adjoint_transport",
+                  "correction_order": 1,
+                  "solve_count": 64,
+                  "aggregate_relative_residual": 0.007712712428049841,
+                  "max_frequency_relative_residual": 0.023355923361032704,
+                  "seconds": 0.525026399991475
+                }
+              ],
+              "construction": {
+                "events": [
+                  {
+                    "event": "adjoint_source_consistency_pass",
+                    "correction_order": 1,
+                    "solve_count": 64,
+                    "aggregate_relative_residual": 0.008257290509868611,
+                    "max_frequency_relative_residual": 0.02467284801111266,
+                    "seconds": 0.5234428999974625
+                  }
+                ],
+                "adjoint_source_discrepancy_before": 0.05038308775252845,
+                "adjoint_source_discrepancy_after": 0.01217261769562749,
+                "probe": {
+                  "selected_bins": [
+                    1,
+                    35,
+                    72,
+                    106,
+                    143,
+                    177,
+                    214,
+                    248
+                  ],
+                  "primal": 0.0003105672081617138,
+                  "adjoint": 0.03468413229524346,
+                  "interpretation": "Held-out final-space residual indicators, not certified gradient bounds"
+                }
+              },
+              "seconds": 4.001098200009437,
+              "heldout_probe_growth": 4.547913980189047
+            },
+            {
+              "reason": "heldout_final_space_probe_growth",
+              "growth": 4.547913980189047
+            },
+            {
+              "reason": "adjoint_source_consistency"
+            },
+            {
+              "event": "full_refactorization",
+              "cache": {
+                "training_frequencies": 64,
+                "factorization_seconds": 10.760438899989822,
+                "snapshot_solve_seconds": 0.44673550002335105,
+                "total_seconds": 11.250267200011876,
+                "full_pressure_dimension": 34662,
+                "selected_bins": [
+                  0,
+                  4,
+                  8,
+                  12,
+                  16,
+                  20,
+                  24,
+                  28,
+                  32,
+                  36,
+                  40,
+                  43,
+                  47,
+                  51,
+                  55,
+                  59,
+                  63,
+                  67,
+                  71,
+                  75,
+                  79,
+                  83,
+                  87,
+                  91,
+                  95,
+                  99,
+                  103,
+                  107,
+                  111,
+                  115,
+                  119,
+                  123,
+                  126,
+                  130,
+                  134,
+                  138,
+                  142,
+                  146,
+                  150,
+                  154,
+                  158,
+                  162,
+                  166,
+                  170,
+                  174,
+                  178,
+                  182,
+                  186,
+                  190,
+                  194,
+                  198,
+                  202,
+                  206,
+                  209,
+                  213,
+                  217,
+                  221,
+                  225,
+                  229,
+                  233,
+                  237,
+                  241,
+                  245,
+                  249
+                ],
+                "lu_reported_nnz": 204417871,
+                "lu_storage_estimate_bytes": 4123852332,
+                "lu_storage_estimate_limit": "Complex128 values plus estimated int32 sparse indices/permutations; excludes native SuperLU workspaces; process RSS/peak also reported",
+                "snapshot_storage_bytes": 141975552,
+                "fft_adjoint_weighting": "Exact real-irfft bin multiplicity, 1/Nfft, and waveform-MSE 2/Ndata",
+                "adjoint_completion_seconds": 0.4488063000026159
+              },
+              "seconds": 13.594404100003885,
+              "events": [],
+              "adjoint_source_discrepancy_before": 0.0036173525347532494,
+              "adjoint_source_discrepancy_after": 0.0036173525347532494,
+              "probe": {
+                "selected_bins": [
+                  1,
+                  35,
+                  72,
+                  106,
+                  143,
+                  177,
+                  214,
+                  248
+                ],
+                "primal": 6.571520322350845e-05,
+                "adjoint": 0.014676228924366161,
+                "interpretation": "Held-out final-space residual indicators, not certified gradient bounds"
+              },
+              "heldout_probe_growth": 0.9623266191565752
+            }
+          ],
+          "memory": {
+            "host_resident_mib": 11116.390625,
+            "host_process_peak_mib": 14821.3046875,
+            "cuda_allocated_mib": 150.5205078125,
+            "cuda_reserved_mib": 2418.0,
+            "cuda_peak_allocated_mib": 680.11865234375
+          }
+        },
+        {
+          "update": 4,
+          "backend": "rom",
+          "online_seconds": 18.533331600003294,
+          "events": [
+            {
+              "events": [
+                {
+                  "event": "primal_transport",
+                  "correction_order": 1,
+                  "solve_count": 64,
+                  "aggregate_relative_residual": 0.00030760200828119824,
+                  "max_frequency_relative_residual": 0.008834822218301707,
+                  "seconds": 0.5395875999965938
+                },
+                {
+                  "event": "adjoint_transport",
+                  "correction_order": 1,
+                  "solve_count": 64,
+                  "aggregate_relative_residual": 0.0038777090206018844,
+                  "max_frequency_relative_residual": 0.012448871940616685,
+                  "seconds": 0.523160500000813
+                }
+              ],
+              "construction": {
+                "events": [
+                  {
+                    "event": "adjoint_source_consistency_pass",
+                    "correction_order": 1,
+                    "solve_count": 64,
+                    "aggregate_relative_residual": 0.004099903533969588,
+                    "max_frequency_relative_residual": 0.01312546587890551,
+                    "seconds": 0.5226947000046493
+                  }
+                ],
+                "adjoint_source_discrepancy_before": 0.029614718426412254,
+                "adjoint_source_discrepancy_after": 0.004139640283593497,
+                "probe": {
+                  "selected_bins": [
+                    1,
+                    35,
+                    72,
+                    106,
+                    143,
+                    177,
+                    214,
+                    248
+                  ],
+                  "primal": 0.000183601633330256,
+                  "adjoint": 0.019544413205179852,
+                  "interpretation": "Held-out final-space residual indicators, not certified gradient bounds"
+                }
+              },
+              "seconds": 3.9942352999933064,
+              "heldout_probe_growth": 2.6886432729028615
+            },
+            {
+              "reason": "heldout_final_space_probe_growth",
+              "growth": 2.6886432729028615
+            },
+            {
+              "event": "full_refactorization",
+              "cache": {
+                "training_frequencies": 64,
+                "factorization_seconds": 10.920920800053864,
+                "snapshot_solve_seconds": 0.454872299960698,
+                "total_seconds": 11.421270599996205,
+                "full_pressure_dimension": 34662,
+                "selected_bins": [
+                  0,
+                  4,
+                  8,
+                  12,
+                  16,
+                  20,
+                  24,
+                  28,
+                  32,
+                  36,
+                  40,
+                  43,
+                  47,
+                  51,
+                  55,
+                  59,
+                  63,
+                  67,
+                  71,
+                  75,
+                  79,
+                  83,
+                  87,
+                  91,
+                  95,
+                  99,
+                  103,
+                  107,
+                  111,
+                  115,
+                  119,
+                  123,
+                  126,
+                  130,
+                  134,
+                  138,
+                  142,
+                  146,
+                  150,
+                  154,
+                  158,
+                  162,
+                  166,
+                  170,
+                  174,
+                  178,
+                  182,
+                  186,
+                  190,
+                  194,
+                  198,
+                  202,
+                  206,
+                  209,
+                  213,
+                  217,
+                  221,
+                  225,
+                  229,
+                  233,
+                  237,
+                  241,
+                  245,
+                  249
+                ],
+                "lu_reported_nnz": 204384862,
+                "lu_storage_estimate_bytes": 4123192152,
+                "lu_storage_estimate_limit": "Complex128 values plus estimated int32 sparse indices/permutations; excludes native SuperLU workspaces; process RSS/peak also reported",
+                "snapshot_storage_bytes": 141975552,
+                "fft_adjoint_weighting": "Exact real-irfft bin multiplicity, 1/Nfft, and waveform-MSE 2/Ndata",
+                "adjoint_completion_seconds": 0.46043059999647085
+              },
+              "seconds": 14.394825199997285,
+              "events": [],
+              "adjoint_source_discrepancy_before": 0.0035178019713230074,
+              "adjoint_source_discrepancy_after": 0.0035178019713230074,
+              "probe": {
+                "selected_bins": [
+                  1,
+                  35,
+                  72,
+                  106,
+                  143,
+                  177,
+                  214,
+                  248
+                ],
+                "primal": 6.42793521185262e-05,
+                "adjoint": 0.014275320500454053,
+                "interpretation": "Held-out final-space residual indicators, not certified gradient bounds"
+              },
+              "heldout_probe_growth": 0.9413001645206487
+            }
+          ],
+          "memory": {
+            "host_resident_mib": 11154.21484375,
+            "host_process_peak_mib": 15122.73828125,
+            "cuda_allocated_mib": 150.5205078125,
+            "cuda_reserved_mib": 2418.0,
+            "cuda_peak_allocated_mib": 680.11865234375
+          }
+        },
+        {
+          "update": 5,
+          "backend": "rom",
+          "online_seconds": 18.08929380000336,
+          "events": [
+            {
+              "events": [
+                {
+                  "event": "primal_transport",
+                  "correction_order": 1,
+                  "solve_count": 64,
+                  "aggregate_relative_residual": 0.00027618307277328544,
+                  "max_frequency_relative_residual": 0.00818474879885223,
+                  "seconds": 0.5409148999897297
+                },
+                {
+                  "event": "adjoint_transport",
+                  "correction_order": 1,
+                  "solve_count": 64,
+                  "aggregate_relative_residual": 0.004123687507645325,
+                  "max_frequency_relative_residual": 0.014216620785240486,
+                  "seconds": 0.5343114999996033
+                }
+              ],
+              "construction": {
+                "events": [
+                  {
+                    "event": "adjoint_source_consistency_pass",
+                    "correction_order": 1,
+                    "solve_count": 64,
+                    "aggregate_relative_residual": 0.004377670066637867,
+                    "max_frequency_relative_residual": 0.014830267248228338,
+                    "seconds": 0.5276130000129342
+                  }
+                ],
+                "adjoint_source_discrepancy_before": 0.03105163293486471,
+                "adjoint_source_discrepancy_after": 0.004839751756577802,
+                "probe": {
+                  "selected_bins": [
+                    1,
+                    35,
+                    72,
+                    106,
+                    143,
+                    177,
+                    214,
+                    248
+                  ],
+                  "primal": 0.00019030772466601198,
+                  "adjoint": 0.020789372411215944,
+                  "interpretation": "Held-out final-space residual indicators, not certified gradient bounds"
+                }
+              },
+              "seconds": 4.034822999994503,
+              "heldout_probe_growth": 2.786846578779342
+            },
+            {
+              "reason": "heldout_final_space_probe_growth",
+              "growth": 2.786846578779342
+            },
+            {
+              "event": "full_refactorization",
+              "cache": {
+                "training_frequencies": 64,
+                "factorization_seconds": 10.710462800067035,
+                "snapshot_solve_seconds": 0.4457457000389695,
+                "total_seconds": 11.199075399999856,
+                "full_pressure_dimension": 34662,
+                "selected_bins": [
+                  0,
+                  4,
+                  8,
+                  12,
+                  16,
+                  20,
+                  24,
+                  28,
+                  32,
+                  36,
+                  40,
+                  43,
+                  47,
+                  51,
+                  55,
+                  59,
+                  63,
+                  67,
+                  71,
+                  75,
+                  79,
+                  83,
+                  87,
+                  91,
+                  95,
+                  99,
+                  103,
+                  107,
+                  111,
+                  115,
+                  119,
+                  123,
+                  126,
+                  130,
+                  134,
+                  138,
+                  142,
+                  146,
+                  150,
+                  154,
+                  158,
+                  162,
+                  166,
+                  170,
+                  174,
+                  178,
+                  182,
+                  186,
+                  190,
+                  194,
+                  198,
+                  202,
+                  206,
+                  209,
+                  213,
+                  217,
+                  221,
+                  225,
+                  229,
+                  233,
+                  237,
+                  241,
+                  245,
+                  249
+                ],
+                "lu_reported_nnz": 204361225,
+                "lu_storage_estimate_bytes": 4122719412,
+                "lu_storage_estimate_limit": "Complex128 values plus estimated int32 sparse indices/permutations; excludes native SuperLU workspaces; process RSS/peak also reported",
+                "snapshot_storage_bytes": 141975552,
+                "fft_adjoint_weighting": "Exact real-irfft bin multiplicity, 1/Nfft, and waveform-MSE 2/Ndata",
+                "adjoint_completion_seconds": 0.47486870001011994
+              },
+              "seconds": 13.898676500000875,
+              "events": [],
+              "adjoint_source_discrepancy_before": 0.0035051698969196144,
+              "adjoint_source_discrepancy_after": 0.0035051698969196144,
+              "probe": {
+                "selected_bins": [
+                  1,
+                  35,
+                  72,
+                  106,
+                  143,
+                  177,
+                  214,
+                  248
+                ],
+                "primal": 6.382047650926913e-05,
+                "adjoint": 0.014083656991075366,
+                "interpretation": "Held-out final-space residual indicators, not certified gradient bounds"
+              },
+              "heldout_probe_growth": 0.9345804376993246
+            }
+          ],
+          "memory": {
+            "host_resident_mib": 11206.44140625,
+            "host_process_peak_mib": 15127.5390625,
+            "cuda_allocated_mib": 150.5205078125,
+            "cuda_reserved_mib": 2418.0,
+            "cuda_peak_allocated_mib": 680.11865234375
+          }
+        }
+      ],
+      "online_total_seconds": 57.637853199994424,
+      "memory_after_online": {
+        "host_resident_mib": 11206.484375,
+        "host_process_peak_mib": 15127.5390625,
+        "cuda_allocated_mib": 150.5205078125,
+        "cuda_reserved_mib": 2418.0,
+        "cuda_peak_allocated_mib": 680.11865234375
+      },
+      "audit_artifact_export_seconds": 0.3264601999981096,
+      "audit_seconds": 20.125903899999685,
+      "audits": [
+        {
+          "completed_updates": 0,
+          "used_for_update": true,
+          "backend": "rom",
+          "final_basis_is_preceding_update_basis": false,
+          "waveform": {
+            "relative": 0.0020939631536808596,
+            "absolute": 0.14469399772405012,
+            "reference_norm": 69.10054623917365,
+            "cosine": 0.999997807665367
+          },
+          "velocity_gradient": {
+            "relative": 0.006597089641347528,
+            "absolute": 3.346194405744469e-08,
+            "reference_norm": 5.0722281910072275e-06,
+            "cosine": 0.9999787104518524
+          },
+          "parameter_gradient": {
+            "relative": 0.0008107781274459003,
+            "absolute": 0.00035985147115358415,
+            "reference_norm": 0.4438347051704296,
+            "cosine": 0.9999996928221924
+          },
+          "fdtd_mse": 0.04228385537862778,
+          "rom_mse": 0.04228381971691878,
+          "passes_accuracy_gate": true,
+          "rmse_mps": 518.7527934736858,
+          "mae_mps": 348.3287387559318,
+          "ssim": 0.38109386261418826
+        },
+        {
+          "completed_updates": 1,
+          "used_for_update": true,
+          "backend": "rom",
+          "final_basis_is_preceding_update_basis": false,
+          "waveform": {
+            "relative": 0.0050753970794583615,
+            "absolute": 0.34701219759691415,
+            "reference_norm": 68.37143816813378,
+            "cosine": 0.9999875743215363
+          },
+          "velocity_gradient": {
+            "relative": 0.026507205465575653,
+            "absolute": 1.2868312009440987e-07,
+            "reference_norm": 4.85464679637874e-06,
+            "cosine": 0.9996502424235552
+          },
+          "parameter_gradient": {
+            "relative": 0.00929415955219759,
+            "absolute": 0.00383463096796814,
+            "reference_norm": 0.41258501604499004,
+            "cosine": 0.9999882042521777
+          },
+          "fdtd_mse": 0.041851624846458435,
+          "rom_mse": 0.04185274583605671,
+          "passes_accuracy_gate": true,
+          "rmse_mps": 518.8335472088439,
+          "mae_mps": 350.24896496351164,
+          "ssim": 0.38098008345737483
+        },
+        {
+          "completed_updates": 2,
+          "used_for_update": true,
+          "backend": "rom",
+          "final_basis_is_preceding_update_basis": false,
+          "waveform": {
+            "relative": 0.0019945579626224506,
+            "absolute": 0.1345719979900341,
+            "reference_norm": 67.46958499671699,
+            "cosine": 0.9999980108741657
+          },
+          "velocity_gradient": {
+            "relative": 0.0047894696187426354,
+            "absolute": 2.3539396983131207e-08,
+            "reference_norm": 4.914823322193018e-06,
+            "cosine": 0.9999888858289396
+          },
+          "parameter_gradient": {
+            "relative": 0.000676218122859116,
+            "absolute": 0.00029689915406383124,
+            "reference_norm": 0.43905826245607366,
+            "cosine": 0.9999998055107298
+          },
+          "fdtd_mse": 0.04119047150015831,
+          "rom_mse": 0.04119045244723494,
+          "passes_accuracy_gate": true,
+          "rmse_mps": 519.1153743214365,
+          "mae_mps": 352.9964286136853,
+          "ssim": 0.3808000113277391
+        },
+        {
+          "completed_updates": 3,
+          "used_for_update": true,
+          "backend": "rom",
+          "final_basis_is_preceding_update_basis": false,
+          "waveform": {
+            "relative": 0.001966011485848313,
+            "absolute": 0.13101453096552096,
+            "reference_norm": 66.63975867312371,
+            "cosine": 0.9999980674054125
+          },
+          "velocity_gradient": {
+            "relative": 0.003973207232319231,
+            "absolute": 2.1410967332825634e-08,
+            "reference_norm": 5.388837299666263e-06,
+            "cosine": 0.9999922892745161
+          },
+          "parameter_gradient": {
+            "relative": 0.0007073580779697518,
+            "absolute": 0.00028413877360125323,
+            "reference_norm": 0.4016901516368965,
+            "cosine": 0.9999998102430199
+          },
+          "fdtd_mse": 0.04045336693525314,
+          "rom_mse": 0.04045334732138948,
+          "passes_accuracy_gate": true,
+          "rmse_mps": 519.6653393486935,
+          "mae_mps": 356.47192248892276,
+          "ssim": 0.3805734414594839
+        },
+        {
+          "completed_updates": 4,
+          "used_for_update": true,
+          "backend": "rom",
+          "final_basis_is_preceding_update_basis": false,
+          "waveform": {
+            "relative": 0.0019954952490965155,
+            "absolute": 0.13209911066921962,
+            "reference_norm": 66.19865957036434,
+            "cosine": 0.9999980090075526
+          },
+          "velocity_gradient": {
+            "relative": 0.0038258007334196695,
+            "absolute": 2.3065283441463976e-08,
+            "reference_norm": 6.028877364150434e-06,
+            "cosine": 0.9999928356009727
+          },
+          "parameter_gradient": {
+            "relative": 0.0008796211563049979,
+            "absolute": 0.0002874672553500257,
+            "reference_norm": 0.32680802785324314,
+            "cosine": 0.9999996686838182
+          },
+          "fdtd_mse": 0.03975936770439148,
+          "rom_mse": 0.039759350133114504,
+          "passes_accuracy_gate": true,
+          "rmse_mps": 520.484762005091,
+          "mae_mps": 360.30539118989986,
+          "ssim": 0.3803341469028104
+        },
+        {
+          "completed_updates": 5,
+          "used_for_update": false,
+          "backend": "rom",
+          "final_basis_is_preceding_update_basis": true,
+          "waveform": {
+            "relative": 0.06340921125033135,
+            "absolute": 4.205911243766464,
+            "reference_norm": 66.3296571717644,
+            "cosine": 0.9980242709332724
+          },
+          "velocity_gradient": {
+            "relative": 0.115029961133294,
+            "absolute": 7.57649669335517e-07,
+            "reference_norm": 6.586541991938695e-06,
+            "cosine": 0.99386004563874
+          },
+          "parameter_gradient": {
+            "relative": 0.5754377383748163,
+            "absolute": 0.1545862544291303,
+            "reference_norm": 0.26864114763435837,
+            "cosine": 0.9717629613864471
+          },
+          "fdtd_mse": 0.03911194950342178,
+          "rom_mse": 0.03900482766238216,
+          "passes_accuracy_gate": false,
+          "rmse_mps": 521.472926201624,
+          "mae_mps": 363.96827024545513,
+          "ssim": 0.380096869712024
+        }
+      ],
+      "all_used_gradients_pass": true,
+      "online_speedup": 0.2800021774580704,
+      "including_initial_preparation_seconds": 71.75096299999859,
+      "including_preparation_audit_export_seconds": 92.20332709999639,
+      "same_accuracy_online_acceleration": false
+    },
+    {
+      "method": "correction2",
+      "completed_updates": 5,
+      "status": "completed",
+      "steps": [
+        {
+          "update": 1,
+          "backend": "rom",
+          "online_seconds": 0.13423330000659917,
+          "events": [],
+          "memory": {
+            "host_resident_mib": 7462.78515625,
+            "host_process_peak_mib": 15127.5390625,
+            "cuda_allocated_mib": 89.6318359375,
+            "cuda_reserved_mib": 2418.0,
+            "cuda_peak_allocated_mib": 618.84716796875
+          }
+        },
+        {
+          "update": 2,
+          "backend": "rom",
+          "online_seconds": 4.021520399997826,
+          "events": [
+            {
+              "events": [
+                {
+                  "event": "primal_transport",
+                  "correction_order": 2,
+                  "solve_count": 128,
+                  "aggregate_relative_residual": 7.305881363751557e-06,
+                  "max_frequency_relative_residual": 0.0005694492651148344,
+                  "seconds": 0.9978694000019459
+                },
+                {
+                  "event": "adjoint_transport",
+                  "correction_order": 2,
+                  "solve_count": 128,
+                  "aggregate_relative_residual": 8.224324509591091e-05,
+                  "max_frequency_relative_residual": 0.00035563033655744756,
+                  "seconds": 0.9561585000046762
+                }
+              ],
+              "construction": {
+                "events": [],
+                "adjoint_source_discrepancy_before": 0.0041983698333031855,
+                "adjoint_source_discrepancy_after": 0.0041983698333031855,
+                "probe": {
+                  "selected_bins": [
+                    1,
+                    35,
+                    72,
+                    106,
+                    143,
+                    177,
+                    214,
+                    248
+                  ],
+                  "primal": 6.75036727765634e-05,
+                  "adjoint": 0.015314381301164977,
+                  "interpretation": "Held-out final-space residual indicators, not certified gradient bounds"
+                }
+              },
+              "seconds": 3.8780988000071375,
+              "heldout_probe_growth": 0.9958088798771576
+            }
+          ],
+          "memory": {
+            "host_resident_mib": 7571.40625,
+            "host_process_peak_mib": 15127.5390625,
+            "cuda_allocated_mib": 150.5205078125,
+            "cuda_reserved_mib": 2418.0,
+            "cuda_peak_allocated_mib": 680.11865234375
+          }
+        },
+        {
+          "update": 3,
+          "backend": "rom",
+          "online_seconds": 5.446631699989666,
+          "events": [
+            {
+              "events": [
+                {
+                  "event": "primal_transport",
+                  "correction_order": 2,
+                  "solve_count": 128,
+                  "aggregate_relative_residual": 0.00010031970353187193,
+                  "max_frequency_relative_residual": 0.007688597281628458,
+                  "seconds": 0.9967024000070523
+                },
+                {
+                  "event": "adjoint_transport",
+                  "correction_order": 2,
+                  "solve_count": 128,
+                  "aggregate_relative_residual": 0.0011912837099791894,
+                  "max_frequency_relative_residual": 0.004990785942168373,
+                  "seconds": 0.9450818000041181
+                }
+              ],
+              "construction": {
+                "events": [
+                  {
+                    "event": "adjoint_source_consistency_pass",
+                    "correction_order": 2,
+                    "solve_count": 128,
+                    "aggregate_relative_residual": 0.001187826856701235,
+                    "max_frequency_relative_residual": 0.00496267204196796,
+                    "seconds": 0.9469668000092497
+                  }
+                ],
+                "adjoint_source_discrepancy_before": 0.019197266069616494,
+                "adjoint_source_discrepancy_after": 0.0017576079677465366,
+                "probe": {
+                  "selected_bins": [
+                    1,
+                    35,
+                    72,
+                    106,
+                    143,
+                    177,
+                    214,
+                    248
+                  ],
+                  "primal": 0.00010020737449535913,
+                  "adjoint": 0.01434589889822004,
+                  "interpretation": "Held-out final-space residual indicators, not certified gradient bounds"
+                }
+              },
+              "seconds": 5.304763399995863,
+              "heldout_probe_growth": 1.4674263972781698
+            }
+          ],
+          "memory": {
+            "host_resident_mib": 7623.48828125,
+            "host_process_peak_mib": 15127.5390625,
+            "cuda_allocated_mib": 150.5205078125,
+            "cuda_reserved_mib": 2418.0,
+            "cuda_peak_allocated_mib": 680.11865234375
+          }
+        },
+        {
+          "update": 4,
+          "backend": "rom",
+          "online_seconds": 19.075465900008567,
+          "events": [
+            {
+              "events": [
+                {
+                  "event": "primal_transport",
+                  "correction_order": 2,
+                  "solve_count": 128,
+                  "aggregate_relative_residual": 0.0004732970921149902,
+                  "max_frequency_relative_residual": 0.035894819492383954,
+                  "seconds": 0.9898633999982849
+                },
+                {
+                  "event": "adjoint_transport",
+                  "correction_order": 2,
+                  "solve_count": 128,
+                  "aggregate_relative_residual": 0.005928424787646885,
+                  "max_frequency_relative_residual": 0.02499063400245476,
+                  "seconds": 0.9590502999926684
+                }
+              ],
+              "construction": {
+                "events": [
+                  {
+                    "event": "adjoint_source_consistency_pass",
+                    "correction_order": 2,
+                    "solve_count": 128,
+                    "aggregate_relative_residual": 0.006036093921885666,
+                    "max_frequency_relative_residual": 0.024583910032039788,
+                    "seconds": 0.954755099999602
+                  }
+                ],
+                "adjoint_source_discrepancy_before": 0.08211905407933323,
+                "adjoint_source_discrepancy_after": 0.031035308985826304,
+                "probe": {
+                  "selected_bins": [
+                    1,
+                    35,
+                    72,
+                    106,
+                    143,
+                    177,
+                    214,
+                    248
+                  ],
+                  "primal": 0.0003390586171284214,
+                  "adjoint": 0.047783047093681544,
+                  "interpretation": "Held-out final-space residual indicators, not certified gradient bounds"
+                }
+              },
+              "seconds": 5.32477910000307,
+              "heldout_probe_growth": 4.965139217592417
+            },
+            {
+              "reason": "heldout_final_space_probe_growth",
+              "growth": 4.965139217592417
+            },
+            {
+              "reason": "adjoint_source_consistency"
+            },
+            {
+              "event": "full_refactorization",
+              "cache": {
+                "training_frequencies": 64,
+                "factorization_seconds": 10.717467800088343,
+                "snapshot_solve_seconds": 0.45200209999165963,
+                "total_seconds": 11.21243929999764,
+                "full_pressure_dimension": 34662,
+                "selected_bins": [
+                  0,
+                  4,
+                  8,
+                  12,
+                  16,
+                  20,
+                  24,
+                  28,
+                  32,
+                  36,
+                  40,
+                  43,
+                  47,
+                  51,
+                  55,
+                  59,
+                  63,
+                  67,
+                  71,
+                  75,
+                  79,
+                  83,
+                  87,
+                  91,
+                  95,
+                  99,
+                  103,
+                  107,
+                  111,
+                  115,
+                  119,
+                  123,
+                  126,
+                  130,
+                  134,
+                  138,
+                  142,
+                  146,
+                  150,
+                  154,
+                  158,
+                  162,
+                  166,
+                  170,
+                  174,
+                  178,
+                  182,
+                  186,
+                  190,
+                  194,
+                  198,
+                  202,
+                  206,
+                  209,
+                  213,
+                  217,
+                  221,
+                  225,
+                  229,
+                  233,
+                  237,
+                  241,
+                  245,
+                  249
+                ],
+                "lu_reported_nnz": 204386432,
+                "lu_storage_estimate_bytes": 4123223552,
+                "lu_storage_estimate_limit": "Complex128 values plus estimated int32 sparse indices/permutations; excludes native SuperLU workspaces; process RSS/peak also reported",
+                "snapshot_storage_bytes": 141975552,
+                "fft_adjoint_weighting": "Exact real-irfft bin multiplicity, 1/Nfft, and waveform-MSE 2/Ndata",
+                "adjoint_completion_seconds": 0.4822600000043167
+              },
+              "seconds": 13.600050599998212,
+              "events": [],
+              "adjoint_source_discrepancy_before": 0.00352133915270903,
+              "adjoint_source_discrepancy_after": 0.00352133915270903,
+              "probe": {
+                "selected_bins": [
+                  1,
+                  35,
+                  72,
+                  106,
+                  143,
+                  177,
+                  214,
+                  248
+                ],
+                "primal": 6.429511128217706e-05,
+                "adjoint": 0.01427798988433192,
+                "interpretation": "Held-out final-space residual indicators, not certified gradient bounds"
+              },
+              "heldout_probe_growth": 0.9415309400784032
+            }
+          ],
+          "memory": {
+            "host_resident_mib": 11492.9375,
+            "host_process_peak_mib": 15127.5390625,
+            "cuda_allocated_mib": 150.5205078125,
+            "cuda_reserved_mib": 2418.0,
+            "cuda_peak_allocated_mib": 680.11865234375
+          }
+        },
+        {
+          "update": 5,
+          "backend": "rom",
+          "online_seconds": 4.031349800003227,
+          "events": [
+            {
+              "events": [
+                {
+                  "event": "primal_transport",
+                  "correction_order": 2,
+                  "solve_count": 128,
+                  "aggregate_relative_residual": 3.206583334356314e-05,
+                  "max_frequency_relative_residual": 0.0024288066618402063,
+                  "seconds": 0.9918523000087589
+                },
+                {
+                  "event": "adjoint_transport",
+                  "correction_order": 2,
+                  "solve_count": 128,
+                  "aggregate_relative_residual": 0.00046699794803998313,
+                  "max_frequency_relative_residual": 0.002299099980289373,
+                  "seconds": 0.9572791999962647
+                }
+              ],
+              "construction": {
+                "events": [],
+                "adjoint_source_discrepancy_before": 0.00848333290967551,
+                "adjoint_source_discrepancy_after": 0.00848333290967551,
+                "probe": {
+                  "selected_bins": [
+                    1,
+                    35,
+                    72,
+                    106,
+                    143,
+                    177,
+                    214,
+                    248
+                  ],
+                  "primal": 7.060766866339219e-05,
+                  "adjoint": 0.017920575526584874,
+                  "interpretation": "Held-out final-space residual indicators, not certified gradient bounds"
+                }
+              },
+              "seconds": 3.8883757000003243,
+              "heldout_probe_growth": 1.1652751678923503
+            }
+          ],
+          "memory": {
+            "host_resident_mib": 11535.13671875,
+            "host_process_peak_mib": 15127.5390625,
+            "cuda_allocated_mib": 150.5205078125,
+            "cuda_reserved_mib": 2418.0,
+            "cuda_peak_allocated_mib": 680.11865234375
+          }
+        }
+      ],
+      "online_total_seconds": 32.73575120000169,
+      "memory_after_online": {
+        "host_resident_mib": 11535.140625,
+        "host_process_peak_mib": 15127.5390625,
+        "cuda_allocated_mib": 150.5205078125,
+        "cuda_reserved_mib": 2418.0,
+        "cuda_peak_allocated_mib": 680.11865234375
+      },
+      "audit_artifact_export_seconds": 0.3319067999982508,
+      "audit_seconds": 19.978679299994837,
+      "audits": [
+        {
+          "completed_updates": 0,
+          "used_for_update": true,
+          "backend": "rom",
+          "final_basis_is_preceding_update_basis": false,
+          "waveform": {
+            "relative": 0.0020939631536808596,
+            "absolute": 0.14469399772405012,
+            "reference_norm": 69.10054623917365,
+            "cosine": 0.999997807665367
+          },
+          "velocity_gradient": {
+            "relative": 0.006597089641347528,
+            "absolute": 3.346194405744469e-08,
+            "reference_norm": 5.0722281910072275e-06,
+            "cosine": 0.9999787104518524
+          },
+          "parameter_gradient": {
+            "relative": 0.0008107781274459003,
+            "absolute": 0.00035985147115358415,
+            "reference_norm": 0.4438347051704296,
+            "cosine": 0.9999996928221924
+          },
+          "fdtd_mse": 0.04228385537862778,
+          "rom_mse": 0.04228381971691878,
+          "passes_accuracy_gate": true,
+          "rmse_mps": 518.7527934736858,
+          "mae_mps": 348.3287387559318,
+          "ssim": 0.38109386261418826
+        },
+        {
+          "completed_updates": 1,
+          "used_for_update": true,
+          "backend": "rom",
+          "final_basis_is_preceding_update_basis": false,
+          "waveform": {
+            "relative": 0.002173292756882409,
+            "absolute": 0.14859115134843862,
+            "reference_norm": 68.37143816813378,
+            "cosine": 0.9999976386221591
+          },
+          "velocity_gradient": {
+            "relative": 0.007396020074555423,
+            "absolute": 3.590506516089333e-08,
+            "reference_norm": 4.85464679637874e-06,
+            "cosine": 0.999974040759645
+          },
+          "parameter_gradient": {
+            "relative": 0.003516851996401667,
+            "absolute": 0.001451000437363237,
+            "reference_norm": 0.41258501604499004,
+            "cosine": 0.9999982588649938
+          },
+          "fdtd_mse": 0.041851624846458435,
+          "rom_mse": 0.04185158196735995,
+          "passes_accuracy_gate": true,
+          "rmse_mps": 518.8335472088439,
+          "mae_mps": 350.24896496351164,
+          "ssim": 0.38098008345737483
+        },
+        {
+          "completed_updates": 2,
+          "used_for_update": true,
+          "backend": "rom",
+          "final_basis_is_preceding_update_basis": false,
+          "waveform": {
+            "relative": 0.009830154839546317,
+            "absolute": 0.6631997168529343,
+            "reference_norm": 67.46584643661039,
+            "cosine": 0.9999516847183774
+          },
+          "velocity_gradient": {
+            "relative": 0.05956766679425164,
+            "absolute": 2.928166597261845e-07,
+            "reference_norm": 4.915697986586939e-06,
+            "cosine": 0.9982406922388636
+          },
+          "parameter_gradient": {
+            "relative": 0.06634459804577728,
+            "absolute": 0.02912475102647437,
+            "reference_norm": 0.4389920488534501,
+            "cosine": 0.9998380085686178
+          },
+          "fdtd_mse": 0.041190024465322495,
+          "rom_mse": 0.04118683082321163,
+          "passes_accuracy_gate": false,
+          "rmse_mps": 519.1153788844072,
+          "mae_mps": 352.99770887749133,
+          "ssim": 0.3807999892095088
+        },
+        {
+          "completed_updates": 3,
+          "used_for_update": true,
+          "backend": "rom",
+          "final_basis_is_preceding_update_basis": false,
+          "waveform": {
+            "relative": 0.001966375179894694,
+            "absolute": 0.13109937815772213,
+            "reference_norm": 66.67058224603045,
+            "cosine": 0.999998066691097
+          },
+          "velocity_gradient": {
+            "relative": 0.003979959611646346,
+            "absolute": 2.1425623890919427e-08,
+            "reference_norm": 5.38337721524177e-06,
+            "cosine": 0.9999922643995955
+          },
+          "parameter_gradient": {
+            "relative": 0.0006994789031952953,
+            "absolute": 0.00028227953909175585,
+            "reference_norm": 0.40355690186261856,
+            "cosine": 0.9999998106877731
+          },
+          "fdtd_mse": 0.04044998809695244,
+          "rom_mse": 0.040449973012153737,
+          "passes_accuracy_gate": true,
+          "rmse_mps": 519.6663309476116,
+          "mae_mps": 356.4638454130637,
+          "ssim": 0.3805724545636445
+        },
+        {
+          "completed_updates": 4,
+          "used_for_update": true,
+          "backend": "rom",
+          "final_basis_is_preceding_update_basis": false,
+          "waveform": {
+            "relative": 0.0044219579972820545,
+            "absolute": 0.29294229114352194,
+            "reference_norm": 66.24718989270775,
+            "cosine": 0.999990224115448
+          },
+          "velocity_gradient": {
+            "relative": 0.01971705765553989,
+            "absolute": 1.186761508556568e-07,
+            "reference_norm": 6.0189584535861225e-06,
+            "cosine": 0.9998057661889665
+          },
+          "parameter_gradient": {
+            "relative": 0.042987889835871,
+            "absolute": 0.01416642515493921,
+            "reference_norm": 0.32954455799126287,
+            "cosine": 0.9998600885170033
+          },
+          "fdtd_mse": 0.039752326905727386,
+          "rom_mse": 0.03975208850278394,
+          "passes_accuracy_gate": true,
+          "rmse_mps": 520.4862323987469,
+          "mae_mps": 360.2916621034591,
+          "ssim": 0.38033279582090557
+        },
+        {
+          "completed_updates": 5,
+          "used_for_update": false,
+          "backend": "rom",
+          "final_basis_is_preceding_update_basis": true,
+          "waveform": {
+            "relative": 0.059658527017031976,
+            "absolute": 3.961832150255932,
+            "reference_norm": 66.40848087189387,
+            "cosine": 0.9982521154331195
+          },
+          "velocity_gradient": {
+            "relative": 0.10654916263681216,
+            "absolute": 6.998407159374127e-07,
+            "reference_norm": 6.568242289457669e-06,
+            "cosine": 0.9949146991256641
+          },
+          "parameter_gradient": {
+            "relative": 0.5273649141028998,
+            "absolute": 0.14377597542830084,
+            "reference_norm": 0.2726309080930765,
+            "cosine": 0.9746488230333885
+          },
+          "fdtd_mse": 0.039100613445043564,
+          "rom_mse": 0.03901239821465624,
+          "passes_accuracy_gate": false,
+          "rmse_mps": 521.4691945493615,
+          "mae_mps": 363.9218992679677,
+          "ssim": 0.38009742757487963
+        }
+      ],
+      "all_used_gradients_pass": false,
+      "online_speedup": 0.4929999712365305,
+      "including_initial_preparation_seconds": 46.848861000005854,
+      "including_preparation_audit_export_seconds": 67.15944709999894,
+      "same_accuracy_online_acceleration": false
+    }
+  ],
+  "experiment_wall_seconds": 293.80117339998833,
+  "source_hashes_unchanged": true,
+  "accounting": "Online totals include refresh, indicators, transfers, basis snapshots, optimizer and fallbacks; ex-post audit and artifact export separate",
+  "limits": [
+    "Five updates maximum; no long inversion convergence claim",
+    "PDE/probe residuals are indicators without a certified PML stability constant",
+    "Probe growth always uses the initial-basis reference, even after LU reanchoring",
+    "Final post-update state is also audited with the preceding update basis; it would be refreshed before another update",
+    "Shared initial LU cache remains resident across paired arms; process memory is not standalone deployment memory"
+  ]
+}
