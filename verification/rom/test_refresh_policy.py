@@ -46,10 +46,11 @@ def test_bad_candidate_reanchors_and_retains_attempt_logs(reason):
     assert rom is new_rom and len(events)>=2
 
 
-def test_failed_fresh_cache_keeps_previous_anchor_and_falls_back_to_native():
+@pytest.mark.parametrize('error_type',[np.linalg.LinAlgError,MemoryError])
+def test_failed_fresh_cache_keeps_previous_anchor_and_falls_back_to_native(error_type):
     c=controller();anchor=c.cache
     c.corrected=lambda *args:(None,None,dict(reason='primal_transport_indicator',seconds=.123))
-    def failed(*args):raise np.linalg.LinAlgError('singular refresh')
+    def failed(*args):raise error_type('failed refresh')
     c.fresh=failed
     basis,rom,events=c.prepare(torch.ones(1,1,1),'correction2')
     assert c.cache is anchor and basis is None and rom is None

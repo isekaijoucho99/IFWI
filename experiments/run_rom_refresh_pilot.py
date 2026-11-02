@@ -28,7 +28,9 @@ def cpu_state(module):return {k:v.detach().cpu().clone() for k,v in module.state
 
 def memory(device):
     info=psutil.Process().memory_info()
-    result=dict(host_resident_mib=info.rss/2**20,host_process_peak_mib=getattr(info,'peak_wset',info.rss)/2**20)
+    result=dict(host_resident_mib=info.rss/2**20,host_process_peak_mib=getattr(info,'peak_wset',info.rss)/2**20,
+        host_private_commit_mib=getattr(info,'private',info.rss)/2**20,
+        host_peak_commit_mib=getattr(info,'peak_pagefile',info.rss)/2**20)
     if str(device).startswith('cuda'):
         result.update(cuda_allocated_mib=torch.cuda.memory_allocated(device)/2**20,
             cuda_reserved_mib=torch.cuda.memory_reserved(device)/2**20,
@@ -93,10 +95,15 @@ def run_arm(name,base,initial_cache,initial_rom,initial_probe,prototype,problem,
             model.load_state_dict(saved);optimizer.load_state_dict(saved_optimizer);record['used_for_update']=False
             result.update(status='numerical_failure',failure=repr(error));break
         result['completed_updates']=step+1;last_rom=saved_rom
+        temporary=arm/'checkpoint.tmp'
+        torch.save(dict(model=cpu_state(model),optimizer=optimizer.state_dict(),completed_updates=step+1,
+            cache_anchor_velocity=controller.cache.velocity,cache_requires_refactorization_on_resume=True),temporary)
+        temporary.replace(arm/'checkpoint.pt')
         row=dict(update=step+1,backend=backend,online_seconds=time.perf_counter()-stamp,
             events=events,memory=memory(device));rows.append(row)
         print(json.dumps(dict(event='update',method=name,**row)),flush=True)
         save_json(arm/'progress.json',result)
+    if controller.cache is not initial_cache:controller.cache.close()
     synchronized(device);result['online_total_seconds']=time.perf_counter()-start
     result['memory_after_online']=memory(device)
     if result['status']=='running':result['status']='completed'
@@ -133,7 +140,7 @@ def main():
     out=Path(args.output);out.mkdir(parents=True,exist_ok=False)
     sources_files=['rnn_fd.py','ifwi_modules.py','experiments/residual_ifwi_experiment.py',
         'experiments/residual_ifwi_data.py','experiments/residual_ifwi_report.py',
-        'experiments/run_rom_refresh_pilot.py',*[f'experiments/rom/{name}.py' for name in ['refresh','adaptive','projector','solver','discrete','paper','benchmark']]]
+        'experiments/run_rom_refresh_pilot.py',*[f'experiments/rom/{name}.py' for name in ['refresh','owned_lu','adaptive','projector','solver','discrete','paper','benchmark']]]
     hashes={name:sha(ROOT/name) for name in sources_files}
     save_json(out/'config.json',dict(experiment=cfg,refresh=options,arguments=vars(args),source_sha256=hashes))
     for name in sources_files:
@@ -149,7 +156,7 @@ def main():
     projector=SparseProjector(system,args.device)
     controller=RefreshController(system,source,receiver,problem['wavelet'],problem['observed'],projector,options,args.device)
     velocity=torch.tensor(background,device=args.device)[None]
-    _,initial_rom,initial_info=controller.fresh(velocity);initial_cache=controller.cache
+    _,initial_rom,initial_info=controller.fresh(velocity);initial_cache=controller.cache;initial_cache.pinned=True
     if initial_info['adjoint_source_discrepancy_after']>options['source_consistency_tolerance']:
         save_json(out/'initialization_failure.json',initial_info)
         raise ValueError('Initial basis fails the same adjoint-source consistency check as online refreshes')
@@ -189,6 +196,7 @@ def main():
         result['including_preparation_audit_export_seconds']=result['including_initial_preparation_seconds']+result['audit_seconds']+result['audit_artifact_export_seconds']
         result['same_accuracy_online_acceleration']=(result['completed_updates']==options['updates']
             and result['all_used_gradients_pass'] and result['online_speedup'] is not None and result['online_speedup']>1)
+    initial_cache.close()
     summary=dict(initial_preparation_seconds=initial_seconds,common_data_seconds=common_seconds,warmup_seconds=warm_seconds,
         methods=results,experiment_wall_seconds=time.perf_counter()-wall,
         source_hashes_unchanged=hashes=={name:sha(ROOT/name) for name in sources_files},

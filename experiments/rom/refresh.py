@@ -11,6 +11,7 @@ from scipy.sparse import diags
 from scipy.sparse.linalg import splu
 from scipy.linalg import solve_triangular
 from experiments.rom.paper import weighted_pod
+from experiments.rom.owned_lu import OwnedLUGroup
 
 
 class ReferenceCache:
@@ -18,7 +19,8 @@ class ReferenceCache:
                  training_frequencies=64,max_hz=32.,nfft=4096,alias_tolerance=1e-12,workers=1):
         start=time.perf_counter();self.system=system;self.velocity=np.asarray(velocity).copy()
         if workers not in (1,2,4):raise ValueError('Small pilot allows 1, 2 or 4 independent frequency workers')
-        self.workers=int(workers);self.worker_blas_context=None
+        self.workers=int(workers);self.worker_blas_context=None;self.pinned=False
+        self._owned=None;self._closed=False
         self.sources=np.asarray(sources,dtype=int);self.receivers=np.asarray(receivers,dtype=int)
         self.wavelet=np.asarray(wavelet,dtype=float);self.nfft=int(nfft)
         if self.receivers.ndim!=2 or len(self.receivers)!=len(self.sources):raise ValueError('Source/receiver shape mismatch')
@@ -36,20 +38,26 @@ class ReferenceCache:
         self.wave_spectrum=np.fft.rfft(self.wavelet*np.exp(-self.eta*np.arange(len(wavelet))),nfft)
         self.rhs=np.stack([system.source_rhs(velocity,self.sources)*self.wave_spectrum[k] for k in self.selected])
         self.dual_rhs=None if residual is None else self.adjoint_rhs(residual)
+        self._owned=OwnedLUGroup(self.workers) if self.workers>1 else None
         def build(k):
             z=self.z[k]
-            stamp=time.perf_counter();factor=splu(system.pressure_matrix(velocity,z).tocsc())
+            stamp=time.perf_counter();matrix=system.pressure_matrix(velocity,z).tocsc()
+            factor=splu(matrix) if self._owned is None else self._owned.factorize(k,matrix)
             factor_seconds=time.perf_counter()-stamp;stamp=time.perf_counter()
             primal=factor.solve(self.rhs[k])
             adjoint=None if self.dual_rhs is None else factor.solve(self.dual_rhs[k],trans='H')
             return factor,primal,adjoint,factor_seconds,time.perf_counter()-stamp
-        build_start=time.perf_counter();built=self._map(build,len(self.z))
+        build_start=time.perf_counter()
+        try:built=self._map(build,len(self.z))
+        except BaseException:
+            self.close();raise
         factor_wall=time.perf_counter()-build_start
         factors=[item[0] for item in built]
         self.factors=factors;self.primal=np.stack([item[1] for item in built])
         self.adjoint=None if self.dual_rhs is None else np.stack([item[2] for item in built])
         factor_seconds=sum(item[3] for item in built);solve_seconds=sum(item[4] for item in built)
         self.info=dict(training_frequencies=len(factors),frequency_workers=self.workers,worker_blas_context=self.worker_blas_context,
+            lu_lifetime='Creation, solves and destruction confined to owner threads when parallel',
             factorization_seconds=factor_seconds,
             factor_and_snapshot_wall_seconds=factor_wall,
             parallel_timing_note='factorization_seconds and snapshot_solve_seconds are task sums; wall/enclosing timers determine cost',
@@ -60,6 +68,15 @@ class ReferenceCache:
             lu_storage_estimate_limit='Complex128 values plus estimated int32 sparse indices/permutations; excludes native SuperLU workspaces; process RSS/peak also reported',
             snapshot_storage_bytes=self.primal.nbytes+self.rhs.nbytes+(0 if self.adjoint is None else self.adjoint.nbytes+self.dual_rhs.nbytes),
             fft_adjoint_weighting='Exact real-irfft bin multiplicity, 1/Nfft, and waveform-MSE 2/Ndata')
+
+    def close(self):
+        if not self._closed:
+            if self._owned is not None:self._owned.close()
+            self.factors=[];self._closed=True
+
+    def __del__(self):
+        try:self.close()
+        except Exception:pass
 
     def _map(self,function,count):
         if self.workers==1:return [function(k) for k in range(count)]

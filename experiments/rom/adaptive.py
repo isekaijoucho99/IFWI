@@ -55,7 +55,8 @@ class RefreshController:
         prediction=self.prediction(pilot,v);cache.complete_adjoint(prediction-self.observed.cpu().numpy()[0])
         basis,rom,meta=self._finish(cache,primal,cache.adjoint,v,prediction,1)
         # Publish only after every reference field/RHS and final basis exist.
-        self.cache=cache
+        old=self.cache;self.cache=cache
+        if old is not None and not old.pinned:old.close()
         return basis,rom,dict(event='full_refactorization',cache=cache.info,
             seconds=time.perf_counter()-start,**meta)
 
@@ -93,7 +94,7 @@ class RefreshController:
                     for event in meta['construction']['events']:
                         if event['aggregate_relative_residual']>self.options['transport_tolerance']:
                             events.append(dict(reason='consistency_transport_indicator'));rom=None
-            except (ValueError,RuntimeError,FloatingPointError,np.linalg.LinAlgError) as error:
+            except (ValueError,RuntimeError,FloatingPointError,np.linalg.LinAlgError,MemoryError) as error:
                 events.append(dict(event='correction_failure',failure=repr(error)))
         if rom is None:
             try:
@@ -103,6 +104,6 @@ class RefreshController:
                     events.append(dict(event='native_fallback',reason='fresh_space_probe_growth',growth=growth));rom=None;basis=None
                 if meta['adjoint_source_discrepancy_after']>self.options['source_consistency_tolerance']:
                     events.append(dict(event='native_fallback',reason='fresh_adjoint_source_discrepancy'));rom=None;basis=None
-            except (ValueError,RuntimeError,FloatingPointError,np.linalg.LinAlgError) as error:
+            except (ValueError,RuntimeError,FloatingPointError,np.linalg.LinAlgError,MemoryError) as error:
                 events.append(dict(event='native_fallback',reason='full_refresh_failure',failure=repr(error)));rom=None;basis=None
         return basis,rom,events
