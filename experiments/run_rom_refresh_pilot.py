@@ -6,8 +6,11 @@ import json
 import time
 import numpy as np
 import psutil
+import platform
+import scipy
 import torch
 import yaml
+from threadpoolctl import threadpool_limits,threadpool_info
 from experiments.residual_ifwi_experiment import (build_forward_problem,validate_config,train_update,require_finite)
 from experiments.residual_ifwi_data import load_velocity_data
 from experiments.residual_ifwi_report import velocity_metrics
@@ -123,7 +126,8 @@ def main():
         options.update(rank=16,primal_rank=8,training_frequencies=16,updates=2)
     if args.updates:options['updates']=args.updates
     if not 1<=options['updates']<=5:raise ValueError('This pilot allows at most five updates')
-    if not set(options['methods'])<=set(['fdtd','frozen','fresh','correction1','correction2']):raise ValueError('Unknown method')
+    if not set(options['methods'])<=set(['fdtd','frozen','fresh','correction1','correction2','correction3']):raise ValueError('Unknown method')
+    blas_guard=threadpool_limits(limits=options.get('blas_threads',1),user_api='blas')
     options['nfft']=2**int(np.ceil(np.log2(options['pad_factor']*cfg['forward']['nt'])))
     options['learning_rate']=cfg['training']['learning_rate'];validate_config(cfg)
     out=Path(args.output);out.mkdir(parents=True,exist_ok=False)
@@ -156,7 +160,11 @@ def main():
     synchronized(args.device);warm_seconds=time.perf_counter()-warm
     torch.manual_seed(cfg['seed']);base=make_model(background,cfg,args.device)
     save_json(out/'preparation.json',dict(common_data_seconds=common_seconds,initial_rom_seconds=initial_seconds,
-        warmup_seconds=warm_seconds,initial_construction=initial_info,memory=memory(args.device)))
+        warmup_seconds=warm_seconds,initial_construction=initial_info,memory=memory(args.device),
+        runtime=dict(python=platform.python_version(),numpy=np.__version__,scipy=scipy.__version__,
+            torch=str(torch.__version__),cuda=torch.version.cuda,
+            device_name=torch.cuda.get_device_name(args.device) if args.device.startswith('cuda') else 'CPU',
+            outer_threadpools=[{k:v for k,v in item.items() if k!='filepath'} for item in threadpool_info()])))
     results=[];trajectories=[]
     for method in options['methods']:
         result,records=run_arm(method,base,initial_cache,initial_rom,controller.initial_probe,controller,
@@ -191,6 +199,7 @@ def main():
             'Final post-update state is also audited with the preceding update basis; it would be refreshed before another update',
             'Shared initial LU cache remains resident across paired arms; process memory is not standalone deployment memory'])
     save_json(out/'summary.json',summary);print('REFRESH_PILOT_COMPLETE '+str(out),flush=True)
+    blas_guard.restore_original_limits()
 
 
 if __name__=='__main__':main()

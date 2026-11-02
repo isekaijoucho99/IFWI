@@ -1,0 +1,4 @@
+# Additional packages for the standalone dynamic-ROM pilot.
+# Keep the project's existing NumPy/SciPy/PyTorch/PyYAML environment.
+psutil
+threadpoolctl

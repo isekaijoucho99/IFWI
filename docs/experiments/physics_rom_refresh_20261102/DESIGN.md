@@ -87,3 +87,22 @@ projections and checkpoint buffers; refresh decision/failure bookkeeping.
 Then CPU actual-Adam smoke, followed by the bounded GPU pilot. Save configs,
 source snapshots/SHA256, per-step timings/events/memory/checkpoints, ex-post
 audit tables and an honest speed/accuracy report in independent output dirs.
+
+## Second exploratory pilot (declared after first-run audit, before second GPU run)
+
+First five-arm run: fresh and first-order correction pass all used-state gates,
+but take58.44s and57.64s versus16.14s native. Second-order correction takes32.74s
+and fails at the third used state (5.96% velocity /6.63% parameter gradient).
+Thus none qualifies as same-accuracy acceleration. All raw failures remain.
+
+Test third-order residual correction, using the same rank, eight-bin probe,
+2x initial probe threshold, source consistency policy and Adam1e-4. Four
+independent frequency workers perform factorization/solves; BLAS is limited to
+one thread inside those workers and four for the remaining POD/probe work.
+This is an implementation concurrency change plus an explicit correction-order
+ablation, not a new physics operator or a claimed theoretical innovation.
+CPU tests must first compare serial/parallel fields and third-order residuals.
+GPU arms: native FDTD, fresh rebuild and correction3, five updates, same seed3.
+No threshold tuning to hide the failed second-order state. If a speed/accuracy
+gain appears, a separate held-out network seed should be checked before any
+general claim; no long training is authorized by this pilot.

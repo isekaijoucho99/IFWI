@@ -90,3 +90,27 @@ def test_heldout_probe_and_sparse_operator_match_complete_native_pressure_space(
     matrix=cache.system.pressure_matrix(v.numpy()[0],z)
     np.testing.assert_allclose(apply_pressure(cache.system,v.numpy()[0],z,field),matrix@field,atol=1e-15)
     np.testing.assert_allclose(apply_pressure(cache.system,v.numpy()[0],z,field,True),matrix.conj().T@field,atol=1e-15)
+
+
+def test_third_correction_improves_the_exact_discrete_residual():
+    fd,cache,v,wave,residual=cache_case();velocity=v.numpy()[0]*1.003
+    second,a=cache.transport_primal(velocity,2);third,b=cache.transport_primal(velocity,3)
+    assert b['aggregate_relative_residual']<.1*a['aggregate_relative_residual']
+    for k,z in enumerate(cache.z):
+        rhs=cache.system.source_rhs(velocity,cache.sources)*cache.wave_spectrum[cache.selected[k]]
+        np.testing.assert_allclose(rhs-cache.system.pressure_matrix(velocity,z)@third[k],b['residual_vectors'][k],atol=1e-16)
+
+
+def test_independent_frequency_parallelism_preserves_cached_fields_and_corrections():
+    fd,serial,v,wave,residual=cache_case()
+    parallel=ReferenceCache(serial.system,v.numpy()[0],serial.sources,serial.receivers,wave,residual,
+        training_frequencies=8,max_hz=160.,nfft=256,alias_tolerance=1e-12,workers=2)
+    assert all(item['num_threads']==1 for item in parallel.info['worker_blas_context'] if item['user_api']=='blas')
+    np.testing.assert_allclose(parallel.primal,serial.primal,rtol=1e-12,atol=1e-12)
+    np.testing.assert_allclose(parallel.adjoint,serial.adjoint,rtol=1e-12,atol=1e-12)
+    for order in [1,2,3]:
+        for method in ['transport_primal','transport_adjoint']:
+            arguments=(v.numpy()[0]*1.003,order) if method=='transport_primal' else (v.numpy()[0]*1.003,residual*.97,order)
+            a,sa=getattr(serial,method)(*arguments);b,sb=getattr(parallel,method)(*arguments)
+            np.testing.assert_allclose(a,b,rtol=1e-12,atol=1e-12)
+            np.testing.assert_allclose(sa['residual_vectors'],sb['residual_vectors'],rtol=1e-12,atol=1e-12)

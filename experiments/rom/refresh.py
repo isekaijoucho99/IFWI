@@ -4,7 +4,9 @@ Residuals are indicators, not certified gradient bounds. A cache is immutable;
 reanchoring constructs a new complete cache before replacing the old one.
 """
 import time
+from concurrent.futures import ThreadPoolExecutor
 import numpy as np
+from threadpoolctl import threadpool_limits,threadpool_info
 from scipy.sparse import diags
 from scipy.sparse.linalg import splu
 from scipy.linalg import solve_triangular
@@ -13,8 +15,10 @@ from experiments.rom.paper import weighted_pod
 
 class ReferenceCache:
     def __init__(self,system,velocity,sources,receivers,wavelet,residual,*,
-                 training_frequencies=64,max_hz=32.,nfft=4096,alias_tolerance=1e-12):
+                 training_frequencies=64,max_hz=32.,nfft=4096,alias_tolerance=1e-12,workers=1):
         start=time.perf_counter();self.system=system;self.velocity=np.asarray(velocity).copy()
+        if workers not in (1,2,4):raise ValueError('Small pilot allows 1, 2 or 4 independent frequency workers')
+        self.workers=int(workers);self.worker_blas_context=None
         self.sources=np.asarray(sources,dtype=int);self.receivers=np.asarray(receivers,dtype=int)
         self.wavelet=np.asarray(wavelet,dtype=float);self.nfft=int(nfft)
         if self.receivers.ndim!=2 or len(self.receivers)!=len(self.sources):raise ValueError('Source/receiver shape mismatch')
@@ -32,15 +36,23 @@ class ReferenceCache:
         self.wave_spectrum=np.fft.rfft(self.wavelet*np.exp(-self.eta*np.arange(len(wavelet))),nfft)
         self.rhs=np.stack([system.source_rhs(velocity,self.sources)*self.wave_spectrum[k] for k in self.selected])
         self.dual_rhs=None if residual is None else self.adjoint_rhs(residual)
-        factors=[];primal=[];adjoint=[];factor_seconds=0.;solve_seconds=0.
-        for k,z in enumerate(self.z):
+        def build(k):
+            z=self.z[k]
             stamp=time.perf_counter();factor=splu(system.pressure_matrix(velocity,z).tocsc())
-            factor_seconds+=time.perf_counter()-stamp;stamp=time.perf_counter()
-            primal.append(factor.solve(self.rhs[k]))
-            if self.dual_rhs is not None:adjoint.append(factor.solve(self.dual_rhs[k],trans='H'))
-            solve_seconds+=time.perf_counter()-stamp;factors.append(factor)
-        self.factors=factors;self.primal=np.stack(primal);self.adjoint=np.stack(adjoint) if adjoint else None
-        self.info=dict(training_frequencies=len(factors),factorization_seconds=factor_seconds,
+            factor_seconds=time.perf_counter()-stamp;stamp=time.perf_counter()
+            primal=factor.solve(self.rhs[k])
+            adjoint=None if self.dual_rhs is None else factor.solve(self.dual_rhs[k],trans='H')
+            return factor,primal,adjoint,factor_seconds,time.perf_counter()-stamp
+        build_start=time.perf_counter();built=self._map(build,len(self.z))
+        factor_wall=time.perf_counter()-build_start
+        factors=[item[0] for item in built]
+        self.factors=factors;self.primal=np.stack([item[1] for item in built])
+        self.adjoint=None if self.dual_rhs is None else np.stack([item[2] for item in built])
+        factor_seconds=sum(item[3] for item in built);solve_seconds=sum(item[4] for item in built)
+        self.info=dict(training_frequencies=len(factors),frequency_workers=self.workers,worker_blas_context=self.worker_blas_context,
+            factorization_seconds=factor_seconds,
+            factor_and_snapshot_wall_seconds=factor_wall,
+            parallel_timing_note='factorization_seconds and snapshot_solve_seconds are task sums; wall/enclosing timers determine cost',
             snapshot_solve_seconds=solve_seconds,total_seconds=time.perf_counter()-start,
             full_pressure_dimension=system.dimension,selected_bins=self.selected.tolist(),
             lu_reported_nnz=sum(factor.nnz for factor in factors),
@@ -49,11 +61,19 @@ class ReferenceCache:
             snapshot_storage_bytes=self.primal.nbytes+self.rhs.nbytes+(0 if self.adjoint is None else self.adjoint.nbytes+self.dual_rhs.nbytes),
             fft_adjoint_weighting='Exact real-irfft bin multiplicity, 1/Nfft, and waveform-MSE 2/Ndata')
 
+    def _map(self,function,count):
+        if self.workers==1:return [function(k) for k in range(count)]
+        # Distinct frequencies use distinct LU objects. Avoid nested BLAS pools.
+        with threadpool_limits(limits=1,user_api='blas'),ThreadPoolExecutor(max_workers=self.workers) as executor:
+            if self.worker_blas_context is None:
+                self.worker_blas_context=[{k:v for k,v in item.items() if k!='filepath'} for item in threadpool_info()]
+            return list(executor.map(function,range(count)))
+
     def complete_adjoint(self,residual):
         """Complete an unpublished primal-only cache exactly once, atomically."""
         if self.adjoint is not None:raise ValueError('Published reference adjoint cannot be overwritten')
         stamp=time.perf_counter();rhs=self.adjoint_rhs(residual)
-        values=np.stack([factor.solve(value,trans='H') for factor,value in zip(self.factors,rhs)])
+        values=np.stack(self._map(lambda k:self.factors[k].solve(rhs[k],trans='H'),len(self.factors)))
         self.dual_rhs=rhs;self.adjoint=values
         self.info['adjoint_completion_seconds']=time.perf_counter()-stamp
         self.info['snapshot_storage_bytes']=self.primal.nbytes+self.rhs.nbytes+self.adjoint.nbytes+self.dual_rhs.nbytes
@@ -75,10 +95,10 @@ class ReferenceCache:
         return result
 
     def _transport(self,velocity,rhs,reference,reference_rhs,corrections,adjoint):
-        if corrections not in (1,2):raise ValueError('Small validation supports one or two corrections')
+        if corrections not in (1,2,3):raise ValueError('Small validation supports one, two or three corrections')
         start=time.perf_counter();difference=self.system.pad_numpy(velocity).ravel()**-2-self.mass
-        fields=[];residuals=[];individual=[]
-        for k,factor in enumerate(self.factors):
+        def solve(k):
+            factor=self.factors[k]
             diagonal=(self.a0[k]+self.a1[k]*self.system.delta)*difference
             if adjoint:diagonal=diagonal.conj()
             defect=rhs[k]-reference_rhs[k]-diagonal[:,None]*reference[k]
@@ -86,9 +106,9 @@ class ReferenceCache:
             for _ in range(corrections):
                 correction=factor.solve(defect,trans='H' if adjoint else 'N')
                 value+=correction;defect=-diagonal[:,None]*correction
-            fields.append(value);residuals.append(defect)
-            individual.append(float(np.linalg.norm(defect)/max(np.linalg.norm(rhs[k]),1e-300)))
-        fields=np.stack(fields);residuals=np.stack(residuals)
+            return value,defect,float(np.linalg.norm(defect)/max(np.linalg.norm(rhs[k]),1e-300))
+        solved=self._map(solve,len(self.factors))
+        fields=np.stack([x[0] for x in solved]);residuals=np.stack([x[1] for x in solved]);individual=[x[2] for x in solved]
         relative=float(np.linalg.norm(residuals)/max(np.linalg.norm(rhs),1e-300))
         if not np.isfinite(fields).all() or not np.isfinite(relative) or not np.isfinite(individual).all():
             raise FloatingPointError('Nonfinite transported fields or indicators')

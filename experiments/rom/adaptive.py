@@ -49,7 +49,8 @@ class RefreshController:
     def fresh(self,v):
         start=time.perf_counter();o=self.options;velocity=v.detach().cpu().numpy()[0]
         cache=ReferenceCache(self.system,velocity,self.sources,self.receivers,self.wavelet.cpu().numpy(),None,
-            training_frequencies=o['training_frequencies'],max_hz=o['max_hz'],nfft=o['nfft'],alias_tolerance=o['alias_tolerance'])
+            training_frequencies=o['training_frequencies'],max_hz=o['max_hz'],nfft=o['nfft'],alias_tolerance=o['alias_tolerance'],
+            workers=o.get('cache_workers',1))
         primal=primal_space(cache,cache.primal,o['primal_rank']);pilot=self.make_rom(primal)
         prediction=self.prediction(pilot,v);cache.complete_adjoint(prediction-self.observed.cpu().numpy()[0])
         basis,rom,meta=self._finish(cache,primal,cache.adjoint,v,prediction,1)
@@ -78,11 +79,11 @@ class RefreshController:
 
     def prepare(self,v,method):
         """Return (basis, solver or None for native fallback, decision log)."""
-        if method not in ('fresh','correction1','correction2'):raise ValueError('Unknown online refresh method')
+        if method not in ('fresh','correction1','correction2','correction3'):raise ValueError('Unknown online refresh method')
         events=[];basis=None;rom=None
         if method!='fresh':
             try:
-                basis,rom,meta=self.corrected(v,1 if method=='correction1' else 2);events.append(meta)
+                basis,rom,meta=self.corrected(v,int(method[-1]));events.append(meta)
                 if rom is not None:
                     growth=self.probe_growth(meta['construction']['probe']);meta['heldout_probe_growth']=growth
                     if growth>self.options['probe_growth_limit']:
