@@ -14,7 +14,7 @@ from torch.nn import functional as F
 class PressureROM(torch.nn.Module):
     def __init__(self,system,basis,source_indices,receiver_indices,nt,*,nfft=None,
                  pad_factor=4,alias_tolerance=1e-12,max_hz=None,dtype=torch.float64,
-                 frequency_batch_size=128):
+                 frequency_batch_size=128,preprojected=None):
         super().__init__()
         basis=np.asarray(basis)
         if basis.ndim!=2 or basis.shape[0]!=system.dimension or np.iscomplexobj(basis) or not np.isfinite(basis).all():
@@ -41,9 +41,18 @@ class PressureROM(torch.nn.Module):
         self.register_buffer('source_indices',torch.tensor(sources,dtype=torch.long))
         self.register_buffer('receiver_indices',torch.tensor(receivers,dtype=torch.long))
         self.register_buffer('receiver_basis',tensor(basis[receivers]))
-        self.register_buffer('stiffness_r',tensor(basis.T@(system.stiffness@basis)))
-        projected=np.stack([basis.T@(term@basis) for term in system.pml_terms])
-        self.register_buffer('pml_r',tensor(projected))
+        if preprojected is None:
+            stiffness=tensor(basis.T@(system.stiffness@basis))
+            projected=tensor(np.stack([basis.T@(term@basis) for term in system.pml_terms]))
+        else:
+            stiffness,projected=[torch.as_tensor(value,dtype=dtype).detach().clone() for value in preprojected]
+            rank=basis.shape[1]
+            if stiffness.shape!=(rank,rank) or projected.shape!=(len(system.pml_terms),rank,rank):
+                raise ValueError('Preprojected operators must match basis and original PML profiles')
+            if not torch.isfinite(stiffness).all() or not torch.isfinite(projected).all():
+                raise ValueError('Preprojected operators must be finite')
+        self.register_buffer('stiffness_r',stiffness)
+        self.register_buffer('pml_r',projected)
         eta=-np.log(alias_tolerance)/self.nfft
         indices=np.arange(self.nfft//2+1)
         if max_hz is not None:indices=indices[indices/(self.nfft*self.dt)<=max_hz]
