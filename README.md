@@ -245,3 +245,12 @@ python main.py --experiment pretrain --epochs 4001 --pretrained outputs/pretrain
 ## 可选：原网格扩散先验与 LoRA
 
 新增实验入口仍为 `core_runner.py`，默认关闭扩散先验。固定归一化、重叠原网格裁块、冻结先验梯度、离线 DDPM/LoRA 训练和五组对照见 [使用说明](docs/diffusion_prior.md)。已完成的 CPU 验证与未验证范围见 [验证记录](docs/diffusion_prior_validation.md)。本分支不包含已训练的地质扩散权重，也不声称已改善反演效果。
+
+
+## 实验：弱灵敏度条件 DFM
+
+独立的 CPU 原型提供接收域 Jacobian 灵敏度、冻结条件双时间输运、缓存软速度/地层差分目标和严格物理下降守护，见 [接入与限制](docs/five_ideas/ILLUMINATION_DFM_20261104.md) 与 [训练数据协议](docs/five_ideas/CONDITIONAL_DFM_TRAINING.md)。目前没有合格地质权重，不声称提升反演精度；训练产物默认未取得正式先验资格。无权重时可运行诊断：
+
+```bash
+python -m ifwi_research.demo_illumination --out outputs/illumination_diagnostic
+```

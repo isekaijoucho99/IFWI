@@ -16,3 +16,13 @@
 没有在本次来源目录中找到明确的上游许可文件。本文件仅记录出处，不授予新的许可，也不改变原文件和数据的权利归属。
 
 - `experiments/diffusion_prior/author_unet.py`: G²IFWI author architecture matches the provided `G2IFWI_code.zip` `synthetic/core/diffusion/diffusion.py`. Layer implementations are adapted from public `LinXueyuanStdio/PyTorch-DDPM` (`ddpm.py`); upstream GitHub does not advertise a repository-level license, while the user-supplied G²IFWI release describes its software as MIT licensed. This file adds gradient checkpointing and safety checks and is not a redistributable pretrained weight.
+
+## 2026-11-04 条件先验与弱灵敏度接口参考
+
+以下是设计参考，未复制其实现或权重，也不把 DDPM/CT 算子当作 DFM/地震正演：
+
+- DOLCE，Liu 等，ICCV 2023：[官方仓库](https://github.com/wustl-cig/DOLCE)；[`limited_ct_sample.py`](https://github.com/wustl-cig/DOLCE/blob/main/limited_ct_sample.py) 与 [`dataFidelities/CTClass.py`](https://github.com/wustl-cig/DOLCE/blob/main/dataFidelities/CTClass.py) 展示条件先验与物理数据项的分离。已核对 [`LICENSE.txt`](https://github.com/wustl-cig/DOLCE/blob/main/LICENSE.txt)，MIT。
+- diffefwi，Taufik、Wang、Alkhalifah，JGR 2024：[官方仓库](https://github.com/DeepWave-KAUST/diffefwi)；[`src/diffefwi/diffusion.py`](https://github.com/DeepWave-KAUST/diffefwi/blob/main/src/diffefwi/diffusion.py) 的 `fwi_sample` 交替生成与物理更新。已核对 [`LICENSE`](https://github.com/DeepWave-KAUST/diffefwi/blob/main/LICENSE)，MIT。本次未移植其逆扩散公式、网络权重或弹性参数映射。
+- 随机对角估计参考 Bekas、Kokiopoulou、Saad，[An estimator for the diagonal of a matrix](https://experts.umn.edu/en/publications/an-estimator-for-the-diagonal-of-a-matrix/)。本模块的平方接收域 VJP 公式直接由 `E[zzᵀ]=I` 推导，不宣称该文逐字提供本实现。
+
+`conditional_dfm.py`、`illumination.py`、`illumination_prior.py` 是本仓库新增实现。神经网络结构本身不代表已经训练或适合地质反演。源代码许可不等于地质训练数据或预训练权重的使用许可。

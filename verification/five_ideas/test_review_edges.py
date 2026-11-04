@@ -21,17 +21,18 @@ def test_prior_metadata_rejects_nonfinite_normalization(tmp_path):
     from ifwi_research.dfm import TwoTimeTransport,FrozenDFMPrior
     model=TwoTimeTransport(8)
     meta=dict(schema='ifwi_small_dfm_v1',trained_steps=1,width=8,spacing_m=20.,mean_mps=float('nan'),
-              scale_mps=1000.,condition_kernel=3,patch_size=8,toy_only=False)
+              scale_mps=1000.,condition_kernel=3,patch_size=8,toy_only=True)
     path=tmp_path/'bad.pt'; torch.save({'meta':meta,'model':model.state_dict()},path)
-    with pytest.raises(ValueError,match='normalization'): FrozenDFMPrior(path,20.)
+    with pytest.raises(ValueError,match='normalization'): FrozenDFMPrior(path,20.,allow_unqualified=True)
 
 
 def test_prior_penalty_disallows_broadcasting(tmp_path):
     from ifwi_research.dfm import TwoTimeTransport,FrozenDFMPrior
     meta=dict(schema='ifwi_small_dfm_v1',trained_steps=1,width=8,spacing_m=20.,mean_mps=2000.,
-              scale_mps=1000.,condition_kernel=3,patch_size=8,toy_only=False)
+              scale_mps=1000.,condition_kernel=3,patch_size=8,toy_only=True)
     path=tmp_path/'test.pt'; torch.save({'meta':meta,'model':TwoTimeTransport(8).state_dict()},path)
-    prior=FrozenDFMPrior(path,20.)
+    with pytest.warns(UserWarning,match='unqualified'):
+        prior=FrozenDFMPrior(path,20.,allow_unqualified=True)
     with pytest.raises(ValueError,match='grid'): prior.penalty(torch.ones(1,8,8),torch.ones(1,1,8))
 
 

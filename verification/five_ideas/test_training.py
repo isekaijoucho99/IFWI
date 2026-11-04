@@ -24,7 +24,7 @@ def test_model_level_split_and_duplicate_rejection(tmp_path):
     with pytest.raises(ValueError,match='overlap'): validate_split(a,model_inventory(val,8))
 
 
-def test_dfm_tiny_training_saves_usable_checkpoint(tmp_path):
+def test_dfm_tiny_training_stays_unqualified(tmp_path):
     from ifwi_research.train_dfm import train
     from ifwi_research.dfm import FrozenDFMPrior
     train_dir,val_dir=datasets(tmp_path)
@@ -35,7 +35,13 @@ def test_dfm_tiny_training_saves_usable_checkpoint(tmp_path):
     assert payload['meta']['trained_steps']==2
     assert len(payload['meta']['train_model_hashes'])==2
     assert payload['meta']['val_model_hashes']
-    prior=FrozenDFMPrior(out/'best.pt',20.)
+    assert payload['meta']['toy_only'] is True
+    assert payload['meta']['qualification']['status']=='unqualified'
+    for name in ('best.pt','last.pt'):
+        with pytest.raises(ValueError,match='qualification'):
+            FrozenDFMPrior(out/name,20.)
+    with pytest.warns(UserWarning,match='unqualified'):
+        prior=FrozenDFMPrior(out/'best.pt',20.,allow_unqualified=True)
     assert prior.meta['trained_steps']>=1
     assert (out/'history.jsonl').exists()
 
@@ -58,7 +64,8 @@ def test_dfm_engine_uses_real_candidate_guard(tmp_path):
     td,vd=datasets(tmp_path); out=tmp_path/'trained'
     train(td,vd,out,spacing_m=20.,patch_size=8,width=8,group_size=4,
           groups_per_step=1,steps=1,validate_every=1,seed=5,device='cpu')
-    prior=FrozenDFMPrior(out/'last.pt',20.)
+    with pytest.warns(UserWarning,match='unqualified'):
+        prior=FrozenDFMPrior(out/'last.pt',20.,allow_unqualified=True)
     initial=torch.full((1,10,14),2000.); true=initial.clone(); true[:,5:8,4:10]+=200
     objective=ToyWaveObjective(true,shots=3,nt=45)
     engine=ResearchEngine(TinyINR(initial,8),initial,objective,20.,

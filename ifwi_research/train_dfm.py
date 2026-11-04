@@ -82,7 +82,9 @@ def train(train_dir,val_dir,out,*,spacing_m: float,patch_size: int=64,width: int
     rng=torch.Generator().manual_seed(seed); best=float('inf'); started=time.perf_counter()
     meta={'schema':'ifwi_small_dfm_v1','width':width,'spacing_m':spacing_m,'mean_mps':mean_mps,
           'scale_mps':scale_mps,'condition_kernel':condition_kernel,'patch_size':patch_size,
-          'toy_only':False,'seed':seed,'group_size':group_size,'groups_per_step':groups_per_step,
+          'toy_only':True,
+          'qualification':{'status':'unqualified','evidence':None},
+          'seed':seed,'group_size':group_size,'groups_per_step':groups_per_step,
           'temperature':temperature,'train_model_hashes':[x['hash'] for x in train_files],
           'val_model_hashes':[x['hash'] for x in val_files],
           'time_sampling':'20% endpoint 0->1; else t=0.9U, r=t+(1-t)*(0.1+0.9U)',
@@ -119,7 +121,8 @@ def train(train_dir,val_dir,out,*,spacing_m: float,patch_size: int=64,width: int
             log.write(json.dumps(record,allow_nan=False)+'\n'); log.flush()
     summary={'steps':steps,'best_validation_rmse_mps':best,'device':device,'torch':str(torch.__version__),
              'elapsed_seconds':time.perf_counter()-started,
-             'warning':'Validation denoising is not evidence of FWI improvement. No pretrained weights shipped.'}
+             'qualification':meta['qualification'],
+             'warning':'Checkpoints remain unqualified for inversion. Validation denoising is not evidence of FWI improvement. No pretrained weights shipped.'}
     (out/'summary.json').write_text(json.dumps(summary,indent=2,allow_nan=False),encoding='utf-8')
     return summary
 

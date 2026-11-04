@@ -1,0 +1,132 @@
+{
+  "date_utc": "2026-11-04",
+  "scope": "CPU synthetic validation only; no geological or FWI qualification",
+  "baseline_commit": "4b03160",
+  "architecture_file_sha256": "fb8409161de9d12cc823cc18b9171fef99f77a32495ca94d7ef30fcf9d39b8d3",
+  "commands": [
+    "python -m pytest -q verification/five_ideas/test_conditional_training.py",
+    "python -m pytest -q",
+    "python tools/smoke_conditional_dfm.py --out NEW_PATH --steps 20",
+    "python tools/smoke_conditional_dfm.py --out OTHER_NEW_PATH --steps 20 --architecture masked_two_time_unet_v1"
+  ],
+  "focused_tests": {
+    "passed": 22,
+    "failed": 0
+  },
+  "baseline_suite": {
+    "passed": 445,
+    "failed": 12
+  },
+  "final_suite": {
+    "passed": 467,
+    "failed": 12,
+    "same_failures_as_baseline": true
+  },
+  "preexisting_failures": [
+    "verification/five_ideas/test_gpu_batching.py::test_code_batches_match_serial_objective_gradient_and_energies[2-None-True]",
+    "verification/five_ideas/test_gpu_batching.py::test_code_batches_match_serial_objective_gradient_and_energies[2-None-False]",
+    "verification/five_ideas/test_gpu_batching.py::test_code_batches_match_serial_objective_gradient_and_energies[2-20.0-True]",
+    "verification/five_ideas/test_gpu_batching.py::test_code_batches_match_serial_objective_gradient_and_energies[2-20.0-False]",
+    "verification/five_ideas/test_gpu_batching.py::test_code_batches_match_serial_objective_gradient_and_energies[3-None-True]",
+    "verification/five_ideas/test_gpu_batching.py::test_code_batches_match_serial_objective_gradient_and_energies[3-None-False]",
+    "verification/five_ideas/test_gpu_batching.py::test_code_batches_match_serial_objective_gradient_and_energies[3-20.0-True]",
+    "verification/five_ideas/test_gpu_batching.py::test_code_batches_match_serial_objective_gradient_and_energies[3-20.0-False]",
+    "verification/five_ideas/test_gpu_batching.py::test_physical_shot_batches_match_serial_objective_and_gradient[None]",
+    "verification/five_ideas/test_gpu_batching.py::test_physical_shot_batches_match_serial_objective_and_gradient[20.0]",
+    "verification/residual_ifwi/test_experiment.py::test_shot_accumulation_preserves_full_objective_and_adam_update",
+    "verification/residual_ifwi/test_stochastic.py::test_selected_microbatches_preserve_full_selected_gradients_and_adam_state"
+  ],
+  "smoke": {
+    "cnn": {
+      "steps": 20,
+      "resumed_from_step": 0,
+      "best_validation_score_mps": 365.03044964313136,
+      "validation": {
+        "nfe_1": {
+          "weak_rmse_mps": 365.03044964313136,
+          "background_weak_rmse_mps": 83.93933433711715,
+          "rmse_mps": 327.38805338619187,
+          "edge_rmse_mps_per_cell": 198.4245107297315,
+          "diversity_rms_mps": 149.59569862424186,
+          "outside_physical_range_fraction": 0.0,
+          "weak_pixels": 192,
+          "validation_models": 1,
+          "draws": 2
+        },
+        "nfe_4": {
+          "weak_rmse_mps": 365.13641857074003,
+          "background_weak_rmse_mps": 83.93933433711715,
+          "rmse_mps": 327.4640485992317,
+          "edge_rmse_mps_per_cell": 198.45677006172738,
+          "diversity_rms_mps": 149.62327693243455,
+          "outside_physical_range_fraction": 0.0,
+          "weak_pixels": 192,
+          "validation_models": 1,
+          "draws": 2
+        }
+      },
+      "device": "cpu",
+      "torch": "2.10.0+cpu",
+      "elapsed_seconds": 0.375858474999859,
+      "parameter_count": 3345,
+      "peak_gpu_allocated_bytes": null,
+      "qualification": {
+        "status": "unqualified",
+        "report_ref": null,
+        "report_sha256": null
+      },
+      "manifest_sha256": "c5dc6f532cfef9a9a449b73b789512b32f84af3973339bcb1902352c237212ef",
+      "warning": "Unqualified research weights. No seismic data consistency, geological generalization, calibrated uncertainty, 16GB GPU fit, or FWI improvement established by this training run."
+    },
+    "unet": {
+      "steps": 20,
+      "resumed_from_step": 0,
+      "best_validation_score_mps": 366.8193384805841,
+      "validation": {
+        "nfe_1": {
+          "weak_rmse_mps": 367.06753182032685,
+          "background_weak_rmse_mps": 83.93933433711715,
+          "rmse_mps": 329.09861506469457,
+          "edge_rmse_mps_per_cell": 198.66305750356975,
+          "diversity_rms_mps": 149.810348858148,
+          "outside_physical_range_fraction": 0.0,
+          "weak_pixels": 192,
+          "validation_models": 1,
+          "draws": 2
+        },
+        "nfe_4": {
+          "weak_rmse_mps": 366.9285239207585,
+          "background_weak_rmse_mps": 83.93933433711715,
+          "rmse_mps": 328.97411562309884,
+          "edge_rmse_mps_per_cell": 198.6353023340346,
+          "diversity_rms_mps": 149.78873794656593,
+          "outside_physical_range_fraction": 0.0,
+          "weak_pixels": 192,
+          "validation_models": 1,
+          "draws": 2
+        }
+      },
+      "device": "cpu",
+      "torch": "2.10.0+cpu",
+      "elapsed_seconds": 0.7460857989999568,
+      "parameter_count": 125361,
+      "peak_gpu_allocated_bytes": null,
+      "qualification": {
+        "status": "unqualified",
+        "report_ref": null,
+        "report_sha256": null
+      },
+      "manifest_sha256": "c5dc6f532cfef9a9a449b73b789512b32f84af3973339bcb1902352c237212ef",
+      "warning": "Unqualified research weights. No seismic data consistency, geological generalization, calibrated uncertainty, 16GB GPU fit, or FWI improvement established by this training run."
+    }
+  },
+  "interpretation": "Both 20-step smoke models are substantially worse than the supplied background on weak-region RMSE. These runs verify execution only, not efficacy. Every checkpoint remains unqualified and production inference rejects it.",
+  "independent_review": "No important CNN or multiscale trainer defect found; 22 tests passed independently and extra U-Net resume comparison was bitwise equal. Saved-manifest round-trip issue fixed with a regression test.",
+  "not_run": [
+    "GPU/16GB peak memory",
+    "real geological pretraining",
+    "physical seismic inversion comparison",
+    "field-data experiment",
+    "remote push"
+  ]
+}

@@ -1,0 +1,84 @@
+{
+  "date_utc": "2026-11-04",
+  "upstream_base": "e26452c6d629ca3316a800944a287b5b1a12b1e4",
+  "local_safeguard_commit": "4b03160cfdfc6b14ba2e2dfb6d4c7c83912fdd56",
+  "integrated_training_commits": [
+    "afd2e542b658598a5836032cf87c8f8a2be36158",
+    "164f2e426a4ab7825b02a2f5e3d39b2ced42eab2"
+  ],
+  "environment": {
+    "python": "3.12.14",
+    "torch": "2.10.0+cpu",
+    "numpy": "2.2.6",
+    "pytest": "9.2.0",
+    "gpu_used": false
+  },
+  "results": {
+    "default": {
+      "tests": 555,
+      "failures": 12,
+      "errors": 0,
+      "seconds": 111.619,
+      "xml_sha256": "cf43588dbe77d199f0e8eb17afccb01eb292b6fa2593588e8935565e394b69b5"
+    },
+    "mkldnn_disabled": {
+      "tests": 555,
+      "failures": 0,
+      "errors": 0,
+      "seconds": 100.56,
+      "xml_sha256": "afd7ad7e03f2a1de63b1d9e118ad1c520c7b971ad684a512336334baba7d537a"
+    }
+  },
+  "default_failures_match_immutable_baseline": true,
+  "default_failures": [
+    "verification.five_ideas.test_gpu_batching::test_code_batches_match_serial_objective_gradient_and_energies[2-20.0-False]",
+    "verification.five_ideas.test_gpu_batching::test_code_batches_match_serial_objective_gradient_and_energies[2-20.0-True]",
+    "verification.five_ideas.test_gpu_batching::test_code_batches_match_serial_objective_gradient_and_energies[2-None-False]",
+    "verification.five_ideas.test_gpu_batching::test_code_batches_match_serial_objective_gradient_and_energies[2-None-True]",
+    "verification.five_ideas.test_gpu_batching::test_code_batches_match_serial_objective_gradient_and_energies[3-20.0-False]",
+    "verification.five_ideas.test_gpu_batching::test_code_batches_match_serial_objective_gradient_and_energies[3-20.0-True]",
+    "verification.five_ideas.test_gpu_batching::test_code_batches_match_serial_objective_gradient_and_energies[3-None-False]",
+    "verification.five_ideas.test_gpu_batching::test_code_batches_match_serial_objective_gradient_and_energies[3-None-True]",
+    "verification.five_ideas.test_gpu_batching::test_physical_shot_batches_match_serial_objective_and_gradient[20.0]",
+    "verification.five_ideas.test_gpu_batching::test_physical_shot_batches_match_serial_objective_and_gradient[None]",
+    "verification.residual_ifwi.test_experiment::test_shot_accumulation_preserves_full_objective_and_adam_update",
+    "verification.residual_ifwi.test_stochastic::test_selected_microbatches_preserve_full_selected_gradients_and_adam_state"
+  ],
+  "new_tests_since_upstream": 147,
+  "new_tests_since_safeguards": 98,
+  "scope": "CPU scientific-contract and numerical integration checks; not geological efficacy or qualification",
+  "diagnostic": {
+    "is_geological_benchmark": false,
+    "physical_inversion_updates": 0,
+    "dfm_training_executed": false,
+    "sensitivity_status": "ok",
+    "operator_identity": "cb2944cee54f1d5094a19efcc420ffa3a671cb180d1359de0c88325d04f1e3bf",
+    "diagnostics": {
+      "source_forward_solves": 3,
+      "source_backward_solves": 6,
+      "forward_time_steps": 192,
+      "probes": 2,
+      "normalization_count": 3840,
+      "work_units": 224640,
+      "pml_vmax_mps": 3000.0,
+      "cutoff_hz": null,
+      "masked": false,
+      "seed": 3,
+      "recorded_samples": 3840,
+      "max_recorded_samples": 1000000,
+      "max_batch_time_grid_entries": 24960,
+      "max_batch_time_grid_entries_limit": 2000000
+    },
+    "prior_status": "not_run_missing_qualified_checkpoint",
+    "network_evaluations": 0,
+    "posterior_uncertainty": false,
+    "context": "Explicit diagnostic background and physical PML bound, no truth/observed input",
+    "elapsed_seconds": 0.8007311030000892
+  },
+  "resume_best_review_fix": {
+    "scope": "Current invocation includes re-scored initial resumed EMA; no claim to historical best",
+    "training_tests": 30,
+    "independent_training_and_condition_tests": 52,
+    "trajectory": "Raw/EMA/Adam/RNG bitwise equality verified after resuming from saved best"
+  }
+}

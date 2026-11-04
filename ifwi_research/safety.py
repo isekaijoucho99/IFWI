@@ -52,44 +52,82 @@ def restore_rng(state: dict) -> None:
 def guarded_optimizer_step(model: nn.Module, optimizer: torch.optim.Optimizer,
                            physical_value: Callable[[],torch.Tensor | float], reference_loss: float,
                            *, max_trials: int=5, shrink: float=.5,
-                           valid_candidate: Callable[[],bool] | None=None) -> dict:
-    """Retry an optimizer step from the SAME parameters, moments, buffers, RNG.
+                           valid_candidate: Callable[[],bool] | None=None,
+                           fallback_gradients: Sequence[torch.Tensor | None] | None=None) -> dict:
+    """Backtrack optimizer trials, then a gradient-descent recovery if needed.
 
-    A rejected trial does not advance Adam's clock. A partially scaled accepted
-    trial is rerun using the scaled learning rate, not a post-hoc parameter mix.
-    The original configured learning rates are restored after an accepted trial.
-    The caller must keep data selection, frequency and model context fixed.
+    Every trial starts from the SAME parameters, buffers, optimizer and RNG.
+    Up to max_trials optimizer trials are followed by up to max_trials raw
+    gradient trials, all subject to the same strict physical decrease check.
+    fallback_gradients, when supplied, must follow model.parameters() and can
+    provide the physical gradient instead of a composed proposal gradient.
+    Only accepted recovery resets optimizer history for updated parameters.
+    Total rejection or any exception restores the entire original transaction.
+    Original learning rates are restored on success. The caller must keep data
+    selection, frequency and model context fixed across all physical evaluations.
     """
-    if not math.isfinite(reference_loss) or max_trials<1 or not 0<shrink<1:
+    if (not math.isfinite(reference_loss) or type(max_trials) is not int
+            or max_trials<1 or not 0<shrink<1):
         raise ValueError('Invalid line-search settings/reference loss')
     parameters=list(model.parameters())
-    snapshot=copy.deepcopy(model.state_dict()); old_opt=copy.deepcopy(optimizer.state_dict()); old_rng=rng_state()
     gradients=[None if p.grad is None else p.grad.detach().clone() for p in parameters]
+    fallback=list(gradients if fallback_gradients is None else fallback_gradients)
+    if len(fallback)!=len(parameters):
+        raise ValueError('Fallback gradients must follow model.parameters()')
+    for values in (gradients,fallback):
+        for p,g in zip(parameters,values):
+            if g is not None and (g.shape!=p.shape or g.device!=p.device or not torch.isfinite(g).all()):
+                raise ValueError('Matching finite gradients on the parameter device required')
+    fallback={id(p):None if g is None else g.detach().clone() for p,g in zip(parameters,fallback)}
+    if any(id(p) not in fallback for group in optimizer.param_groups for p in group['params']):
+        raise ValueError('Optimizer parameters must belong to the guarded model')
     lrs=[g['lr'] for g in optimizer.param_groups]
+    if any(not math.isfinite(float(lr)) or float(lr)<0 for lr in lrs):
+        raise ValueError('Finite nonnegative learning rates required')
+    snapshot=copy.deepcopy(model.state_dict()); old_opt=copy.deepcopy(optimizer.state_dict()); old_rng=rng_state()
     def restore():
         model.load_state_dict(snapshot); optimizer.load_state_dict(copy.deepcopy(old_opt)); restore_rng(old_rng)
         for p,g in zip(parameters,gradients): p.grad=None if g is None else g.clone()
-    forward_calls=0
+    def finite_model():
+        return all(not isinstance(v,torch.Tensor) or torch.isfinite(v).all()
+                   for v in model.state_dict().values())
+    forward_calls=0; optimizer_trials=0; recovery_trials=0
+    def report(accepted,value,factor,recovery):
+        return {'accepted':accepted,'trials':optimizer_trials+recovery_trials,
+                'optimizer_trials':optimizer_trials,'recovery_trials':recovery_trials,
+                'forward_calls':forward_calls,'step_scale':factor,'recovery':recovery,
+                'physical_before':reference_loss,'physical_after':value}
     try:
-        for trial in range(max_trials):
-            restore(); factor=shrink**trial
-            for group,lr in zip(optimizer.param_groups,lrs): group['lr']=lr*factor
-            optimizer.step()
-            finite=all(torch.isfinite(p).all() for p in parameters)
-            with torch.no_grad():
-                valid=bool(finite) and (valid_candidate is None or bool(valid_candidate()))
-                value=float('inf')
-                if valid:
-                    forward_calls+=1
-                    try: value=float(physical_value())
-                    except FloatingPointError: value=float('inf')
-            if math.isfinite(value) and value<reference_loss:
-                for group,lr in zip(optimizer.param_groups,lrs): group['lr']=lr
-                return {'accepted':True,'trials':trial+1,'forward_calls':forward_calls,
-                        'step_scale':factor,'physical_before':reference_loss,'physical_after':value}
+        for recover in (False,True):
+            for trial in range(max_trials):
+                restore(); factor=shrink**trial
+                if recover:
+                    recovery_trials+=1
+                    with torch.no_grad():
+                        for group,lr in zip(optimizer.param_groups,lrs):
+                            for p in group['params']:
+                                g=fallback[id(p)]
+                                if g is not None: p.add_(g,alpha=-float(lr)*factor)
+                else:
+                    optimizer_trials+=1
+                    for group,lr in zip(optimizer.param_groups,lrs): group['lr']=lr*factor
+                    optimizer.step()
+                with torch.no_grad():
+                    valid=finite_model() and (valid_candidate is None or bool(valid_candidate()))
+                    value=float('inf')
+                    if valid:
+                        forward_calls+=1
+                        try: value=float(physical_value())
+                        except FloatingPointError: value=float('inf')
+                if math.isfinite(value) and value<reference_loss and finite_model():
+                    if recover:
+                        for group in optimizer.param_groups:
+                            for p in group['params']:
+                                if fallback[id(p)] is not None: optimizer.state.pop(p,None)
+                    for group,lr in zip(optimizer.param_groups,lrs): group['lr']=lr
+                    return report(True,value,factor,'gradient_descent' if recover else None)
         restore()
-        return {'accepted':False,'trials':max_trials,'forward_calls':forward_calls,
-                'step_scale':0.,'physical_before':reference_loss,'physical_after':reference_loss}
+        return report(False,reference_loss,0.,None)
     except BaseException:
         restore()
         raise

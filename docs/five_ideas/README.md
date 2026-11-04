@@ -1,5 +1,7 @@
 # 使用入口：五个独立 IFWI 研究原型
 
+2026-11-04 的 DFM 优化器恢复、checkpoint 资格保护与 CPU 后端差异见 [`DFM_SAFEGUARDS_20261104.md`](DFM_SAFEGUARDS_20261104.md)。
+
 本地完整 checkout 的安装与回归核验见 [`LOCAL_VALIDATION.md`](LOCAL_VALIDATION.md)：2026-11-01 修复了原有指标测试的 R² 契约断言并恢复 GPU 批量求解，最新完整回归 406 项通过、2 项因 Windows 符号链接权限跳过，真实 RNN-FD 桥接与 CUDA 批量一致性检查通过。下文与 `VALIDATION.md` 中的原始交付状态保留作历史记录。
 
 ## 先看哪些文件
@@ -54,7 +56,7 @@ python tools/publish_five_ideas.py --repo "C:\Projects\IFWI" --push
 进入安装后的工作树，先运行：
 
 ```bash
-python -m pytest verification/five_ideas/test_repository_bridge.py -v
+python -m pytest verification/five_ideas/test_repository_bridge.py verification/five_ideas/test_repository_dfm.py -v
 ```
 
 随后用同一既有 baseline spec：
@@ -84,6 +86,8 @@ python -m ifwi_research.run --baseline experiments/configs/diffusion_prior/g2_pm
 | `09_interface_regularized.json` | 显式开启界面正则，权重需在开发集检验 |
 | `10_gradient_attention_identity.json` | 梯度门控强度为零，精确返回 base |
 
+候选审查先尝试最多 `max_trials` 次原优化器步；全部失败后，再从同一快照尝试最多 `max_trials` 次**纯物理梯度下降**。这是 Adam 旧动量指向上升方向时的恢复路径，不是降低接受标准。所有候选仍必须通过有限性、物理有效性和同一实际数据目标的严格下降检查。仅恢复成功后清除已更新参数的优化器历史；全部失败或异常时，参数、缓冲区、梯度、优化器和 RNG 均回滚。学习率配置不变。日志的 `trials` 是两阶段总次数，另记 `optimizer_trials`、`recovery_trials`、`recovery` 与真实 `forward_calls`；比较预算时必须计入额外正演。非审查步仍保留原 Adam 行为。
+
 随机种子与学习率默认继承 baseline，可在研究配置显式指定；正式实验使用开发种子 3 之外的新种子 10–14。独立研究配置不自动更换数据集；Overthrust 应使用对应原仓库 baseline spec 和物理采样间距，不把 Marmousi 的数据路径替换后就默认其他参数全适用。
 
 `--snr-db 20` 或 `--snr-db 10` 注入固定种子 AWGN，噪声按全部干净记录样本功率定义；不会重用含糊的旧 `noise_sigma` 语义。
@@ -100,7 +104,13 @@ python -m ifwi_research.train_dfm --train-dir DATA/train_models --val-dir DATA/v
 
 `best.pt` 只按独立验证模型选取；测试真值不参与。调试训练可用很少步数，但这种权重不能据此被当成有效地质先验。当前训练器会保存优化器与 RNG，**尚未提供训练 CLI 的续训参数**；这与反演 runner 的精确续训是不同能力。
 
-确认研究配置 `05_dfm.json` 的 checkpoint 路径后：
+训练器现在始终输出 `toy_only=True` 和 `qualification={"status":"unqualified","evidence":null}`，包括 `best.pt`。默认加载器拒绝这些权重，也拒绝缺失资格记录的旧权重；训练步数或去噪 RMSE 都不会自动解除限制。
+
+在独立审查训练/验证/测试模型来源、父模型泄漏、适用网格与地质域，以及匹配预算的受保护 FWI 对照后，研究者可在**已审查的那份 checkpoint** 的 `meta` 中明确记录 `toy_only=False` 和 `qualification={"status":"reviewed_for_inversion","evidence":"实际审查报告的路径或链接"}`。不要把示例文字当作证据，也不要把一份权重的审查结果复制给其他权重。报告应标识所审查的权重、数据划分、适用范围、对照结果与局限；保留原始训练产物。加载器只检查声明结构，不读取或验证报告，也不能认证科学质量。未完成审查就不要使用正式反演命令。
+
+纯单元测试/烟雾测试可在 Python 中显式传入 `FrozenDFMPrior(..., allow_unqualified=True)`；它会警告，且不会修改 checkpoint 的资格状态。此选项不绕过训练步数、物理间距、归一化或有限权重检查，正式 CLI 不提供该开关。
+
+完成审查并确认研究配置 `05_dfm.json` 的 checkpoint 路径后：
 
 ```bash
 python -m ifwi_research.run --baseline experiments/configs/diffusion_prior/g2_pms/01_pms_baseline.json --research experiments/configs/five_ideas/05_dfm.json --device cuda:0 --out outputs/five_ideas/dfm_run

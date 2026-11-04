@@ -89,17 +89,18 @@ def test_dfm_checkpoint_training_and_rejection(tmp_path):
     opt=torch.optim.Adam(model.parameters(),lr=.001)
     opt.zero_grad(); conditional_group_loss(model,clean,t=.2,r=.8,group_size=4,generator=rng).backward(); opt.step()
     meta=dict(schema='ifwi_small_dfm_v1',trained_steps=1,width=8,spacing_m=20.,mean_mps=2000.,
-              scale_mps=1000.,condition_kernel=3,patch_size=8,toy_only=False)
+              scale_mps=1000.,condition_kernel=3,patch_size=8,toy_only=True)
     path=tmp_path/'synthetic_test_fixture.pt'
     torch.save({'meta':meta,'model':model.state_dict()},path)
-    prior=FrozenDFMPrior(path,20.,start_t=.8,nfe=2)
+    with pytest.warns(UserWarning,match='unqualified'):
+        prior=FrozenDFMPrior(path,20.,start_t=.8,nfe=2,allow_unqualified=True)
     v=torch.full((1,9,13),2200.,requires_grad=True)
     target=prior.proposal(v,1)
     assert target.shape==v.shape and not target.requires_grad
     assert all(not p.requires_grad for p in prior.model.parameters())
     prior.penalty(v,target).backward()
     assert v.grad is not None and torch.isfinite(v.grad).all()
-    with pytest.raises(ValueError,match='spacing'): FrozenDFMPrior(path,15.)
+    with pytest.raises(ValueError,match='spacing'): FrozenDFMPrior(path,15.,allow_unqualified=True)
     meta['trained_steps']=0; torch.save({'meta':meta,'model':model.state_dict()},path)
     with pytest.raises(ValueError,match='trained'): FrozenDFMPrior(path,20.)
 

@@ -74,7 +74,7 @@ class ResearchEngine:
         if not math.isfinite(spacing_m) or spacing_m<=0: raise ValueError('Invalid spacing_m')
         if background.ndim!=3 or background.shape[0]!=1: raise ValueError('Require [1,H,W] background')
         self.objective,self.prior,self.completed=objective,prior,0
-        if config.method=='dfm' and prior is None:
+        if config.method=='dfm' and prior is None and config.prior_ratio>0:
             raise ValueError('DFM needs a trained frozen prior checkpoint')
         if config.method!='dfm' and prior is not None: raise ValueError('Prior only allowed in dfm experiment')
         if config.method=='wavelet':
@@ -107,7 +107,8 @@ class ResearchEngine:
                 'completed':self.completed,'rng':rng_state(),
                 'counters':copy.deepcopy(self.objective.counters),'prior_seconds':self.prior_seconds,
                 'prior_calls':getattr(self.prior,'calls',0),
-                'prior_hash':getattr(self.prior,'checkpoint_hash',None)}
+                'prior_hash':getattr(self.prior,'checkpoint_hash',None),
+                'prior_state':self.prior.state_dict() if hasattr(self.prior,'state_dict') else None}
 
     def load_state_dict(self, saved):
         if saved.get('schema')!='ifwi_five_ideas_engine_v1' or saved['config']!=asdict(self.config):
@@ -115,6 +116,11 @@ class ResearchEngine:
         if saved['prior_hash']!=getattr(self.prior,'checkpoint_hash',None):
             raise ValueError('Prior weight identity changed')
         if (saved['router'] is None)!=(self.router is None): raise ValueError('Router state mismatch')
+        prior_state=saved.get('prior_state')
+        if hasattr(self.prior,'load_state_dict'):
+            if prior_state is None: raise ValueError('Cached prior state is required for exact resume')
+            self.prior.load_state_dict(prior_state)
+        elif prior_state is not None: raise ValueError('Prior state contract mismatch')
         self.model.load_state_dict(saved['model']); self.optimizer.load_state_dict(saved['optimizer'])
         if self.router is not None: self.router.load_state_dict(saved['router'])
         self.completed=int(saved['completed']); self.objective.counters=copy.deepcopy(saved['counters'])
@@ -125,6 +131,9 @@ class ResearchEngine:
     def step(self, cutoff: float | None=None, *, lr_multiplier: float=1.):
         if not math.isfinite(lr_multiplier) or lr_multiplier<=0: raise ValueError('Invalid LR multiplier')
         update=self.completed+1; cfg=self.config
+        active_prior=(self.prior is not None and cfg.prior_ratio>0 and getattr(self.prior,'enabled',True) and update>=cfg.prior_start and (update-cfg.prior_start)%cfg.prior_every==0)
+        if active_prior and hasattr(self.prior,'prepare_context'):
+            self.prior.prepare_context(cutoff,operator_identity=getattr(self.objective,'operator_identity',None))
         if self.router is not None:
             plan=self.router.plan(full=(update==1 or update%cfg.audit_every==0))
         else: plan=None
@@ -135,7 +144,6 @@ class ResearchEngine:
         # Physical differentiation never traverses the trainable attention context.
         measured=self.objective.evaluate(velocity.detach(),plan=plan,cutoff=cutoff,gradient=True)
         params=[p for p in self.model.parameters() if p.requires_grad]
-        active_prior=(self.prior is not None and update>=cfg.prior_start and (update-cfg.prior_start)%cfg.prior_every==0)
         regularize=cfg.method=='interface' and cfg.interface_regularization>0
         grads=torch.autograd.grad(velocity,params,measured.gradient,
                                  retain_graph=active_prior or regularize,allow_unused=True)
@@ -148,6 +156,7 @@ class ResearchEngine:
             proposal=torch.autograd.grad(loss,params,allow_unused=True)
             proposal=[torch.zeros_like(p) if g is None else g for p,g in zip(params,proposal)]
             composed,prior_report=protect_physical_gradient(physical,proposal,cfg.prior_ratio)
+            if hasattr(self.prior,'diagnostics'): prior_report['proposal']=self.prior.diagnostics()
             self._sync(); self.prior_seconds+=time.perf_counter()-begin
         if regularize:
             reg=self.model.regularization()*cfg.interface_regularization
@@ -161,10 +170,12 @@ class ResearchEngine:
         # Routed + guarded is supported on the SAME selected-code objective,
         # not a guarantee for the unsampled physical shots. Full audits remain separate.
         if guard:
+            physical_by_parameter=dict(zip(map(id,params),physical))
             result=guarded_optimizer_step(self.model,self.optimizer,
                 lambda:self.objective.evaluate(self.model(),plan=plan,cutoff=cutoff,gradient=False).value,
                 measured.value,max_trials=cfg.max_trials,
-                valid_candidate=lambda:self.objective.valid(self.model()))
+                valid_candidate=lambda:self.objective.valid(self.model()),
+                fallback_gradients=[physical_by_parameter.get(id(p)) for p in self.model.parameters()])
         else:
             state=copy.deepcopy(self.model.state_dict()); opt=copy.deepcopy(self.optimizer.state_dict())
             try:

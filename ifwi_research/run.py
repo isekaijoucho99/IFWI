@@ -26,6 +26,8 @@ def read_research_config(path,baseline_learning_rate=1e-4,baseline_seed=3):
     unknown=set(data)-fields-{'prior','interface_reference'}
     if unknown: raise ValueError(f'Unknown research settings: {sorted(unknown)}')
     prior=data.pop('prior',None); interface=data.pop('interface_reference',None)
+    if isinstance(prior,dict) and prior.get('allow_unqualified',False) is not False:
+        raise ValueError('allow_unqualified is only supported in Python smoke/tests, not the inversion runner')
     data.setdefault('learning_rate',baseline_learning_rate); data.setdefault('seed',baseline_seed)
     cfg=ResearchConfig(**data).validate()
     if cfg.method!='dfm' and prior is not None: raise ValueError('Prior settings require dfm method')

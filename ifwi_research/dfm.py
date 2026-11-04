@@ -106,15 +106,30 @@ class FrozenDFMPrior:
     The candidate is generated from a noisy version of the current patch,
     using its coarse structure as condition. This inference distribution
     differs from exact training marginals; validate OOD behavior explicitly.
+    Default loading requires an explicit review declaration and evidence reference.
+    allow_unqualified=True is a warned smoke/testing opt-in, not qualification.
     """
     def __init__(self, checkpoint: str | Path, spacing_m: float, device='cpu', *,
-                 start_t: float=.8, nfe: int=1, seed: int=3):
+                 start_t: float=.8, nfe: int=1, seed: int=3,
+                 allow_unqualified: bool=False):
+        if type(allow_unqualified) is not bool:
+            raise ValueError('allow_unqualified must be a boolean')
         path=Path(checkpoint)
         payload=torch.load(path,map_location='cpu',weights_only=True)
         meta=payload.get('meta',{})
         if meta.get('schema')!='ifwi_small_dfm_v1' or type(meta.get('trained_steps')) is not int or meta['trained_steps']<1:
             raise ValueError('A trained ifwi_small_dfm_v1 checkpoint is required')
-        if meta.get('toy_only',False): raise ValueError('Toy checkpoints cannot be used for geological inversion')
+        # A review record is an explicit researcher declaration, not a quality
+        # certificate inferred from training duration or denoising loss.
+        qualification=meta.get('qualification')
+        qualified=(meta.get('toy_only') is False
+                   and isinstance(qualification,dict)
+                   and qualification.get('status')=='reviewed_for_inversion'
+                   and isinstance(qualification.get('evidence'),str)
+                   and bool(qualification['evidence'].strip()))
+        if not qualified and not allow_unqualified:
+            raise ValueError('Checkpoint qualification required for geological inversion; '
+                             'allow_unqualified=True is only for smoke/testing')
         if not math.isclose(float(meta['spacing_m']),spacing_m,rel_tol=1e-8):
             raise ValueError('Prior physical grid spacing mismatch; image resizing is not a scale bridge')
         if not 0<=start_t<1 or type(nfe) is not int or nfe<1:
@@ -122,6 +137,8 @@ class FrozenDFMPrior:
         self.meta,self.start_t,self.nfe,self.seed=meta,start_t,nfe,seed
         self.model=TwoTimeTransport(int(meta['width'])).to(device).eval()
         self.model.load_state_dict(payload['model'])
+        if any(not torch.isfinite(p).all() for p in self.model.state_dict().values()):
+            raise ValueError('Nonfinite DFM checkpoint weights')
         for p in self.model.parameters(): p.requires_grad_(False)
         self.mean=float(meta['mean_mps']); self.scale=float(meta['scale_mps'])
         self.kernel=int(meta['condition_kernel']); self.patch=int(meta['patch_size'])
@@ -130,6 +147,11 @@ class FrozenDFMPrior:
             raise ValueError('Invalid normalization/patch/kernel metadata')
         self.checkpoint_hash=hashlib.sha256(path.read_bytes()).hexdigest()
         self.calls=0
+        if not qualified:
+            import warnings
+            warnings.warn('Loading an unqualified DFM checkpoint for smoke/testing only; '
+                          'this is not evidence of geological inversion quality',
+                          UserWarning,stacklevel=2)
 
     @torch.no_grad()
     def proposal(self, velocity: torch.Tensor, update: int) -> torch.Tensor:

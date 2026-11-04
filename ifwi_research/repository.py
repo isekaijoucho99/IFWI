@@ -37,6 +37,32 @@ class RepositoryObjective:
         self.code_solvers={}
         self.counters={'forward_solves':0,'backward_solves':0,'forward_time_steps':0}
 
+    @property
+    def operator_identity(self):
+        """Fingerprint native operator construction settings, never observations.
+
+        Cached priors must match actual geometry, source and PML coefficients;
+        using only config text could miss an already-constructed solver mismatch.
+        Native finite-difference kernels/PML arrays are immutable by contract;
+        arbitrary in-place coefficient edits or monkey-patching are unsupported.
+        """
+        from .illumination import native_operator_identity
+        solvers=[item['solver'] for item in self.problem['propagators']]
+        fd=solvers[0].fd
+        if any(s.fd.dtype!=torch.float32 or s.fd.k_size!=3 for s in solvers):
+            raise ValueError('Cached sensitivity requires the float32 order-2 native operator')
+        settings=(fd.dt,fd.dz,fd.npad,fd.freeSurface,fd.vmax,fd.log_para)
+        if any((s.fd.dt,s.fd.dz,s.fd.npad,s.fd.freeSurface,s.fd.vmax,s.fd.log_para)!=settings for s in solvers):
+            raise ValueError('Cached prior requires uniform native operator settings')
+        if self.problem['config']['forward']['dt_s']!=fd.dt:
+            raise ValueError('Native operator and filter time sampling disagree')
+        geometry={'nz':fd.nz_pad-fd.npad*(1 if fd.freeSurface else 2),'nx':fd.nx}
+        for key in ('xs','zs','xr','zr'):
+            geometry[key]=torch.cat([getattr(s,key).detach().cpu() for s in solvers],dim=1)
+        return native_operator_identity(geometry=geometry,wavelet=self.problem['wavelet'].detach().cpu(),
+            dt_s=fd.dt,spacing_m=fd.dz,npad=fd.npad,free_surface=fd.freeSurface,
+            pml_vmax_mps=fd.vmax,pml_reflection=fd.log_para)
+
     def valid(self,velocity):
         try: self.e.check_velocity(velocity,self.problem['config']); return True
         except (ValueError,FloatingPointError): return False
