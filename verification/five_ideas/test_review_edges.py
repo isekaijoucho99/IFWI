@@ -18,17 +18,19 @@ def test_gradient_identity_bypasses_reanchoring_roundoff():
 
 
 def test_prior_metadata_rejects_nonfinite_normalization(tmp_path):
-    from ifwi_research.dfm import TwoTimeTransport,FrozenDFMPrior
+    from ifwi_research.dfm import TwoTimeTransport,FrozenDFMPrior,UPSTREAM_COMMIT
     model=TwoTimeTransport(8)
-    meta=dict(schema='ifwi_small_dfm_v1',trained_steps=1,width=8,spacing_m=20.,mean_mps=float('nan'),
+    meta=dict(schema='ifwi_small_dfm_v2',upstream_commit=UPSTREAM_COMMIT,
+              drift_operator='grouped_sinkhorn_euclidean',trained_steps=1,width=8,spacing_m=20.,mean_mps=float('nan'),
               scale_mps=1000.,condition_kernel=3,patch_size=8,toy_only=False)
     path=tmp_path/'bad.pt'; torch.save({'meta':meta,'model':model.state_dict()},path)
     with pytest.raises(ValueError,match='normalization'): FrozenDFMPrior(path,20.)
 
 
 def test_prior_penalty_disallows_broadcasting(tmp_path):
-    from ifwi_research.dfm import TwoTimeTransport,FrozenDFMPrior
-    meta=dict(schema='ifwi_small_dfm_v1',trained_steps=1,width=8,spacing_m=20.,mean_mps=2000.,
+    from ifwi_research.dfm import TwoTimeTransport,FrozenDFMPrior,UPSTREAM_COMMIT
+    meta=dict(schema='ifwi_small_dfm_v2',upstream_commit=UPSTREAM_COMMIT,
+              drift_operator='grouped_sinkhorn_euclidean',trained_steps=1,width=8,spacing_m=20.,mean_mps=2000.,
               scale_mps=1000.,condition_kernel=3,patch_size=8,toy_only=False)
     path=tmp_path/'test.pt'; torch.save({'meta':meta,'model':TwoTimeTransport(8).state_dict()},path)
     prior=FrozenDFMPrior(path,20.)

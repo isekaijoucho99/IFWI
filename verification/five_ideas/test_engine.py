@@ -82,17 +82,19 @@ def test_config_invalid_combination():
 
 
 def test_dfm_checkpoint_training_and_rejection(tmp_path):
-    from ifwi_research.dfm import TwoTimeTransport, FrozenDFMPrior, conditional_group_loss
+    from ifwi_research.dfm import TwoTimeTransport, FrozenDFMPrior, conditional_group_loss, UPSTREAM_COMMIT
     model=TwoTimeTransport(width=8)
     clean=torch.randn(1,1,8,8)
     rng=torch.Generator().manual_seed(123)
     opt=torch.optim.Adam(model.parameters(),lr=.001)
     opt.zero_grad(); conditional_group_loss(model,clean,t=.2,r=.8,group_size=4,generator=rng).backward(); opt.step()
-    meta=dict(schema='ifwi_small_dfm_v1',trained_steps=1,width=8,spacing_m=20.,mean_mps=2000.,
+    meta=dict(schema='ifwi_small_dfm_v2',upstream_commit=UPSTREAM_COMMIT,
+              drift_operator='grouped_sinkhorn_euclidean',trained_steps=1,width=8,spacing_m=20.,mean_mps=2000.,
               scale_mps=1000.,condition_kernel=3,patch_size=8,toy_only=False)
     path=tmp_path/'synthetic_test_fixture.pt'
     torch.save({'meta':meta,'model':model.state_dict()},path)
-    prior=FrozenDFMPrior(path,20.,start_t=.8,nfe=2)
+    with pytest.warns(RuntimeWarning,match='Warm-start'):
+        prior=FrozenDFMPrior(path,20.,start_t=.8,nfe=2)
     v=torch.full((1,9,13),2200.,requires_grad=True)
     target=prior.proposal(v,1)
     assert target.shape==v.shape and not target.requires_grad

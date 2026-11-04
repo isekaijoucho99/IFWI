@@ -114,6 +114,34 @@ exit code 0
 
 跳过与警告原因同上。CUDA 测速脚本和原始结果保存在工作区外层的 `outputs/five_ideas_gpu_batch_validation_20261101/`。研究队列继续使用种子 3、四个新方案各 1000 步，直接复用旧基线；慢速试跑输出保留，未生成检查点的中间状态不冒充精确续训。
 
-## 结果边界
+## 2026-11-04：DFM 官方核心适配
 
-本次补充了本地完整 checkout 的新增数值与真实正演桥接证据；未运行 Marmousi/Overthrust 全尺寸反演、地质 DFM 正式训练或 GPU 性能基准。原始交付记录中的研究限制仍适用。
+固定采用作者仓库 `merry7cherry/drift-flow-matching` 的提交 `619663f0e7cbd17e58d98501daaf389d2810077b`。六个 Sinkhorn/损失函数原函数体未修改，MIT 许可与来源已随代码保存。修复逐行 softmax 替代官方 Sinkhorn、端点噪声配对、时间分布、EMA 和验证/推理采样不一致；详见 `DFM_UPSTREAM_AUDIT.md`。物理求解器、13 炮批量和基线保留。
+
+新增 14 项测试，覆盖直接执行官方函数生成的数值夹具、停止梯度、双边边际、组隔离、端点配对、时间采样、固定条件和噪声起点、旧权重拒绝、EMA 生成验证，以及续训源身份包含 vendor 子目录。初次新增测试 8 项预期失败；补充的源身份保护测试也先失败，再修复通过。
+
+```text
+python -m pytest -q verification/five_ideas/test_dfm_upstream.py --tb=short
+14 passed in 1.62s
+
+python -m pytest -q -ra --tb=short --junitxml=outputs/dfm_upstream_validation_20261104/full_regression_final.xml
+420 passed, 2 skipped, 2 warnings in 120.70s
+
+python -m compileall -q ifwi_research verification/five_ideas/test_dfm_upstream.py
+exit code 0
+```
+
+两项跳过和两项警告均与原回归相同。独立只读审查未发现需要修改的问题；独立重跑新增 14 项测试通过，另核对了六个函数 AST 与上游源文件散列。
+
+本机 CUDA 验证：
+
+- 六个函数 AST 与固定提交原文件一致；CUDA 漂移结果与直接执行上游函数逐值相同，绝对差为 0。
+- 对已有独立地质数据的 4 个训练模型和 2 个验证模型执行 64 步 CUDA 接口试跑，完成 v2 权重保存/冻结加载与 94×288 候选生成。该权重只用于接口检查，验证 RMSE 约 1676.72 m/s，不当作有效先验。
+- 真实 Marmousi 94×288、15 m、13 炮、1000 时间采样上执行 2 步 DFM 桥接。此接口检查临时在第 1 步启用先验；正式配置仍为 201 步。两步均通过实际物理候选审查，目标分别从 `0.0067747422` 到 `0.0063568056`、再到 `0.0057603316`。耗时约 35.06 秒。
+- 新增基线训练为 0 步。2 步桥接不用于精度或加速比结论。
+
+上游源文件、CUDA 原始记录和桥接输出保存在外层 `outputs/dfm_official_audit_20261104/`；完整回归 XML 位于工作树忽略的 `outputs/dfm_upstream_validation_20261104/`。旧权重与旧实验记录保留。修正后的完整反演效果需用新训练的 v2 权重验证。
+
+## 原始交付结果边界（2026-10-30）
+
+原始交付核验仅补充了本地完整 checkout 的数值与真实正演桥接证据，当时未运行 Marmousi/Overthrust 全尺寸反演、地质 DFM 正式训练或 GPU 性能基准。后续核验与运行情况见上述日期记录；原始交付不构成有效性结论。

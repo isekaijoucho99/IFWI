@@ -1,6 +1,6 @@
 # 使用入口：五个独立 IFWI 研究原型
 
-本地完整 checkout 的安装与回归核验见 [`LOCAL_VALIDATION.md`](LOCAL_VALIDATION.md)：2026-11-01 修复了原有指标测试的 R² 契约断言并恢复 GPU 批量求解，最新完整回归 406 项通过、2 项因 Windows 符号链接权限跳过，真实 RNN-FD 桥接与 CUDA 批量一致性检查通过。下文与 `VALIDATION.md` 中的原始交付状态保留作历史记录。
+本地完整 checkout 的安装与回归核验见 [`LOCAL_VALIDATION.md`](LOCAL_VALIDATION.md)：已修复指标测试的 R² 契约断言、恢复 GPU 批量求解，并于 2026-11-04 将 DFM 核心适配为固定版本的官方实现。最新完整回归 420 项通过、2 项因 Windows 符号链接权限跳过；真实 RNN-FD 桥接与 CUDA 一致性检查通过。DFM 的修复证据与研究边界见 [`DFM_UPSTREAM_AUDIT.md`](DFM_UPSTREAM_AUDIT.md)。`VALIDATION.md` 保留原始交付状态。
 
 ## 先看哪些文件
 
@@ -93,20 +93,22 @@ python -m ifwi_research.run --baseline experiments/configs/diffusion_prior/g2_pm
 准备相互独立的完整二维地质速度模型 `.npy`，单位 m/s。先分模型，再裁块。禁止包含测试真值或同一父模型的其他裁块。
 
 ```bash
-python -m ifwi_research.train_dfm --train-dir DATA/train_models --val-dir DATA/val_models --grid-spacing-m 15 --patch-size 64 --width 32 --group-size 16 --groups-per-step 2 --steps 20000 --validate-every 100 --device cuda:0 --out weights/dfm_independent_15m
+python -m ifwi_research.train_dfm --train-dir DATA/train_models --val-dir DATA/val_models --grid-spacing-m 15 --patch-size 64 --width 32 --group-size 64 --groups-per-step 4 --sinkhorn-iters 20 --steps 20000 --validate-every 100 --device cuda:0 --out weights/dfm_official_15m_v2
 ```
 
-20,000 步是可调的研究预算，不是已验证的收敛步数。验证集去噪优于噪声输入也不等于 FWI 有效。训练输出包括 `dataset_manifest.json`、`history.jsonl`、`last.pt`、`best.pt`、`summary.json`。
+20,000 步是可调的研究预算，不是已验证的收敛步数。当前版本直接使用固定版本的官方分组 Sinkhorn 与匹配损失，采用同一噪声端点、官方 logit-normal 时间采样和 EMA 推理权重。来源、旧实现差异与适配边界见 [DFM_UPSTREAM_AUDIT.md](DFM_UPSTREAM_AUDIT.md)。
+
+独立验证从 `t=0` 高斯噪声生成，报告 1/2/4 NFE 的条件生成 RMSE，`best.pt` 按固定 4 NFE 选择。验证条件来自独立模型的平滑场，仍不代表反演估计条件下有效；同时报告纯条件场的 RMSE 作为参考。训练输出包括 `dataset_manifest.json`、`history.jsonl`、`last.pt`、`best.pt`、`summary.json`。旧 `ifwi_small_dfm_v1` 权重会被明确拒绝，需重新训练，不覆盖原文件。
 
 `best.pt` 只按独立验证模型选取；测试真值不参与。调试训练可用很少步数，但这种权重不能据此被当成有效地质先验。当前训练器会保存优化器与 RNG，**尚未提供训练 CLI 的续训参数**；这与反演 runner 的精确续训是不同能力。
 
 确认研究配置 `05_dfm.json` 的 checkpoint 路径后：
 
 ```bash
-python -m ifwi_research.run --baseline experiments/configs/diffusion_prior/g2_pms/01_pms_baseline.json --research experiments/configs/five_ideas/05_dfm.json --device cuda:0 --out outputs/five_ideas/dfm_run
+python -m ifwi_research.run --baseline experiments/configs/diffusion_prior/g2_pms/01_pms_baseline.json --research experiments/configs/five_ideas/05_dfm.json --device cuda:0 --shot-batch-size 13 --out outputs/five_ideas/dfm_run
 ```
 
-15 m 与 20 m 先验不能直接混用。本版本严格检查物理采样间距。DFM 只在第 201 步开始注入，避免低波数背景未建立时强加结构。
+15 m 与 20 m 先验不能直接混用。本版本严格检查物理采样间距。默认从独立噪声开始，使用当前速度平滑场作为固定条件，以 4 NFE 生成候选。DFM 只在第 201 步开始注入，避免低波数背景未建立时强加结构。物理梯度保护和候选审查是 IFWI 适配，不属于原论文的生成算法。
 
 ## 5. 反演续训和结果文件
 

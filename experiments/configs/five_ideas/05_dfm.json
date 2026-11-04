@@ -5,9 +5,9 @@
   "prior_ratio": 0.025,
   "max_trials": 4,
   "prior": {
-    "checkpoint": "weights/dfm_independent_15m/best.pt",
-    "start_t": 0.8,
-    "nfe": 1,
+    "checkpoint": "weights/dfm_official_15m_v2/best.pt",
+    "start_t": 0.0,
+    "nfe": 4,
     "seed": 3
   }
 }

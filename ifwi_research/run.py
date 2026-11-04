@@ -34,7 +34,7 @@ def read_research_config(path,baseline_learning_rate=1e-4,baseline_seed=3):
 
 
 def source_identity(root):
-    paths=list((root/'ifwi_research').glob('*.py'))
+    paths=list((root/'ifwi_research').rglob('*.py'))
     paths+=list((root/'experiments').glob('*.py'))
     paths+=[root/x for x in ('core_runner.py','core_controls.py','core_models.py','core_speed.py','core_accel.py','ifwi_modules.py','rnn_fd.py','generator.py','plot_functions.py','robust_observations.py')]
     return {str(p.relative_to(root)).replace('\\','/'):hashlib.sha256(p.read_bytes()).hexdigest() for p in paths if p.is_file()}
