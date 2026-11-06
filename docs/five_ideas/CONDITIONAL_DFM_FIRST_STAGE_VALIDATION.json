@@ -1,0 +1,71 @@
+{
+  "schema": "conditional_dfm_first_stage_validation_v1",
+  "date": "2026-11-06",
+  "base_commit": "cbf773207622ade8ab96afbf80f645b7042d5929",
+  "branch": "feat/dfm-first-stage-validation",
+  "pushed": false,
+  "environment": {
+    "python": "3.12.14",
+    "torch": "2.10.0+cpu",
+    "cuda_available": false
+  },
+  "baseline_default_suite": {
+    "passed": 543,
+    "failed": 12,
+    "warnings": 1
+  },
+  "final_default_suite": {
+    "passed": 587,
+    "failed": 12,
+    "warnings": 1,
+    "command": "python -m pytest -q"
+  },
+  "final_controlled_suite": {
+    "passed": 599,
+    "failed": 0,
+    "warnings": 1,
+    "command": "python -c \"import torch,pytest; torch.backends.mkldnn.enabled=False; raise SystemExit(pytest.main(['-q']))\""
+  },
+  "new_focused_tests": {
+    "passed": 44,
+    "failed": 0,
+    "command": "python -m pytest verification/five_ideas/test_conditional_validation.py verification/five_ideas/test_prior_safety.py -q"
+  },
+  "default_backend_failures": [
+    "verification/five_ideas/test_gpu_batching.py::test_code_batches_match_serial_objective_gradient_and_energies[2-None-True]",
+    "verification/five_ideas/test_gpu_batching.py::test_code_batches_match_serial_objective_gradient_and_energies[2-None-False]",
+    "verification/five_ideas/test_gpu_batching.py::test_code_batches_match_serial_objective_gradient_and_energies[2-20.0-True]",
+    "verification/five_ideas/test_gpu_batching.py::test_code_batches_match_serial_objective_gradient_and_energies[2-20.0-False]",
+    "verification/five_ideas/test_gpu_batching.py::test_code_batches_match_serial_objective_gradient_and_energies[3-None-True]",
+    "verification/five_ideas/test_gpu_batching.py::test_code_batches_match_serial_objective_gradient_and_energies[3-None-False]",
+    "verification/five_ideas/test_gpu_batching.py::test_code_batches_match_serial_objective_gradient_and_energies[3-20.0-True]",
+    "verification/five_ideas/test_gpu_batching.py::test_code_batches_match_serial_objective_gradient_and_energies[3-20.0-False]",
+    "verification/five_ideas/test_gpu_batching.py::test_physical_shot_batches_match_serial_objective_and_gradient[None]",
+    "verification/five_ideas/test_gpu_batching.py::test_physical_shot_batches_match_serial_objective_and_gradient[20.0]",
+    "verification/residual_ifwi/test_experiment.py::test_shot_accumulation_preserves_full_objective_and_adam_update",
+    "verification/residual_ifwi/test_stochastic.py::test_selected_microbatches_preserve_full_selected_gradients_and_adam_state"
+  ],
+  "baseline_failure_diagnosis": "The same 12 failures occur before and after the change; all 21 affected batching checks pass with MKLDNN disabled. No solver code or assertion tolerance was changed.",
+  "warning": "Original ifwi_modules.py parameters generator is empty when its gradient clipping call is reached; pre-existing.",
+  "integration_checks": [
+    "Native RNN-FD conditional candidate evaluation and matched guarded branch updates.",
+    "Persisted baseline model/Adam snapshot restore and exact condition export.",
+    "Zero-ratio branch is bitwise equal to matched physics-only.",
+    "Actual two-step synthetic training export passes through explicit diagnostic loader, fixed NFE draws and native coupled updates without qualification changes.",
+    "Invalid-target physical-only fallback, cache revalidation and contract failure isolation.",
+    "Both oracle diagnosis scripts executed successfully, including native SGD/Adam controls and fixed 5/10-update snapshots.",
+    "compileall and git diff --check passed."
+  ],
+  "review": "Independent review completed; truth-assisted initialization and reproducibility metadata findings fixed; no outstanding review issues.",
+  "scientific_qualification": false,
+  "qualification_changed": false,
+  "not_verified": [
+    "Independent geological dataset/real qualified conditional weights.",
+    "Geological improvement or generalization.",
+    "Production grid size, GPU operation, or native FP64 inversion."
+  ],
+  "reports": [
+    "CONDITIONAL_DFM_FIRST_STAGE.md",
+    "ORACLE_COUPLING_DIAGNOSIS.md"
+  ]
+}

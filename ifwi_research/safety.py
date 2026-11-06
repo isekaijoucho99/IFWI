@@ -13,9 +13,24 @@ import torch
 from torch import nn
 
 
+class InvalidProposalError(ValueError):
+    """Generated values failed a numerical/physical check, not an API contract.
+
+    Only this explicitly typed failure may opt into physical-only recovery.
+    Configuration, context, shape and source identity errors remain fail-closed.
+    """
+    def __init__(self, message: str, *, reason: str):
+        super().__init__(message)
+        self.reason=reason
+
+
 def protect_physical_gradient(physical: Sequence[torch.Tensor], proposal: Sequence[torch.Tensor],
                               ratio: float=.025) -> tuple[list[torch.Tensor],dict]:
-    """Project ONLY the proposal; physical gradient is never projected away."""
+    """Project ONLY the proposal, then cap its norm without amplifying it.
+
+    Norms describe gradient contributions, not the eventual Adam parameter step.
+    The reported ratio is the actual composed contribution / physical norm.
+    """
     if len(physical)!=len(proposal) or not physical or not math.isfinite(ratio) or not 0<=ratio<1:
         raise ValueError('Matching nonempty gradient lists and ratio in [0,1) required')
     for a,b in zip(physical,proposal):
@@ -23,16 +38,18 @@ def protect_physical_gradient(physical: Sequence[torch.Tensor], proposal: Sequen
             raise ValueError('Gradient shapes/finiteness disagree')
     gp=[x.detach() for x in physical]; gs=[x.detach() for x in proposal]
     norm2=sum(x.double().square().sum() for x in gp)
+    raw_norm=sum(x.double().square().sum() for x in gs).sqrt()
     dot=sum((a.double()*b.double()).sum() for a,b in zip(gp,gs))
-    if norm2==0 or ratio==0:
-        return [x.clone() for x in gp],{'projected':False,'ratio':0.,'physical_norm':float(norm2.sqrt())}
-    coefficient=min(0.,float(dot/norm2))
+    coefficient=min(0.,float(dot/norm2)) if norm2>0 and ratio>0 else 0.
     orth=[b-coefficient*a for a,b in zip(gp,gs)]
     pn=sum(x.double().square().sum() for x in orth).sqrt()
-    scale=float(ratio*norm2.sqrt()/pn) if pn>0 else 0.
+    scale=min(1.,float(ratio*norm2.sqrt()/pn)) if pn>0 else 0.
     mixed=[a+scale*b for a,b in zip(gp,orth)]
-    return mixed,{'projected':coefficient<0,'ratio':float(ratio) if pn>0 else 0.,
-                  'physical_norm':float(norm2.sqrt()),'proposal_norm':float(pn)}
+    applied=sum((m.double()-a.double()).square().sum() for m,a in zip(mixed,gp)).sqrt()
+    return mixed,{'projected':coefficient<0,'ratio':float(applied/norm2.sqrt()) if norm2>0 else 0.,
+                  'requested_ratio':float(ratio),'scale':scale,'physical_norm':float(norm2.sqrt()),
+                  'raw_proposal_norm':float(raw_norm),'projected_proposal_norm':float(pn),
+                  'applied_proposal_norm':float(applied),'proposal_norm':float(pn)}
 
 
 def rng_state() -> dict:

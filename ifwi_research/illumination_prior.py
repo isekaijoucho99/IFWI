@@ -11,6 +11,7 @@ import hashlib
 import json
 import math
 import torch
+from .safety import InvalidProposalError
 
 
 @dataclass(frozen=True)
@@ -141,6 +142,20 @@ class IlluminationSoftPrior:
                 or not torch.isfinite(value).all()):
             raise ValueError(f'{label} must share the finite background grid, dtype and device')
 
+    def _validate_candidate(self,candidate,velocity,label):
+        # Grid/type mismatches are caller/source contract errors, never recovery.
+        if (not isinstance(candidate,torch.Tensor) or candidate.shape!=self.background.shape
+                or candidate.device!=self.background.device or candidate.dtype!=self.background.dtype):
+            raise ValueError(f'{label} must share the background grid, dtype and device')
+        if not torch.isfinite(candidate).all():
+            raise InvalidProposalError(f'{label} contains nonfinite values',reason='nonfinite')
+        if not ((candidate>=100)&(candidate<=15000)).all():
+            raise InvalidProposalError(f'{label} outside physical velocity range [100,15000] m/s',
+                                       reason='physical_range')
+        change=(candidate.double()-velocity.double()).square().mean().sqrt()
+        if change>self.config.max_target_rms_change_mps:
+            raise InvalidProposalError(f'{label} exceeds declared RMS change budget',reason='rms_budget')
+
     @torch.no_grad()
     def proposal(self,velocity,update):
         self._grid(velocity,'Velocity')
@@ -151,17 +166,14 @@ class IlluminationSoftPrior:
         if self._refreshed_at is not None and update<self._refreshed_at:
             raise ValueError('Cannot rewind cached proposal without loading its saved state')
         if self._target is not None and update-self._refreshed_at<self.config.refresh_every:
+            self._validate_candidate(self._target,velocity,'Cached candidate')
             self._cache_hits+=1
             return self._target.clone()
         candidate=self.source.generate(self.background,velocity.detach().clone(),self.anchor_mask,
                                        sample_id=update)
         # Device/dtype conversion does not change physical units or resize grids.
         if isinstance(candidate,torch.Tensor): candidate=candidate.detach().to(velocity)
-        self._grid(candidate,'Generated candidate')
-        if (candidate<=0).any(): raise ValueError('Generated candidate has nonphysical velocity')
-        change=(candidate.double()-velocity.double()).square().mean().sqrt()
-        if change>self.config.max_target_rms_change_mps:
-            raise ValueError('Generated candidate exceeds declared RMS change budget')
+        self._validate_candidate(candidate,velocity,'Generated candidate')
         self._target=candidate.clone(); self._refreshed_at=update; self._refreshes+=1
         return self._target.clone()
 

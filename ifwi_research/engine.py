@@ -11,7 +11,7 @@ import time
 import torch
 from torch import nn
 from .routing import CodePlan, ContrastRouter
-from .safety import guarded_optimizer_step, protect_physical_gradient, rng_state, restore_rng
+from .safety import InvalidProposalError, guarded_optimizer_step, protect_physical_gradient, rng_state, restore_rng
 
 
 @dataclass
@@ -36,6 +36,7 @@ class ResearchConfig:
     prior_ratio: float = .025
     prior_start: int = 201
     prior_every: int = 5
+    prior_invalid_policy: str = 'raise'
     guard_every: int = 0
     max_trials: int = 4
     interface_depth_fraction: float = .5
@@ -46,6 +47,8 @@ class ResearchConfig:
     def validate(self):
         if self.method not in ('baseline','routing','wavelet','interface','gradient_attention','dfm'):
             raise ValueError('Exactly one supported method is required, not a stack of ideas')
+        if self.prior_invalid_policy not in ('raise','physical_only'):
+            raise ValueError('prior_invalid_policy must be raise or physical_only')
         for name in ('learning_rate','interface_displacement_m'):
             if not math.isfinite(getattr(self,name)) or getattr(self,name)<=0:
                 raise ValueError(f'{name} must be finite positive')
@@ -151,13 +154,24 @@ class ResearchEngine:
         composed=physical; prior_report=None
         if active_prior:
             self._sync(); begin=time.perf_counter()
-            target=self.prior.proposal(velocity.detach(),update)
-            loss=self.prior.penalty(velocity,target)
-            proposal=torch.autograd.grad(loss,params,allow_unused=True)
-            proposal=[torch.zeros_like(p) if g is None else g for p,g in zip(params,proposal)]
-            composed,prior_report=protect_physical_gradient(physical,proposal,cfg.prior_ratio)
+            try:
+                target=self.prior.proposal(velocity.detach(),update)
+                loss=self.prior.penalty(velocity,target)
+                proposal=torch.autograd.grad(loss,params,allow_unused=True)
+                proposal=[torch.zeros_like(p) if g is None else g for p,g in zip(params,proposal)]
+                composed,prior_report=protect_physical_gradient(physical,proposal,cfg.prior_ratio)
+                prior_report.update(status='valid',invalid_reason=None)
+            except InvalidProposalError as exc:
+                if cfg.prior_invalid_policy=='raise': raise
+                # Never call the penalty with a stale or invalid target. The
+                # physical-only direction still passes the ordinary strict guard.
+                composed=physical
+                prior_report={'status':'invalid','invalid_reason':exc.reason,
+                              'invalid_message':str(exc),'ratio':0.,'requested_ratio':cfg.prior_ratio,
+                              'applied_proposal_norm':0.}
+            finally:
+                self._sync(); self.prior_seconds+=time.perf_counter()-begin
             if hasattr(self.prior,'diagnostics'): prior_report['proposal']=self.prior.diagnostics()
-            self._sync(); self.prior_seconds+=time.perf_counter()-begin
         if regularize:
             reg=self.model.regularization()*cfg.interface_regularization
             rg=torch.autograd.grad(reg,params,allow_unused=True)
@@ -185,6 +199,13 @@ class ResearchEngine:
             except BaseException:
                 self.model.load_state_dict(state); self.optimizer.load_state_dict(opt); raise
             result={'accepted':True,'trials':1,'forward_calls':0,'step_scale':1.}
+        applied_prior=bool(prior_report is not None and prior_report['status']=='valid'
+                           and prior_report['applied_proposal_norm']>0 and result['accepted']
+                           and result.get('recovery') is None)
+        if prior_report is not None: prior_report['applied']=applied_prior
+        result['update_kind']=('rejected' if not result['accepted'] else
+                               'physical_recovery' if result.get('recovery') is not None else
+                               'prior_applied' if applied_prior else 'physical_only')
         if self.router is not None:
             self.router.update_scores(measured.indices,measured.energies)
         if cfg.method=='gradient_attention' and update%cfg.attention_block==0:

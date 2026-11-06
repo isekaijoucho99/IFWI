@@ -17,6 +17,7 @@ import re
 import torch
 from torch import nn
 from torch.nn import functional as F
+from .safety import InvalidProposalError
 
 SCHEMA = 'ifwi_masked_conditional_dfm_v1'
 ARCHITECTURE = 'masked_two_time_cnn_v1'
@@ -135,9 +136,13 @@ class FrozenConditionalDFM:
     """Fail-closed adapter for externally trained, declared qualified checkpoints.
 
     Qualification status/report hash is evidence metadata, not a certificate.
-    No unqualified override exists. Caller supplies no truth to this interface.
+    This public loader has no unqualified keyword override. The separate
+    DiagnosticConditionalDFM subclass is evaluation-only and explicitly labeled.
+    Caller supplies no truth to this interface.
     All inference conditions are detached copies; no gradient enters the target.
     """
+    diagnostic_only = False
+
     def __init__(self, checkpoint, spacing_m, device='cpu', *, nfe=1, seed=3, max_cells=4096):
         self.nfe = _integer(nfe,'nfe',1,64)
         self.seed = _integer(seed,'seed',0,2**63-1)
@@ -170,14 +175,16 @@ class FrozenConditionalDFM:
         required = dict(contract='shared_background_estimate_anchors_mask_v1',
                         time_semantics='gaussian_0_to_geology_1_two_time_transport',
                         anchor_semantics='estimated_not_truth')
-        if tr.get('toy') is not False or any(tr.get(k)!=v for k,v in required.items()):
+        if (tr.get('toy') is not False and not (self.diagnostic_only and tr.get('toy') is True)) or any(tr.get(k)!=v for k,v in required.items()):
             raise ValueError('Non-toy conditional training/time/anchor contract required')
         train, val = tr.get('train_model_hashes'), tr.get('val_model_hashes')
         if any(not isinstance(v,list) or not v or not all(_sha(h) for h in v) for v in (train,val)):
             raise ValueError('Independent training and validation model SHA256 lists required')
         if set(train)&set(val): raise ValueError('Training and validation model hashes must be disjoint')
         q=m.get('qualification',{})
-        if (not isinstance(q,dict) or q.get('status')!='qualified' or
+        if not isinstance(q,dict) or q.get('status') not in ('qualified','unqualified'):
+            raise ValueError('Explicit qualification status required')
+        if not self.diagnostic_only and (q.get('status')!='qualified' or
             not isinstance(q.get('report_ref'),str) or not q['report_ref'].strip() or not _sha(q.get('report_sha256'))):
             raise ValueError('Qualification declaration with report reference and SHA256 required')
         # Constructing a network must not perturb the caller's RNG stream.
@@ -228,8 +235,10 @@ class FrozenConditionalDFM:
         for i in range(self.nfe):
             self.calls += 1
             state=self.model(state,i/self.nfe,(i+1)/self.nfe,condition)
-            if not torch.isfinite(state).all(): raise FloatingPointError('Nonfinite conditional DFM output')
+            if not torch.isfinite(state).all():
+                raise InvalidProposalError('Nonfinite conditional DFM output',reason='nonfinite')
         output=(state[:,0]*self.scale_mps+self.mean_mps).detach()
         if not ((output>=100)&(output<=15000)).all():
-            raise ValueError('Generated proposal outside physical velocity range [100,15000] m/s')
+            raise InvalidProposalError('Generated proposal outside physical velocity range [100,15000] m/s',
+                                       reason='physical_range')
         return output

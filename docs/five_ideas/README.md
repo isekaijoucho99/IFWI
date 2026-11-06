@@ -157,3 +157,7 @@ SSIM、空间波数与界面指标等属于设计中的正式评价，需要对�
 ## 7. 必须保留的限制
 
 没有本次会话的远程推送、CUDA 性能结果或全尺寸反演结果。当前只写出有测试的核心原型，正式实验表中的若干强对照仍待实施。真实 FD 测试未通过之前，不应开始长期 GPU 训练。原仓库完整旧测试套件未在本次独立目录执行。
+
+## Conditional DFM first-stage validation
+
+See [candidate usefulness and actual coupling checks](CONDITIONAL_DFM_FIRST_STAGE.md) for the explicit conditional entry, matched snapshot comparisons, oracle diagnostics, and limits.
