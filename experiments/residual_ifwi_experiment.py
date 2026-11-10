@@ -182,8 +182,9 @@ def check_velocity(v_mps, config):
         raise ValueError(f"Live order-2 CFL violation: vmax*dt/dx={courant:.6g} >= 1/sqrt(2); no clipping was applied")
 
 
-def build_forward_problem(truth_mps, config, device):
+def build_forward_problem(truth_mps, config, device, simulate=None):
     """Truth is used only here, under no_grad, to create detached observations."""
+    simulate = _simulate if simulate is None else simulate
     validate_config(config)
     vp = torch.as_tensor(truth_mps, dtype=torch.float32, device=device)[None]
     check_velocity(vp, config)
@@ -218,7 +219,7 @@ def build_forward_problem(truth_mps, config, device):
             npad=fd["npad"], order=2, vmax=float(vp.max()), log_para=fd["pml_reflection"],
             freeSurface=fd["free_surface"], dtype=torch.float32, device=device).to(device)
         with torch.no_grad():
-            prediction = _simulate(solver, vp, wavelet)
+            prediction = simulate(solver, vp, wavelet)
         observed.append(prediction.detach())
         propagators.append({"solver": solver, "first": first, "last": last})
     return {"propagators": propagators, "observed": torch.cat(observed, dim=1), "wavelet": wavelet,
