@@ -5,8 +5,9 @@ unchanged; only what one update simulates differs.
 
 Source encoding: the shots of one update are summed into ``supershots`` simultaneous-source
 records, redrawn every update (deterministic in seed and update). All code channels use one
-solver call. Global codes use +-1/sqrt(supershots); interleaved groups use unscaled +-1 on
-their own shot indices. With normalized_encoding_loss both target the original shot mean.
+solver call. Global codes use +-1/sqrt(supershots); interleaved and stratified groups use
+unscaled +-1 on their own shot indices. With normalized_encoding_loss all target the
+original shot mean.
 The solver is linear in the source, so the encoded prediction equals the weighted sum of the
 single-shot predictions, and the encoded observation is the same weighted sum of the observed
 records. One simulation replaces all shots; the price is crosstalk between shots, which acts as
@@ -49,8 +50,8 @@ def validate_speedup(setting, config):
                 or set(encoding) - {"supershots", "seed", "grouping"}
                 or int(encoding["supershots"]) < 1):
             raise ValueError("source_encoding needs supershots >= 1, seed and optional grouping")
-        if encoding.get("grouping", "global") not in {"global", "interleaved", "identity"}:
-            raise ValueError("source_encoding grouping must be global, interleaved or identity")
+        if encoding.get("grouping", "global") not in {"global", "interleaved", "stratified", "identity"}:
+            raise ValueError("source_encoding grouping must be global, interleaved, stratified or identity")
     coarse = setting.get("coarse_lowpass")
     if coarse is not None:
         if set(coarse) != {"factor", "source_depth_index", "receiver_depth_index"} or int(coarse["factor"]) < 2:
@@ -76,7 +77,7 @@ def normalized_encoding_loss(prediction, observations, total_shots):
 
     Waveforms have [models, code_channels, time, receivers] dimensions. The
     denominator uses the number of original shots, never code channels or
-    group size. Thus an unequal interleaved partition needs no extra weights.
+    group size. Thus an unequal partition needs no extra weights.
     """
     if prediction.shape != observations.shape or prediction.ndim != 4:
         raise ValueError("Waveforms must have matching [M,K,T,R] shapes")
@@ -93,6 +94,9 @@ class SourceEncoder:
     The existing three-argument API remains valid (global codes). weights()
     retains its historical raw Rademacher signs; encoding_matrix() supplies
     the normalized or partitioned matrix actually used by the solver.
+    Stratified membership independently permutes group labels in consecutive
+    K-shot blocks each update, including a final partial block. Neighboring
+    shots across block boundaries can share a group.
     """
 
     def __init__(self, problem, supershots, seed, grouping="global"):
@@ -102,12 +106,14 @@ class SourceEncoder:
         if observed.ndim != 4 or observed.shape[0] != 1 or observed.shape[1] < 1:
             raise ValueError("Source encoding requires one shared model and [1,S,T,R] data")
         self.reference_shots = int(observed.shape[1])
-        if self.supershots < 1 or grouping not in {"global", "interleaved", "identity"}:
+        if self.supershots < 1 or grouping not in {"global", "interleaved", "stratified", "identity"}:
             raise ValueError("Positive code count and supported grouping required")
         if grouping == "identity" and self.supershots != self.reference_shots:
             raise ValueError("Identity encoding needs one channel per original shot")
         if grouping == "interleaved" and self.supershots > self.reference_shots:
             raise ValueError("Interleaved groups must all be nonempty")
+        if grouping == "stratified" and self.supershots > self.reference_shots:
+            raise ValueError("Stratified groups must all be nonempty")
         for key in ("xs", "zs"):
             if geometry[key].shape != (1, self.reference_shots):
                 raise ValueError("Source geometry must match the original shot count")
@@ -135,7 +141,18 @@ class SourceEncoder:
         matrix = torch.as_tensor(raw, dtype=dtype, device=observed.device)
         if self.grouping == "global":
             return matrix / math.sqrt(self.supershots)
-        membership = torch.arange(self.reference_shots, device=observed.device) % self.supershots
+        if self.grouping == "stratified":
+            # A separate, local stream keeps membership independent of signs
+            # and call order, without consuming NumPy/Torch global RNG state.
+            rng = np.random.default_rng(np.random.SeedSequence(
+                [self.seed % 2**32, int(update) % 2**32, 0x53545241]))
+            labels = np.empty(self.reference_shots, dtype=np.int64)
+            for first in range(0, self.reference_shots, self.supershots):
+                last = min(first + self.supershots, self.reference_shots)
+                labels[first:last] = rng.permutation(self.supershots)[:last-first]
+            membership = torch.as_tensor(labels, device=observed.device)
+        else:
+            membership = torch.arange(self.reference_shots, device=observed.device) % self.supershots
         return matrix * (torch.arange(self.supershots, device=observed.device)[:, None] == membership[None])
 
     def problem(self, update):
@@ -146,6 +163,8 @@ class SourceEncoder:
         encoded = torch.einsum("ks,mstr->mktr", matrix.to(observed.dtype), observed)
         if self.grouping == "interleaved":
             sizes = [len(range(index, self.reference_shots, self.supershots)) for index in range(self.supershots)]
+        elif self.grouping == "stratified":
+            sizes = (matrix != 0).sum(dim=1).tolist()
         elif self.grouping == "identity":
             sizes = [1] * self.reference_shots
         else:
