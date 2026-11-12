@@ -365,6 +365,9 @@ def train_update(model, problem, optimizer, max_hz=None, power=None, *, prior=No
     optimizer.zero_grad(set_to_none=True)
     before = [p.detach().clone() for p in model.parameters()]
     loss_value, objective_value, velocity_before = 0., 0., None
+    # Encoded channels are not independent original shots. C is normalized so
+    # E[C.T C]=I, and every code uses the same original-shot mean denominator.
+    reference_shots = problem.get("reference_shots", problem["observed"].shape[1])
     for item in problem["propagators"]:
         velocity = model()
         check_velocity(velocity, problem["config"])
@@ -373,13 +376,13 @@ def train_update(model, problem, optimizer, max_hz=None, power=None, *, prior=No
         predicted = _simulate(item["solver"], velocity, problem["wavelet"])
         observations = problem["observed"][:, item["first"]:item["last"]]
         if max_hz is None and power is None:
-            loss = waveform_mse(predicted, observations, problem["observed"].shape[1])
+            loss = waveform_mse(predicted, observations, reference_shots)
             require_finite(loss, "waveform MSE")
             loss.backward()
         else:
             with torch.no_grad():
-                loss = waveform_mse(predicted, observations, problem["observed"].shape[1])
-            objective = training_objective(predicted, observations, problem["observed"].shape[1], max_hz, problem, power)
+                loss = waveform_mse(predicted, observations, reference_shots)
+            objective = training_objective(predicted, observations, reference_shots, max_hz, problem, power)
             require_finite(objective, "low-pass/gained waveform objective")
             objective.backward()
             objective_value += float(objective.detach())

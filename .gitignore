@@ -78,6 +78,7 @@ temp/
 .env
 .env.*
 .pytest_cache/
+verification/_suite_unit_scratch/
 .venv/
 runs/
 logs/

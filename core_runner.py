@@ -309,8 +309,8 @@ def run(spec, out, device='cuda:0', resume=None, save_figures=True, shared_dir=N
             emit(f"COARSE low-pass stages: grid={coarse['geometry']['nz']}x{coarse['geometry']['nx']} source scale={coarse['source_scale']:.4f}")
         if speedup.get('source_encoding'):
             option=speedup['source_encoding']
-            encoders={'fine':SourceEncoder(problem,option['supershots'],option['seed'])}
-            if coarse: encoders['coarse']=SourceEncoder(coarse,option['supershots'],option['seed'])
+            encoders={'fine':SourceEncoder(problem,option['supershots'],option['seed'],grouping=option.get('grouping','global'))}
+            if coarse: encoders['coarse']=SourceEncoder(coarse,option['supershots'],option['seed'],grouping=option.get('grouping','global'))
         step_problems=StepProblems(problem,accel,(speedup.get('source_encoding') or {}).get('seed',cfg['seed'])) if accel else None
         if accel: atomic_json(out/'accel.json',accel)
         control_report={}; prefit_optimizer_state=None

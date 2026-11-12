@@ -4,12 +4,14 @@ Both build problem dictionaries in the format train_update expects, so the updat
 unchanged; only what one update simulates differs.
 
 Source encoding: the shots of one update are summed into ``supershots`` simultaneous-source
-records with random +-1 weights, redrawn every update (deterministic in seed and update).
+records, redrawn every update (deterministic in seed and update). All code channels use one
+solver call. Global codes use +-1/sqrt(supershots); interleaved groups use unscaled +-1 on
+their own shot indices. With normalized_encoding_loss both target the original shot mean.
 The solver is linear in the source, so the encoded prediction equals the weighted sum of the
 single-shot predictions, and the encoded observation is the same weighted sum of the observed
 records. One simulation replaces all shots; the price is crosstalk between shots, which acts as
-gradient noise. The original solver file stays unchanged: a subclass injects every source with
-its weight, after calling the original time step with a zero source.
+gradient noise. The author's solver file stays unchanged. A separate adapter copies its
+FD/PML arithmetic and vectorizes weighted source injection across the code channels.
 
 Coarse low-pass stages: during a frequency-continuation stage with cutoff max_hz the network is
 sampled on every factor-th grid point (an implicit representation can be sampled anywhere), and
@@ -31,6 +33,7 @@ import torch
 from generator import wGenerator
 from rnn_fd import Propagator2D, rnn2D
 from experiments.frequency_continuation import energy_scales, lowpass
+from ifwi_research.batched_sources import build_code_solver
 
 SPEEDUP_KEYS = {"source_encoding", "coarse_lowpass"}
 
@@ -41,8 +44,13 @@ def validate_speedup(setting, config):
     if not isinstance(setting, dict) or not setting or set(setting) - SPEEDUP_KEYS:
         raise ValueError(f"spec.speedup takes {sorted(SPEEDUP_KEYS)}")
     encoding = setting.get("source_encoding")
-    if encoding is not None and (set(encoding) != {"supershots", "seed"} or int(encoding["supershots"]) < 1):
-        raise ValueError("source_encoding needs supershots >= 1 and seed")
+    if encoding is not None:
+        if (not isinstance(encoding, dict) or not {"supershots", "seed"} <= set(encoding)
+                or set(encoding) - {"supershots", "seed", "grouping"}
+                or int(encoding["supershots"]) < 1):
+            raise ValueError("source_encoding needs supershots >= 1, seed and optional grouping")
+        if encoding.get("grouping", "global") not in {"global", "interleaved", "identity"}:
+            raise ValueError("source_encoding grouping must be global, interleaved or identity")
     coarse = setting.get("coarse_lowpass")
     if coarse is not None:
         if set(coarse) != {"factor", "source_depth_index", "receiver_depth_index"} or int(coarse["factor"]) < 2:
@@ -63,40 +71,89 @@ class EncodedPropagator2D(Propagator2D):
         return u_, u_next + add[None, None], vx, vz
 
 
-class SourceEncoder:
-    """Turns an all-shot problem into one problem of ``supershots`` encoded simulations."""
+def normalized_encoding_loss(prediction, observations, total_shots):
+    """Shot-mean squared residual for C with E[C.T C] = I.
 
-    def __init__(self, problem, supershots, seed):
+    Waveforms have [models, code_channels, time, receivers] dimensions. The
+    denominator uses the number of original shots, never code channels or
+    group size. Thus an unequal interleaved partition needs no extra weights.
+    """
+    if prediction.shape != observations.shape or prediction.ndim != 4:
+        raise ValueError("Waveforms must have matching [M,K,T,R] shapes")
+    if (not isinstance(total_shots, (int, np.integer)) or isinstance(total_shots, bool)
+            or total_shots < 1 or any(size < 1 for size in prediction.shape)):
+        raise ValueError("Positive original shot count and nonempty waveforms required")
+    models, _, time_samples, receivers = observations.shape
+    return (prediction - observations).square().sum() / models / int(total_shots) / time_samples / receivers
+
+
+class SourceEncoder:
+    """One FD solve of K code channels sharing the same velocity grid.
+
+    The existing three-argument API remains valid (global codes). weights()
+    retains its historical raw Rademacher signs; encoding_matrix() supplies
+    the normalized or partitioned matrix actually used by the solver.
+    """
+
+    def __init__(self, problem, supershots, seed, grouping="global"):
         self.base, self.supershots, self.seed = problem, int(supershots), int(seed)
-        cfg, geometry = problem["config"], problem["geometry_tensors"]
-        fd = cfg["forward"]
-        device = problem["observed"].device
-        vmax = problem["propagators"][0]["solver"].fd.vmax
-        self.propagators = []
-        for index in range(self.supershots):
-            solver = rnn2D(nz=geometry["nz"], nx=geometry["nx"], xs=geometry["xs"][:, :1], zs=geometry["zs"][:, :1],
-                           xr=geometry["xr"][:, :1], zr=geometry["zr"][:, :1], dz=cfg["data"]["grid_spacing_m"],
-                           dt=fd["dt_s"], npad=fd["npad"], order=2, vmax=vmax, log_para=fd["pml_reflection"],
-                           freeSurface=fd["free_surface"], dtype=torch.float32, device=device)
-            encoded = EncodedPropagator2D(geometry["nz"], geometry["nx"], cfg["data"]["grid_spacing_m"], fd["dt_s"],
-                                          fd["npad"], 2, fd["free_surface"], fd["pml_reflection"], vmax, torch.float32,
-                                          device).to(device)
-            encoded.source_z, encoded.source_x = geometry["zs"][0].to(device), geometry["xs"][0].to(device)
-            solver.fd = encoded
-            self.propagators.append({"solver": solver, "first": index, "last": index + 1})
+        self.grouping = grouping
+        observed, geometry = problem["observed"], problem["geometry_tensors"]
+        if observed.ndim != 4 or observed.shape[0] != 1 or observed.shape[1] < 1:
+            raise ValueError("Source encoding requires one shared model and [1,S,T,R] data")
+        self.reference_shots = int(observed.shape[1])
+        if self.supershots < 1 or grouping not in {"global", "interleaved", "identity"}:
+            raise ValueError("Positive code count and supported grouping required")
+        if grouping == "identity" and self.supershots != self.reference_shots:
+            raise ValueError("Identity encoding needs one channel per original shot")
+        if grouping == "interleaved" and self.supershots > self.reference_shots:
+            raise ValueError("Interleaved groups must all be nonempty")
+        for key in ("xs", "zs"):
+            if geometry[key].shape != (1, self.reference_shots):
+                raise ValueError("Source geometry must match the original shot count")
+        for key in ("xr", "zr"):
+            positions = geometry[key]
+            if (not isinstance(positions, torch.Tensor) or positions.ndim != 3
+                    or positions.shape[:2] != (1, self.reference_shots)
+                    or not torch.equal(positions, positions[:, :1].expand_as(positions))):
+                raise ValueError("Source encoding needs the same receiver layout for every shot")
+        solver = build_code_solver(problem, self.supershots)
+        self.propagators = [{"solver": solver, "first": 0, "last": self.supershots}]
 
     def weights(self, update, index):
         rng = np.random.RandomState((self.seed * 1000003 + update * 101 + index) % 2**32)
         return rng.choice([-1., 1.], size=self.base["observed"].shape[1])
 
+    def encoding_matrix(self, update):
+        """C[K,S], with E[C.T C]=I (identity has exact C.T C=I)."""
+        observed = self.base["observed"]
+        dtype = self.propagators[0]["solver"].fd.dtype
+        if self.grouping == "identity":
+            return torch.eye(self.reference_shots, dtype=dtype, device=observed.device)
+        # This loop draws small CPU sign vectors; it does not call a wave solver.
+        raw = np.stack([self.weights(update, index) for index in range(self.supershots)])
+        matrix = torch.as_tensor(raw, dtype=dtype, device=observed.device)
+        if self.grouping == "global":
+            return matrix / math.sqrt(self.supershots)
+        membership = torch.arange(self.reference_shots, device=observed.device) % self.supershots
+        return matrix * (torch.arange(self.supershots, device=observed.device)[:, None] == membership[None])
+
     def problem(self, update):
-        """Encoded problem for this update: supershot k uses its own +-1 weights."""
-        observed, encoded = self.base["observed"], []
-        for index, item in enumerate(self.propagators):
-            w = torch.as_tensor(self.weights(update, index), dtype=observed.dtype, device=observed.device)
-            item["solver"].fd.weights = w.to(torch.float32)
-            encoded.append(torch.einsum("s,bstr->btr", w, observed))
-        return {**self.base, "observed": torch.stack(encoded, dim=1), "propagators": self.propagators}
+        """A single-solver encoded problem; caller uses reference_shots for loss."""
+        observed = self.base["observed"]
+        matrix = self.encoding_matrix(update)
+        self.propagators[0]["solver"].fd.weights = matrix
+        encoded = torch.einsum("ks,mstr->mktr", matrix.to(observed.dtype), observed)
+        if self.grouping == "interleaved":
+            sizes = [len(range(index, self.reference_shots, self.supershots)) for index in range(self.supershots)]
+        elif self.grouping == "identity":
+            sizes = [1] * self.reference_shots
+        else:
+            sizes = [self.reference_shots] * self.supershots
+        return {**self.base, "observed": encoded, "propagators": self.propagators,
+            "encoding_matrix": matrix, "reference_shots": self.reference_shots,
+            "encoding_grouping": self.grouping, "group_sizes": sizes,
+            "encoding_loss_normalization": "sum_squared_residual/(M*reference_shots*T*R)"}
 
 
 class CoarseView(torch.nn.Module):

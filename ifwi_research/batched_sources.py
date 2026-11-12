@@ -1,16 +1,42 @@
-"""Batch independent source codes through the original FD shot channels."""
+"""Batch source codes with the author's FD/PML arithmetic and adapted injection.
+
+The FD/PML update below is copied without algebraic changes from Jian Sun's
+``rnn_fd.py:Propagator2D.___step_rnncell`` (updated February 6, 2020), citing
+Sun et al. (2020), GEOPHYSICS 85, R87-R99, "A theory-guided deep-learning
+formulation and optimization of seismic waveform inversion." The audited
+source file has SHA256 eeeebd821462fadb52bb9b12a06932f2c9f764e3e7482b316e12a94d26ec9fd0.
+Only the source injection is adapted to weighted code channels with index_add_;
+the original rnn_fd.py is retained unchanged.
+"""
 import torch
+import torch.nn.functional as F
 
 from rnn_fd import Propagator2D, rnn2D
 
 
 class BatchedEncodedPropagator2D(Propagator2D):
-    """The unchanged FD step, followed by one weighted source injection per code."""
+    """Author FD/PML update with one vectorized weighted source injection."""
 
     def _Propagator2D___step_rnncell(self, source, u_prev, u_, vx_pre, vz_pre):
-        zero = torch.zeros_like(source[0])
-        u_, u_next, vx, vz = Propagator2D._Propagator2D___step_rnncell(
-            self, [zero, source[1], source[2]], u_prev, u_, vx_pre, vz_pre)
+        # Preserve the author's operation ordering, padding, and PML coefficients.
+        ux_x = F.conv2d(u_, self.kernel2Dx.repeat(u_.shape[1], 1, 1, 1), padding=1, groups=u_.shape[1])
+        uz_z = F.conv2d(u_, self.kernel2Dz.repeat(u_.shape[1], 1, 1, 1), padding=1, groups=u_.shape[1])
+
+        vx = self.alpha_x[None, None, ...] * vx_pre + self.dt * ux_x * self.belta_x[None, None, ...]
+        vz = self.alpha_z[None, None, ...] * vz_pre + self.dt * uz_z * self.belta_z[None, None, ...]
+        vx_x = F.conv2d(vx, self.kernel2Dx.repeat(u_.shape[1], 1, 1, 1), padding=1, groups=u_.shape[1])
+        vz_z = F.conv2d(vz, self.kernel2Dz.repeat(u_.shape[1], 1, 1, 1), padding=1, groups=u_.shape[1])
+        u_partial = F.conv2d(u_, self.kernel2D.repeat(u_.shape[1], 1, 1, 1), padding=(self.k_size - 1) // 2, groups=u_.shape[1])
+
+        u_next = 1/(self.delta * self.dt+1)[None, None, ...] \
+                 * ((u_partial * self.velocity**2 + 2*u_ - u_prev)
+                    + self.dt * self.delta[None, None, ...] * u_
+                    - (self.dt * self.velocity)**2 * (self.bx[None, None, ...] * vx_x
+                                                      + self.cx[None, None, ...] * vx
+                                                      + self.bz[None, None, ...] * vz_z
+                                                      + self.cz[None, None, ...] * vz))
+
+        # Replace only the author's nested model/shot injection loops.
         rows = self.source_z if self.freeSurface else self.source_z + self.npad
         indices = rows * self.nx_pad + self.source_x + self.npad
         injection = u_next.new_zeros(u_next.shape[0], u_next.shape[1],
