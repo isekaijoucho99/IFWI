@@ -143,6 +143,8 @@ def build_dense_problem(truth, cfg, device, observed=None, wavelet=None):
 
 class DenseAcquisition:
     """Cache chunk solvers, with no retained wavefield graphs between chunks."""
+    encoder_type = SourceEncoder
+
     def __init__(self,problem,batch_size=13,grouping='identity',fields=None,seed=3):
         self.base = problem
         self.batch_size = _integer(batch_size,'batch_size')
@@ -160,10 +162,10 @@ class DenseAcquisition:
                             for key,value in problem['geometry_tensors'].items()}
                 sub = {**problem,'observed':problem['observed'][:,first:last],
                        'geometry_tensors':geometry}
-                self.encoders.append(SourceEncoder(sub,last-first,seed,grouping='identity'))
+                self.encoders.append(self.encoder_type(sub,last-first,seed,grouping='identity'))
                 self.ranges.append((first,last))
         else:
-            self.encoders.append(SourceEncoder(problem,self.fields,seed,grouping=grouping))
+            self.encoders.append(self.encoder_type(problem,self.fields,seed,grouping=grouping))
             self.ranges.append((0,self.reference_shots))
         self._identity = self if grouping == 'identity' else None
 
@@ -180,12 +182,18 @@ class DenseAcquisition:
 
 
 def train_dense_step(model,optimizer,acquisition,completed_updates,*,record_cost=None,
-                     check_stop=None,phase='training',arm_name='arm'):
+                     check_stop=None,phase='training',arm_name='arm',
+                     illumination_preconditioning=True):
     """Commit exactly one update, summing raw chunk gradients and energies first.
 
+    With illumination_preconditioning=False the summed physical velocity
+    gradient goes directly to the network VJP, without illumination observers
+    or energy maps; loss and PDE cost stay the same.
     STOP checks precede the optimizer. An optimizer exception is uncertain;
     failures after it returns carry the committed count, matching legacy APIs.
     """
+    if type(illumination_preconditioning) is not bool:
+        raise ValueError('illumination_preconditioning must be a bool')
     check_stop = check_stop or (lambda:None); check_stop()
     device = next(model.parameters()).device
     _sync(device); tick = time.perf_counter()
@@ -197,17 +205,20 @@ def train_dense_step(model,optimizer,acquisition,completed_updates,*,record_cost
     optimizer.zero_grad(set_to_none=True)
     velocity = model(); check_velocity(velocity,acquisition.base['config'])
     raw = torch.zeros_like(velocity)
-    source = torch.zeros_like(velocity[0],dtype=torch.float64)
-    receiver = torch.zeros_like(source)
+    source = receiver = None
+    if illumination_preconditioning:
+        source = torch.zeros_like(velocity[0],dtype=torch.float64)
+        receiver = torch.zeros_like(source)
     total_loss = 0.; batch_fields = []; matrices = []
     nt = int(acquisition.base['wavelet'].shape[-1])
     try:
         for problem in acquisition.batches(completed_updates+1):
             solver = problem['propagators'][0]['solver']; fd = solver.fd
             target = problem['observed']; fields = int(target.shape[1])
-            observer = PressureEnergy(velocity.shape[-2],velocity.shape[-1],fd.npad,fd.freeSurface)
+            observer = (PressureEnergy(velocity.shape[-2],velocity.shape[-1],fd.npad,fd.freeSurface)
+                        if illumination_preconditioning else None)
             leaf = velocity.detach().requires_grad_(True)
-            handle = fd.register_forward_hook(observer.observe)
+            handle = fd.register_forward_hook(observer.observe) if observer is not None else None
             outputs = prediction = loss = None
             try:
                 check_stop()
@@ -225,16 +236,25 @@ def train_dense_step(model,optimizer,acquisition,completed_updates,*,record_cost
                 _record(record_cost,'backward_fields_attempt',fields,phase,arm_name,completed_updates+1,nt)
                 part = time.perf_counter(); loss.backward(); _sync(device)
                 _record(record_cost,'backward_fields_complete',fields,phase,arm_name,completed_updates+1,nt,time.perf_counter()-part)
-                if (observer.forward_samples,observer.adjoint_samples) != (nt,nt):
+                if observer is not None and (observer.forward_samples,observer.adjoint_samples) != (nt,nt):
                     raise ValueError('Incomplete dense illumination observation')
                 if leaf.grad is None: raise ValueError('Missing physical velocity gradient')
-                raw.add_(leaf.grad); source.add_(observer.source); receiver.add_(observer.receiver)
+                raw.add_(leaf.grad)
+                if observer is not None:
+                    source.add_(observer.source); receiver.add_(observer.receiver)
                 total_loss += float(loss.detach()); batch_fields.append(fields)
                 matrices.append(problem['encoding_matrix'].detach().cpu().tolist())
             finally:
-                handle.remove(); _clear_graph_cache(solver); leaf.grad = None
+                if handle is not None: handle.remove()
+                _clear_graph_cache(solver); leaf.grad = None
                 outputs = prediction = loss = None
-        direction,illumination = illumination_direction(raw,source,receiver)
+        if illumination_preconditioning:
+            direction,illumination = illumination_direction(raw,source,receiver)
+        else:
+            if not torch.isfinite(raw).all():
+                raise ValueError('Nonfinite dense physical velocity gradient')
+            direction = raw
+            illumination = dict(enabled=False,raw_gradient_norm=float(raw.double().norm()))
         parameters = tuple(model.parameters())
         gradients = torch.autograd.grad(velocity,parameters,grad_outputs=direction)
         for parameter,gradient in zip(parameters,gradients):
@@ -258,7 +278,8 @@ def train_dense_step(model,optimizer,acquisition,completed_updates,*,record_cost
             velocity_min=vmin,velocity_max=vmax,illumination=illumination,
             fields=sum(batch_fields),batch_fields=batch_fields,NT=nt,
             reference_shots=acquisition.reference_shots,encoding_matrices=matrices,
-            grouping=acquisition.grouping)
+            grouping=acquisition.grouping,
+            illumination_preconditioning=illumination_preconditioning)
     except Exception as error:
         if committed: raise CommittedUpdateError(completed_updates+1,error) from error
         if optimizer_started: raise UncertainOptimizerError(completed_updates+1,error) from error
