@@ -150,26 +150,26 @@ def test_fixed_stage_budget_clocks_reset_evaluations_and_no_expansion(monkeypatc
     out=tmp_path/'new'
     assert suite.execute(stage,out,assets,plan,state.data,preflight='verified',timing='verified')==0
     result=json.loads((out/'result.json').read_text())
-    n=6 if stage=='timing' else 12
+    n=len(suite.ARMS) if stage=='timing' else 2*len(suite.ARMS)
     assert len(result['cases'])==n
     assert result['optimizer_updates']==dict(warmup=2*n,training=(10 if stage=='timing' else 500)*n)
     assert all(c['completed_updates']==(12 if stage=='timing' else 500) for c in result['cases'])
     assert all(c['measured_updates']==(10 if stage=='timing' else 500) for c in result['cases'])
     assert all(c['wall_seconds_median']==1. for c in result['cases'])
     assert all(c['training_seconds']==(10. if stage=='timing' else 500.) for c in result['cases'])
-    expected_F=1380 if stage=='timing' else 118632
-    expected_B=1380 if stage=='timing' else 115460
+    expected_F=1428 if stage=='timing' else 123168
+    expected_B=1428 if stage=='timing' else 119476
     assert result['cost_totals']==dict(forward_fields_attempt=expected_F,forward_fields_complete=expected_F,
         backward_fields_attempt=expected_B,backward_fields_complete=expected_B)
-    assert len(state.evaluations)==(0 if stage=='timing' else 61)
+    assert len(state.evaluations)==(0 if stage=='timing' else 1+5*n)
     if stage=='timing':
-        assert len(state.saved)==6 and len(state.loaded)==6
+        assert len(state.saved)==n and len(state.loaded)==n
         assert all(s['completed']==12 for s in state.saved)
-        assert len(state.made)==12  # original six + independent restored clones
+        assert len(state.made)==2*n  # original arms + independent restored clones
     else:
-        assert len(state.saved)==60 and not state.loaded
+        assert len(state.saved)==5*n and not state.loaded
         assert set(s['completed'] for s in state.saved)=={100,200,300,400,500}
-        assert len(state.made)==24  # warmup models discarded before each fresh formal model
+        assert len(state.made)==2*n  # warmup models discarded before each fresh formal model
         for condition in ('clean','noisy'):
             for arm in suite.ARMS:
                 case=out/condition/arm['name']
@@ -179,7 +179,7 @@ def test_fixed_stage_budget_clocks_reset_evaluations_and_no_expansion(monkeypatc
                 assert not (case/'metrics_1000.json').exists()
         assert all(s['completed']<500 for s in state.steps if s['phase']=='training')
         reused=[e for e in state.controls[0].events if e['event']=='initial_waveform_reused']
-        assert len(reused)==11
+        assert len(reused)==n-1
         initial=np.load(out/'shared_initial/prediction.npy',allow_pickle=False)
         for condition in ('clean','noisy'):
             for arm in suite.ARMS:

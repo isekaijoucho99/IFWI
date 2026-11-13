@@ -1,4 +1,4 @@
-"""Frozen 52-shot, six-control IFWI experiment. No automatic restart/expansion.
+"""Frozen 52-shot, seven-control IFWI experiment. No automatic restart/expansion.
 
 All PDE fields are charged by solver callbacks. Initial-state construction,
 warmup, evaluation, checkpoints and analysis have separate wall-clock records.
@@ -43,10 +43,11 @@ ARMS = tuple(dict(name=n, grouping=g, fields=k, model=m, preconditioned=p)
         ('global1','global',1,'plain',True),
         ('interleaved2','interleaved',2,'plain',True),
         ('interleaved4','interleaved',4,'plain',True),
+        ('interleaved4_relative','interleaved',4,'relative',True),
         ('interleaved4_relative_fr','interleaved',4,'relative_fr',True)))
-THRESHOLDS = (500.,475.,450.,425.)
+THRESHOLDS = (500.,475.,450.,425.,400.,385.)
 SOURCES = ('experiments/fr_relative_suite.py','experiments/fr_relative_preflight.py',
-    'experiments/relative_velocity.py','experiments/shifted_interleaved.py',
+    'experiments/relative_velocity.py',
     'experiments/fourier_modules.py','experiments/dense_encoding_suite.py','experiments/batched_encoding_suite.py',
     'experiments/dense_encoding_physics.py','experiments/dense_checkpoint.py',
     'experiments/encoding_checkpoint.py','experiments/encoding_suite_data.py',
@@ -133,11 +134,11 @@ def build_plan(assets,dense_manifest):
         fourier=default_fourier(),omega=30.,relative_scale='v0/rms(v0)',sv_mps=1000.,
         objective='sum squared coded residual/(M*52*T*R)',
         encoding_control='full_preconditioned',illumination='existing sqrt(S*A), water=.1, gradient norm match',
-        shift='(index+shift)%B only relabels fixed groups for N52 B2/4; fresh signs each update',
+        grouping='standard interleaved modulo-B groups with fresh Rademacher signs each update',
         model_metric_interval=10,waveform_metric_interval=100,checkpoint_interval=100,
         thresholds_rmse_mps=list(THRESHOLDS),threshold_policy='first observed crossing; no interpolation/selection/stopping',
         update_limit=1000,requested_first_stage=500,seed=3,warmup_updates=2,
-        initial_waveform='one shared v0 solve, copied with provenance to all twelve exact-initial-velocity cases',
+        initial_waveform='one shared v0 solve, copied with provenance to all exact-initial-velocity cases',
         continuation='fresh500; 1000 requires explicit complete500 resume; no automatic restart')
     return dict(**common,signature=digest(common),status='FROZEN_BEFORE_GPU',
         budgets={s:budget(s) for s in ('preflight','timing','formal')})
@@ -156,11 +157,17 @@ def verify_assets(assets,plan):
         raise ValueError('Loaded input assets manifest differs from frozen plan')
 
 
-def release_guard():
-    lock=gpu_execution_guard(ACTIVE_RUN)
-    start=read(OLD_DENSE/'PIPELINE_LAUNCH.json');end=read(OLD_DENSE/'PIPELINE_EXIT.json')
-    if (start['run_id']!=end['run_id'] or end['status']!='COMPLETED' or end['exit_code']!=0):
-        raise RuntimeError('Old dense pipeline does not have matching terminal proof')
+def release_guard(output_parent=None):
+    if ACTIVE_RUN.exists():
+        lock=gpu_execution_guard(ACTIVE_RUN)
+    else:
+        parent=ACTIVE_RUN.parent if ACTIVE_RUN.parent.exists() else (Path(output_parent).resolve() if output_parent else WORKSPACE)
+        lock=parent/'ENCODING_SUITE_GPU.lock'
+        if lock.exists(): raise RuntimeError('GPU suite lock exists; no concurrent GPU work')
+    if (OLD_DENSE/'PIPELINE_LAUNCH.json').exists() or (OLD_DENSE/'PIPELINE_EXIT.json').exists():
+        start=read(OLD_DENSE/'PIPELINE_LAUNCH.json');end=read(OLD_DENSE/'PIPELINE_EXIT.json')
+        if (start['run_id']!=end['run_id'] or end['status']!='COMPLETED' or end['exit_code']!=0):
+            raise RuntimeError('Old dense pipeline does not have matching terminal proof')
     return lock
 
 
@@ -169,12 +176,24 @@ def make_model(assets,arm,device):
     cfg=assets['config'];spec=cfg['model']
     if arm['model']=='plain':
         model=model_from_config(assets['background'],cfg)
-        model.load_state_dict(assets['canonical_checkpoint']['model'],strict=True)
-    else:
+        if assets.get('canonical_checkpoint') is not None:
+            model.load_state_dict(assets['canonical_checkpoint']['model'],strict=True)
+    elif arm['model']=='relative':
+        from experiments.relative_velocity import RelativeVelocityParameterization
+        base=model_from_config(assets['background'],cfg)
+        if assets.get('canonical_checkpoint') is not None:
+            base.load_state_dict(assets['canonical_checkpoint']['model'],strict=True)
+        model=RelativeVelocityParameterization(assets['background'],cfg['data']['grid_spacing_m'],
+            spec['neurons'],omega_0=30.,mean_kmps=spec['mean_kmps'],std_kmps=spec['std_kmps'],
+            parameterization='residual',fourier=None,zero_residual_head=True)
+        model.net.load_state_dict(base.net.state_dict(),strict=True)
+    elif arm['model']=='relative_fr':
         from experiments.relative_velocity import RelativeVelocityParameterization
         model=RelativeVelocityParameterization(assets['background'],cfg['data']['grid_spacing_m'],
             spec['neurons'],omega_0=30.,mean_kmps=spec['mean_kmps'],std_kmps=spec['std_kmps'],
             parameterization='residual',fourier=default_fourier(),zero_residual_head=True)
+    else:
+        raise ValueError('Unknown model type: '+str(arm['model']))
     model=model.to(device)
     with torch.no_grad():
         if not torch.equal(model().cpu(),torch.as_tensor(assets['background'],dtype=torch.float32)[None]):
@@ -184,9 +203,6 @@ def make_model(assets,arm,device):
 
 
 def acquisition(problem,arm):
-    if arm['grouping']=='interleaved':
-        from experiments.shifted_interleaved import ShiftedInterleavedAcquisition
-        return ShiftedInterleavedAcquisition(problem,batch_size=13,fields=arm['fields'],seed=3)
     return DenseAcquisition(problem,batch_size=13,grouping=arm['grouping'],fields=arm['fields'],seed=3)
 
 

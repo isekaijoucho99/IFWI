@@ -36,12 +36,13 @@ def estimate(root):
     events=[json.loads(line) for line in (root/'preflight/ledger.jsonl').read_text().splitlines()]
     rows=[r for r in events if r.get('forward_fields_complete')==13]
     forward=4*rows[0]['wall_seconds'] if rows and rows[0].get('wall_seconds',0)>0 else None
-    evaluation=None if forward is None else 61*forward
+    eval_count=1+2*len(cases)*5
+    evaluation=None if forward is None else eval_count*forward
     lower=training+warm+(evaluation or 0.)
     report=dict(utc=utc(),median_update_seconds_by_arm=medians,training_seconds=training,warmup_seconds=warm,
         full52_forward_seconds_estimate=forward,evaluation_seconds_estimate=evaluation,
         total_hours_base=lower/3600,total_hours_with25percent_allowance=1.25*lower/3600,
-        basis='six actual 10-update synchronized timing runs; evaluation extrapolated from actual13-field forward',
+        basis=f'{len(cases)} actual 10-update synchronized timing runs; evaluation extrapolated from actual 13-field forward',
         limitations='changing velocity, desktop contention, construction, checkpoints and analysis may change wall time; this is not an equal-accuracy speedup or a completion guarantee')
     write_once(root/'WALL_ESTIMATE_FROM_TIMING.json',report)
     return report
@@ -51,8 +52,9 @@ def run_analysis(root,dense_data):
     """One CPU-only acceptance of already completed work; never retry failures."""
     command=[sys.executable,'-B','-m','experiments.fr_relative_analysis','--pipeline-root',str(root),
         '--dense-data',str(dense_data),'--source-root',str(ROOT)]
+    flags=getattr(subprocess,'CREATE_NO_WINDOW',0)
     with (root/'analysis.stdout.log').open('x',encoding='utf-8') as stdout,(root/'analysis.stderr.log').open('x',encoding='utf-8') as stderr:
-        child=subprocess.Popen(command,cwd=ROOT,stdout=stdout,stderr=stderr,creationflags=subprocess.CREATE_NO_WINDOW)
+        child=subprocess.Popen(command,cwd=ROOT,stdout=stdout,stderr=stderr,creationflags=flags)
         write_once(root/'ANALYSIS_PROCESS_LAUNCH.json',dict(launcher_pid=child.pid,command=command,utc=utc(),
             physical_F=0,physical_B=0,Adam_updates=0,automatic_restart=False))
         returncode=child.wait()
@@ -103,8 +105,9 @@ def main(argv=None):
             if stage in ('timing','formal'): command+=['--preflight',str(root/'preflight')]
             if stage=='formal': command+=['--timing',str(root/'timing'),'--target','500']
             started=time.perf_counter();forwarded=False;last_seen=None
+            flags=getattr(subprocess,'CREATE_NO_WINDOW',0)
             with (root/(stage+'.stdout.log')).open('x',encoding='utf-8') as stdout,(root/(stage+'.stderr.log')).open('x',encoding='utf-8') as stderr:
-                child=subprocess.Popen(command,cwd=ROOT,env=env,stdout=stdout,stderr=stderr,creationflags=subprocess.CREATE_NO_WINDOW)
+                child=subprocess.Popen(command,cwd=ROOT,env=env,stdout=stdout,stderr=stderr,creationflags=flags)
                 active=dict(stage=stage,directory=stage,launcher_pid=child.pid,command=command,launched_utc=utc())
                 write_once(root/f'phase{index}_launch.json',active);event('phase_launched',**active)
                 while child.poll() is None:

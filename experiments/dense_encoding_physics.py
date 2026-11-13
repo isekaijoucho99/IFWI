@@ -143,8 +143,6 @@ def build_dense_problem(truth, cfg, device, observed=None, wavelet=None):
 
 class DenseAcquisition:
     """Cache chunk solvers, with no retained wavefield graphs between chunks."""
-    encoder_type = SourceEncoder
-
     def __init__(self,problem,batch_size=13,grouping='identity',fields=None,seed=3):
         self.base = problem
         self.batch_size = _integer(batch_size,'batch_size')
@@ -162,10 +160,10 @@ class DenseAcquisition:
                             for key,value in problem['geometry_tensors'].items()}
                 sub = {**problem,'observed':problem['observed'][:,first:last],
                        'geometry_tensors':geometry}
-                self.encoders.append(self.encoder_type(sub,last-first,seed,grouping='identity'))
+                self.encoders.append(SourceEncoder(sub,last-first,seed,grouping='identity'))
                 self.ranges.append((first,last))
         else:
-            self.encoders.append(self.encoder_type(problem,self.fields,seed,grouping=grouping))
+            self.encoders.append(SourceEncoder(problem,self.fields,seed,grouping=grouping))
             self.ranges.append((0,self.reference_shots))
         self._identity = self if grouping == 'identity' else None
 

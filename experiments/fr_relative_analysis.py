@@ -1,4 +1,4 @@
-"""CPU-only acceptance and tables for a completed twelve-case 500-update run.
+"""CPU-only acceptance and tables for completed 52-shot IFWI runs (500 or 1000 updates).
 
 This module imports no trainer, torch, propagator or model constructor. It never
 restarts work, fills missing evaluations, selects checkpoints or overwrites an
@@ -25,9 +25,14 @@ ROOT = Path(__file__).resolve().parents[1]
 COUNTERS = ('forward_fields_attempt', 'forward_fields_complete',
             'backward_fields_attempt', 'backward_fields_complete')
 FIELDS = dict(full_raw=52, full_preconditioned=52, global1=1,
-              interleaved2=2, interleaved4=4, interleaved4_relative_fr=4)
+              interleaved2=2, interleaved4=4, interleaved4_relative=4,
+              interleaved4_relative_fr=4)
+MODELS = dict(full_raw='plain', full_preconditioned='plain', global1='plain',
+              interleaved2='plain', interleaved4='plain',
+              interleaved4_relative='relative',
+              interleaved4_relative_fr='relative_fr')
 CONDITIONS = ('clean', 'noisy')
-THRESHOLDS = (500., 475., 450., 425.)
+THRESHOLDS = (500., 475., 450., 425., 400., 385.)
 METRICS = ('rmse_mps', 'mae_mps', 'r2', 'ssim')
 
 
@@ -57,13 +62,30 @@ def file_hash(path):
     return digest.hexdigest()
 
 
-def physical_budget(stage):
+def _fields_map(plan=None):
+    if plan and isinstance(plan.get('arms'), list) and all('name' in a and 'fields' in a for a in plan['arms']):
+        return {a['name']: int(a['fields']) for a in plan['arms']}
+    return dict(FIELDS)
+
+
+def physical_budget(stage, target=500, resume=False, plan=None):
     if stage == 'preflight':
         return dict(forward_fields=34, backward_fields=34, optimizer_updates=0)
+    fmap = _fields_map(plan)
+    fields = sum(fmap.values())
+    n_arms = len(fmap)
     if stage == 'timing':
-        return dict(forward_fields=1380, backward_fields=1380, optimizer_updates=72)
+        return dict(forward_fields=fields*12, backward_fields=fields*12, optimizer_updates=n_arms*12)
     require(stage == 'formal', 'Unknown stage')
-    return dict(forward_fields=118632, backward_fields=115460, optimizer_updates=6024)
+    require(target in (500, 1000) and (target == 500) == (not resume), 'Invalid formal target/resume combination')
+    updates = target - 500 if resume else target
+    warm = 0 if resume else 2
+    evaluations = updates // 100
+    train = fields * 2 * updates
+    warm_fields = fields * 2 * warm
+    evaluation = 52 * (n_arms * 2 * evaluations + (0 if resume else 1))
+    return dict(forward_fields=train+warm_fields+evaluation, backward_fields=train+warm_fields,
+                optimizer_updates=n_arms*2*(updates+warm))
 
 
 def first_crossings(rows, thresholds=THRESHOLDS):
@@ -187,9 +209,14 @@ def verify_stage(directory, stage, plan):
     report = read_json(directory/'result.json')
     require(report.get('status') == 'COMPLETED' and report.get('stage') == stage
             and report.get('signature') == plan['signature'], 'Stage result differs: '+stage)
-    require(report.get('target_updates') == 500 and not report.get('resume_root'),
-            'Collector accepts the unique fresh500 stage only')
-    expected = physical_budget(stage)
+    target = int(report.get('target_updates', 500))
+    resumed = bool(report.get('resume_root'))
+    if stage == 'formal':
+        require((target == 500 and not resumed) or (target == 1000 and resumed),
+                'Collector requires either fresh 500 or explicit resumed 1000 formal stage')
+    else:
+        require(target == 500 and not resumed, 'Non-formal stage cannot specify resume/1000')
+    expected = physical_budget(stage, target=target, resume=resumed, plan=plan)
     saved_budget = read_json(directory/'budget.json')
     require(all(saved_budget.get(key) == value for key,value in expected.items()), 'Budget differs: '+stage)
     rows = _read_ledger(directory, launch)
@@ -210,42 +237,55 @@ def verify_stage(directory, stage, plan):
         for state in ('attempt', 'complete'):
             require(counters[kind+'_fields_'+state] == expected[kind+'_fields'], 'Extra/missing physics work: '+stage)
     if stage in ('timing', 'formal'):
+        fmap = _fields_map(plan)
+        sum_fields = sum(fmap.values())
         multiplier = 1 if stage == 'timing' else 2
-        for phase, fields in (('warmup', 115*2*multiplier),
-                              ('training', 115*(10 if stage == 'timing' else 500)*multiplier)):
-            require(phase in phases and all(phases[phase][key] == fields for key in COUNTERS),
-                    'Training/warmup cost attribution differs: '+phase)
+        updates = 10 if stage == 'timing' else (target - 500 if resumed else target)
+        if not resumed:
+            warm_fields = sum_fields * 2 * multiplier
+            require('warmup' in phases and all(phases['warmup'][key] == warm_fields for key in COUNTERS),
+                    'Training/warmup cost attribution differs: warmup')
+        else:
+            require('warmup' not in phases, 'Resumed formal stage must not run warmup')
+        train_fields = sum_fields * updates * multiplier
+        require('training' in phases and all(phases['training'][key] == train_fields for key in COUNTERS),
+                'Training/warmup cost attribution differs: training')
         if stage == 'formal':
-            require(phases.get('evaluation') == dict(forward_fields_attempt=3172,forward_fields_complete=3172,
+            eval_fields = 52 * (len(fmap) * 2 * (updates // 100) + (0 if resumed else 1))
+            require(phases.get('evaluation') == dict(forward_fields_attempt=eval_fields,forward_fields_complete=eval_fields,
                     backward_fields_attempt=0,backward_fields_complete=0), 'Shared-initial/evaluation cost differs')
     if stage == 'preflight':
         require(report.get('passed') is True and len(report['cases']) == 2
                 and all(case.get('passed') is True for case in report['cases']), 'Physical correctness gate failed')
         require(report['optimizer_updates'] == dict(warmup=0, training=0), 'Preflight contains Adam work')
     else:
-        _verify_updates(rows, report, stage)
+        _verify_updates(rows, report, stage, plan=plan)
     return dict(directory=directory, launch=launch, end=end, report=report, ledger=rows)
 
 
-def _verify_updates(rows, report, stage):
+def _verify_updates(rows, report, stage, plan=None):
+    fmap = _fields_map(plan)
+    target = int(report.get('target_updates', 500))
+    resumed = bool(report.get('resume_root'))
     conditions = ('noisy',) if stage == 'timing' else CONDITIONS
-    expected_keys = {(c,a) for c in conditions for a in FIELDS}
+    expected_keys = {(c,a) for c in conditions for a in fmap}
     by_case = {key:{'warmup_update':[], 'update':[]} for key in expected_keys}
     for row in rows:
         if row['event'] in ('update', 'warmup_update'):
             key = (row['condition'], row['arm'])
             require(key in by_case, 'Unexpected condition/arm in ledger')
             by_case[key][row['event']].append(row['result'])
-    expected_measured = list(range(3,13)) if stage == 'timing' else list(range(1,501))
+    expected_measured = list(range(3,13)) if stage == 'timing' else (list(range(501, 1001)) if resumed else list(range(1,501)))
+    expected_warm = [] if resumed else [1, 2]
     for key, events in by_case.items():
-        require([r['completed_updates'] for r in events['warmup_update']] == [1,2], 'Duplicate/missing warmup commits')
+        require([r['completed_updates'] for r in events['warmup_update']] == expected_warm, 'Duplicate/missing warmup commits')
         require([r['completed_updates'] for r in events['update']] == expected_measured, 'Duplicate/missing measured commits')
         for row in events['warmup_update']+events['update']:
-            require(row['fields'] == FIELDS[key[1]] and row['reference_shots'] == 52, 'Update field/normalization mismatch')
-            require(row['batch_fields'] == ([13]*4 if FIELDS[key[1]] == 52 else [FIELDS[key[1]]]), 'Unexpected batching')
+            require(row['fields'] == fmap[key[1]] and row['reference_shots'] == 52, 'Update field/normalization mismatch')
+            require(row['batch_fields'] == ([13]*4 if fmap[key[1]] == 52 else [fmap[key[1]]]), 'Unexpected batching')
             require(math.isfinite(row['wall_seconds']) and row['wall_seconds'] > 0
                     and math.isfinite(row['cuda_ms']) and row['cuda_ms'] > 0, 'Invalid synchronized update time')
-    expected = dict(warmup=2*len(expected_keys), training=len(expected_measured)*len(expected_keys))
+    expected = dict(warmup=len(expected_warm)*len(expected_keys), training=len(expected_measured)*len(expected_keys))
     require(report['optimizer_updates'] == expected, 'Optimizer receipt differs from returned commits')
     cases = report['cases']
     require(len(cases) == len(expected_keys) and {(c['condition'],c['arm']) for c in cases} == expected_keys,
@@ -274,11 +314,13 @@ def verify_pipeline(root, plan, stages):
     return launch, end
 
 
-def _saved_case(directory, report_case, stage):
+def _saved_case(directory, report_case, stage, target=500, resumed=False):
     case = read_json(directory/'case.json')
     require(case == report_case, 'Case file/result differs')
-    require(case['completed_updates'] == (12 if stage == 'timing' else 500), 'Incomplete case')
-    require(case['measured_updates'] == (10 if stage == 'timing' else 500) and case['warmup_updates'] == 2,
+    require(case['completed_updates'] == (12 if stage == 'timing' else target), 'Incomplete case')
+    expected_measured = 10 if stage == 'timing' else (target - 500 if resumed else target)
+    expected_warm = 0 if (stage == 'formal' and resumed) else 2
+    require(case['measured_updates'] == expected_measured and case['warmup_updates'] == expected_warm,
             'Unexpected case update counts')
     for key in ('training_seconds', 'case_elapsed_seconds', 'evaluation_seconds', 'wall_seconds_median',
                 'cuda_ms_median', 'peak_allocated_bytes', 'peak_reserved_bytes', 'optimizer_tensor_bytes', 'trainable_parameters'):
@@ -287,8 +329,9 @@ def _saved_case(directory, report_case, stage):
     return case
 
 
-def _verify_checkpoints(directory, case, ledger):
-    expected = [100,200,300,400,500]
+def _verify_checkpoints(directory, case, ledger, target=500, resumed=False):
+    start_k = 600 if resumed else 100
+    expected = list(range(start_k, target + 1, 100))
     paths = sorted(directory.glob('update_*.pt'))
     require([p.name for p in paths] == [f'update_{k:04d}.pt' for k in expected], 'Missing/extra formal snapshots')
     require(Path(case['checkpoint']).resolve() == paths[-1].resolve(), 'Final checkpoint path differs')
@@ -298,20 +341,29 @@ def _verify_checkpoints(directory, case, ledger):
         require(Path(event['path']).resolve() == path.resolve() and file_hash(path) == event['sha256'], 'Checkpoint bytes/path differ')
 
 
-def verify_case_arrays(directory, case, arrays, shared, ledger):
+def verify_case_arrays(directory, case, arrays, shared, ledger, target=500, resumed=False, resume_root=None):
+    start_k = 510 if resumed else 0
     files = sorted(directory.glob('metrics_*.json'))
-    require([p.name for p in files] == [f'metrics_{k:04d}.json' for k in range(0,501,10)], 'Missing/extra model metric files')
-    rows = [read_json(path) for path in files]
-    validate_curve(rows)
+    local_updates = list(range(start_k, target + 1, 10))
+    require([p.name for p in files] == [f'metrics_{k:04d}.json' for k in local_updates], 'Missing/extra model metric files')
+    local_rows = [read_json(path) for path in files]
+    if resumed:
+        old_dir = Path(resume_root)/case['condition']/case['arm']
+        prior_files = [old_dir/f'metrics_{k:04d}.json' for k in range(0, 501, 10)]
+        rows = [read_json(p) for p in prior_files] + local_rows
+    else:
+        rows = local_rows
+    validate_curve(rows, target=target)
     require([p.name for p in sorted(directory.glob('velocity_*.npy'))]
-            == [f'velocity_{k:04d}.npy' for k in range(0,501,10)], 'Missing/extra velocity arrays')
+            == [f'velocity_{k:04d}.npy' for k in local_updates], 'Missing/extra velocity arrays')
+    pred_updates = [k for k in local_updates if k % 100 == 0]
     require([p.name for p in sorted(directory.glob('prediction_*.npy'))]
-            == [f'prediction_{k:04d}.npy' for k in range(0,501,100)], 'Missing/extra waveform arrays')
+            == [f'prediction_{k:04d}.npy' for k in pred_updates], 'Missing/extra waveform arrays')
     metric_events = [r['result'] for r in ledger if r['event'] == 'metrics'
                      and r['condition'] == case['condition'] and r['arm'] == case['arm']]
-    require(metric_events == rows, 'Saved curve differs from producer ledger')
+    require(metric_events == local_rows, 'Saved curve differs from producer ledger')
     hashes = {}
-    for row in rows:
+    for row in local_rows:
         k = row['update']; path = directory/f'velocity_{k:04d}.npy'
         vel = _load_array(path)
         for name, value in velocity_metrics(vel, arrays['truth']).items():
@@ -322,14 +374,15 @@ def verify_case_arrays(directory, case, arrays, shared, ledger):
             for name in METRICS+('clean_mse','noisy_mse'):
                 check_metric(name, row.get(name), shared['metrics'].get(name))
             require(file_hash(directory/'prediction_0000.npy') == shared['prediction_sha256'], 'Case initial prediction differs')
-        if k == 500:
-            pred = _load_array(directory/'prediction_0500.npy')
+        if k == target:
+            pred = _load_array(directory/f'prediction_{target:04d}.npy')
             for name in CONDITIONS:
                 check_metric(name+'_mse', row[name+'_mse'], waveform_mse(pred, arrays[name]))
-            hashes = dict(velocity_sha256=file_hash(path), prediction_sha256=file_hash(directory/'prediction_0500.npy'))
+            hashes = dict(velocity_sha256=file_hash(path), prediction_sha256=file_hash(directory/f'prediction_{target:04d}.npy'))
     check_metric('final_training_seconds', rows[-1]['training_seconds'], case['training_seconds'])
-    require(case['thresholds'] == first_crossings(rows), 'Saved threshold crossings differ')
-    _verify_checkpoints(directory, case, ledger)
+    require(case['thresholds'] == first_crossings(rows, tuple(case_t['threshold_rmse_mps'] for case_t in case['thresholds']) or THRESHOLDS),
+            'Saved threshold crossings differ')
+    _verify_checkpoints(directory, case, ledger, target=target, resumed=resumed)
     return rows, hashes
 
 
@@ -346,47 +399,58 @@ def _write_json(path, value):
         json.dump(value, stream, indent=2, allow_nan=False); stream.write('\n')
 
 
-def _markdown(summary, cases, costs):
-    lines = ['# 52-shot IFWI: twelve complete 500-update cases', '',
-        f"Pipeline `{summary['run_id']}`, frozen plan `{summary['signature']}`. All three stage receipts, field ledgers and returned Adam updates were verified. This is one seed and the training acquisition; clean-reference waveform error is not held-out-shot performance.", '',
-        'The matched encoding control is `full_preconditioned`. `full_raw` separates the existing illumination rule. The relative-FR arm changes representation and parameterization together; its parameter count and optimizer memory are reported without a single-component attribution.', '',
+def _markdown(summary, cases, costs, target=500):
+    lines = [f'# 52-shot IFWI: {len(cases)} complete {target}-update cases', '',
+        f"Pipeline `{summary['run_id']}`, frozen plan `{summary['signature']}`. All stage receipts, field ledgers and returned Adam updates were verified. This is one seed and the training acquisition; clean-reference waveform error is not held-out-shot performance.", '',
+        'The matched encoding control is `full_preconditioned`. `full_raw` separates the illumination rule. `interleaved4_relative` isolates fixed background-relative perturbation scaling on the plain 50,049-parameter SIREN, and `interleaved4_relative_fr` adds Fourier reparameterization on top of `interleaved4_relative`.', '',
         '| Condition | Arm | RMSE m/s | SSIM | Clean MSE | Noisy MSE | Training s | Case wall s | Parameters | Peak GiB |',
         '|---|---|---:|---:|---:|---:|---:|---:|---:|---:|']
     for row in cases:
         lines.append(f"| {row['condition']} | {row['arm']} | {row['final_rmse_mps']:.6g} | {row['final_ssim']:.6g} | {row['final_clean_mse']:.7g} | {row['final_noisy_mse']:.7g} | {row['training_seconds']:.3f} | {row['case_elapsed_seconds']:.3f} | {row['trainable_parameters']} | {row['peak_allocated_bytes']/2**30:.4f} |")
-    lines += ['', 'Every row is retained, including deteriorations. No truth-based method, checkpoint or parameter selection was performed. RMSE/SSIM curves use every10 updates; waveform metrics use every100. All saved model-curve arrays and all twelve final waveform arrays were recomputed on CPU. Intermediate waveform values remain producer-recorded; their raw arrays are retained. The one shared initial waveform was independently checked and its identical copies verified.', '',
-        'Thresholds 500/475/450/425m/s were fixed before formal training. `threshold_times.csv` reports first observed crossings with no interpolation; NOT_REACHED has empty time/update fields. Unreached thresholds provide no equal-accuracy speedup evidence. A fixed-update time ratio is not an equal-accuracy speedup.', '',
-        'Training seconds sum synchronized returned update intervals and exclude warmup, construction, evaluation and checkpoint I/O. Case wall includes those costs within each case. Condition construction and complete pipeline/preflight overhead are separately retained in ledgers and phase costs. CUDA timing and peak allocation/reservation are reported separately. Full microbatch13 was feasible; no claim that13 is the largest feasible batch is made.', '',
-        'For N52/B2 or4, cyclic interleaved shifts only relabel groups and do not change which source pairs share a group. Fresh signs still redraw every update. Background-relative scaling is not exact log-velocity parameterization or a full illumination correction. This combination is a local adaptation, without an assumed novelty or performance guarantee.', '',
+    lines += ['', f'Every row is retained, including deteriorations. No truth-based method, checkpoint or parameter selection was performed. RMSE/SSIM curves use every 10 updates; waveform metrics use every 100. All saved model-curve arrays and all {len(cases)} final waveform arrays were recomputed on CPU.', '',
+        'Thresholds were fixed before formal training. `threshold_times.csv` reports first observed crossings with no interpolation; NOT_REACHED has empty time/update fields.', '',
+        'Training seconds sum synchronized returned update intervals and exclude warmup, construction, evaluation and checkpoint I/O. Case wall includes those costs within each case.', '',
         '| Stage | F attempt/complete | B attempt/complete | Adam commits | Phase wall s |', '|---|---:|---:|---:|---:|']
     for row in costs:
         lines.append(f"| {row['stage']} | {row['forward_fields_attempt']}/{row['forward_fields_complete']} | {row['backward_fields_attempt']}/{row['backward_fields_complete']} | {row['optimizer_updates']} | {row['phase_wall_seconds']:.3f} |")
-    lines += ['', f"Total physical work: {summary['total_F']}F/{summary['total_B']}B and {summary['total_Adam']} Adam commits. Reused data synthesis cost in this pipeline is zero; prior data-generation cost is not reclassified as new work. Collection used CPU NumPy/SSIM only:0 PDE F/B,0 neural evaluations,0 GPU work,0 Adam updates.", '']
+    lines += ['', f"Total physical work: {summary['total_F']}F/{summary['total_B']}B and {summary['total_Adam']} Adam commits. Collection used CPU NumPy/SSIM only: 0 PDE F/B, 0 neural evaluations, 0 GPU work, 0 Adam updates.", '']
     return '\n'.join(lines)
 
 
-def collect(pipeline_root, *, dense_data=None, source_root=ROOT):
+def collect(pipeline_root, *, dense_data=None, source_root=ROOT, formal_dir=None):
     root = Path(pipeline_root).resolve(strict=True)
-    output = root/'analysis500'
-    require(not output.exists(), 'analysis500 already exists; collection never overwrites or repeats an attempt')
+    formal_path = Path(formal_dir).resolve(strict=True) if formal_dir else (root/'formal')
+    formal_report_preview = read_json(formal_path/'result.json')
+    target = int(formal_report_preview.get('target_updates', 500))
+    resumed = bool(formal_report_preview.get('resume_root'))
+    output = (formal_path.parent if formal_dir else root)/f'analysis{target}'
+    require(not output.exists(), f'{output.name} already exists; collection never overwrites or repeats an attempt')
     started = time.perf_counter()
-    plan = read_json(root/'formal/plan.json'); verify_plan(plan, source_root)
+    plan = read_json(formal_path/'plan.json'); verify_plan(plan, source_root)
     require(plan.get('schema') == 'fr_relative_52_v1' and plan.get('conditions') == list(CONDITIONS), 'Unexpected protocol')
     require([a['name'] for a in plan['arms']] == list(FIELDS)
             and [a['fields'] for a in plan['arms']] == list(FIELDS.values()), 'Unexpected configurations')
     for arm in plan['arms']:
         require(arm['preconditioned'] == (arm['name'] != 'full_raw')
-                and arm['model'] == ('relative_fr' if arm['name'] == 'interleaved4_relative_fr' else 'plain'),
+                and arm['model'] == MODELS[arm['name']],
                 'Model/preconditioning control differs')
+    thresholds = tuple(plan['thresholds_rmse_mps'])
     require(plan['model_metric_interval'] == 10 and plan['waveform_metric_interval'] == 100
-            and plan['thresholds_rmse_mps'] == list(THRESHOLDS), 'Evaluation/threshold protocol differs')
-    stages = {s:verify_stage(root/s, s, plan) for s in ('preflight','timing','formal')}
-    launch, end = verify_pipeline(root, plan, stages)
+            and thresholds == THRESHOLDS, 'Evaluation/threshold protocol differs')
+    stages = {
+        'preflight': verify_stage(root/'preflight', 'preflight', plan),
+        'timing': verify_stage(root/'timing', 'timing', plan),
+        'formal': verify_stage(formal_path, 'formal', plan),
+    }
+    if not formal_dir:
+        launch, end = verify_pipeline(root, plan, stages)
+    else:
+        launch, end = stages['formal']['launch'], stages['formal']['end']
     if dense_data is None:
         request = read_json(root/'EXPERIMENT_REQUEST.json')
         dense_data = request['dense_data_directory']
     arrays = verify_assets(plan, dense_data)
-    shared_dir = root/'formal/shared_initial'
+    shared_dir = (Path(formal_report_preview['resume_root']) if resumed else formal_path)/'shared_initial'
     shared = read_json(shared_dir/'manifest.json')
     vel = _load_array(shared_dir/'velocity.npy', shared['velocity_sha256'])
     pred = _load_array(shared_dir/'prediction.npy', shared['prediction_sha256'])
@@ -398,14 +462,17 @@ def collect(pipeline_root, *, dense_data=None, source_root=ROOT):
     case_rows=[]; curve_rows=[]; threshold_rows=[]; timing_rows=[]; update_rows=[]; artifact_hashes=[]
     for stage in ('timing','formal'):
         saved = stages[stage]
+        stage_root = formal_path if stage == 'formal' else (root/stage)
+        stage_resumed = resumed if stage == 'formal' else False
+        stage_target = target if stage == 'formal' else 12
         expected_cases = {(c,a) for c in (('noisy',) if stage == 'timing' else CONDITIONS) for a in FIELDS}
         actual_dirs = {(p.parent.name,p.name) for c in (('noisy',) if stage == 'timing' else CONDITIONS)
-                       for p in (root/stage/c).iterdir() if p.is_dir()}
+                       for p in (stage_root/c).iterdir() if p.is_dir()}
         require(actual_dirs == expected_cases, 'Extra/missing case directories')
         for report_case in saved['report']['cases']:
             condition, arm = report_case['condition'],report_case['arm']
-            directory = root/stage/condition/arm
-            case = _saved_case(directory, report_case, stage)
+            directory = stage_root/condition/arm
+            case = _saved_case(directory, report_case, stage, target=stage_target, resumed=stage_resumed)
             events = [r for r in saved['ledger'] if r['event'] in ('update','warmup_update')
                       and r['condition'] == condition and r['arm'] == arm]
             for event in events:
@@ -416,7 +483,11 @@ def collect(pipeline_root, *, dense_data=None, source_root=ROOT):
                     cuda_ms=result['cuda_ms'],fields=result['fields'],NT=result['NT']))
             warm = [e['result'] for e in events if e['event']=='warmup_update']
             measured = [e['result'] for e in events if e['event']=='update']
-            check_metric('case training_seconds', case['training_seconds'], sum(r['wall_seconds'] for r in measured))
+            expected_train_sec = sum(r['wall_seconds'] for r in measured)
+            if stage_resumed:
+                old_case = read_json(Path(formal_report_preview['resume_root'])/condition/arm/'case.json')
+                expected_train_sec += old_case['training_seconds']
+            check_metric('case training_seconds', case['training_seconds'], expected_train_sec)
             base = {k:v for k,v in case.items() if k not in ('thresholds','checkpoint')}
             base.update(warmup_seconds=sum(r['wall_seconds'] for r in warm),
                 training_cuda_ms=sum(r['cuda_ms'] for r in measured),warmup_cuda_ms=sum(r['cuda_ms'] for r in warm),
@@ -424,7 +495,9 @@ def collect(pipeline_root, *, dense_data=None, source_root=ROOT):
                 warmup_F=sum(r['fields'] for r in warm),warmup_B=sum(r['fields'] for r in warm))
             if stage == 'timing':
                 timing_rows.append(base); continue
-            rows, hashes = verify_case_arrays(directory, case, arrays, shared, saved['ledger'])
+            rows, hashes = verify_case_arrays(directory, case, arrays, shared, saved['ledger'],
+                                              target=target, resumed=resumed,
+                                              resume_root=formal_report_preview.get('resume_root'))
             artifact_hashes.append(dict(condition=condition,arm=arm,**hashes))
             for name in METRICS+('clean_mse','noisy_mse'):
                 base['initial_'+name] = rows[0][name]
@@ -432,16 +505,27 @@ def collect(pipeline_root, *, dense_data=None, source_root=ROOT):
                 base['change_'+name] = None if rows[0][name] is None else rows[-1][name]-rows[0][name]
             case_rows.append(base)
             curve_rows.extend(dict(condition=condition,arm=arm,**row) for row in rows)
-            threshold_rows.extend(dict(condition=condition,arm=arm,**row) for row in first_crossings(rows))
+            threshold_rows.extend(dict(condition=condition,arm=arm,**row) for row in first_crossings(rows, thresholds))
     phase_costs=[]; cost_rows=[]
-    phase_receipts = {p['stage']:p for p in end['completed_phases']}
+    phase_receipts = {p['stage']:p for p in end.get('completed_phases', [])} if not formal_dir else {}
     for stage,saved in stages.items():
         report=saved['report']
+        p_wall = phase_receipts[stage]['phase_wall_seconds'] if stage in phase_receipts else report['stage_wall_seconds']
         cost_rows.append(dict(stage=stage,**report['cost_totals'],optimizer_updates=sum(report['optimizer_updates'].values()),
-            stage_wall_seconds=report['stage_wall_seconds'],phase_wall_seconds=phase_receipts[stage]['phase_wall_seconds']))
+            stage_wall_seconds=report['stage_wall_seconds'],phase_wall_seconds=p_wall))
         phase_costs.extend(dict(stage=stage,phase=phase,**totals) for phase,totals in report['cost_by_phase'].items())
-    summary=dict(schema='fr_relative_analysis_v1',status='VERIFIED_COMPLETE_500',run_id=launch['run_id'],
-        signature=plan['signature'],pipeline_root=str(root),pipeline_launch=launch,pipeline_exit=end,
+    expected_budgets = [
+        physical_budget('preflight', plan=plan),
+        physical_budget('timing', plan=plan),
+        physical_budget('formal', target=target, resume=resumed, plan=plan),
+    ]
+    expected_totals = (
+        sum(b['forward_fields'] for b in expected_budgets),
+        sum(b['backward_fields'] for b in expected_budgets),
+        sum(b['optimizer_updates'] for b in expected_budgets),
+    )
+    summary=dict(schema='fr_relative_analysis_v1',status=f'VERIFIED_COMPLETE_{target}',run_id=launch['run_id'],
+        signature=plan['signature'],pipeline_root=str(root),target_updates=target,pipeline_launch=launch,pipeline_exit=end,
         total_F=sum(c['forward_fields_complete'] for c in cost_rows),
         total_B=sum(c['backward_fields_complete'] for c in cost_rows),
         total_Adam=sum(c['optimizer_updates'] for c in cost_rows),
@@ -449,10 +533,8 @@ def collect(pipeline_root, *, dense_data=None, source_root=ROOT):
         collection_physical_F=0,collection_physical_B=0,collection_neural_evaluations=0,
         collection_GPU_work=0,collection_Adam_updates=0,final_array_hashes=artifact_hashes,
         shared_initial=shared,source_sha256=plan['source_sha256'],collector_sha256=file_hash(__file__),
-        verification_scope='All model-curve arrays, shared initial waveforms and twelve final waveforms recomputed; intermediate waveform scores are producer-recorded.')
-    require((summary['total_F'],summary['total_B'],summary['total_Adam']) == (120046,116874,6096), 'Complete pipeline budget differs')
-    # All validation precedes the first output mutation. A failed write leaves a
-    # visible one-off failed attempt, which is never removed or overwritten.
+        verification_scope='All model-curve arrays, shared initial waveforms and all final waveforms recomputed; intermediate waveform scores are producer-recorded.')
+    require((summary['total_F'],summary['total_B'],summary['total_Adam']) == expected_totals, 'Complete pipeline budget differs')
     output.mkdir(exist_ok=False)
     receipt=dict(pid=os.getpid(),parent_pid=os.getppid(),pipeline_run_id=launch['run_id'],
                  utc=datetime.now(timezone.utc).isoformat(),collector_sha256=summary['collector_sha256'])
@@ -463,7 +545,7 @@ def collect(pipeline_root, *, dense_data=None, source_root=ROOT):
             _csv(output/(name+'.csv'), rows)
         _write_json(output/'summary.json', summary)
         with (output/'results.md').open('x', encoding='utf-8') as stream:
-            stream.write(_markdown(summary, case_rows, cost_rows))
+            stream.write(_markdown(summary, case_rows, cost_rows, target=target))
         _write_json(output/'COLLECTION_EXIT.json',dict(receipt,status='COMPLETED',exit_code=0,
             wall_seconds=time.perf_counter()-started,physical_F=0,physical_B=0,neural_evaluations=0,GPU_work=0,Adam_updates=0))
     except BaseException as error:
@@ -476,10 +558,11 @@ def collect(pipeline_root, *, dense_data=None, source_root=ROOT):
 def main(argv=None):
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--pipeline-root',type=Path,required=True)
+    parser.add_argument('--formal-dir',type=Path)
     parser.add_argument('--dense-data',type=Path)
     parser.add_argument('--source-root',type=Path,default=ROOT)
     args=parser.parse_args(argv)
-    result=collect(args.pipeline_root,dense_data=args.dense_data,source_root=args.source_root)
+    result=collect(args.pipeline_root,dense_data=args.dense_data,source_root=args.source_root,formal_dir=args.formal_dir)
     print(json.dumps({k:result[k] for k in ('status','run_id','total_F','total_B','total_Adam')},sort_keys=True))
     return 0
 

@@ -7,8 +7,6 @@ import torch
 from core_speed import normalized_encoding_loss
 from experiments import dense_encoding_physics as dense
 from experiments.encoding_batch_correctness import _clear_graph_cache
-from experiments.encoding_batch_correctness import _Costs, _solve, _decorate
-from experiments.shifted_interleaved import ShiftedInterleavedAcquisition
 from verification.test_dense_encoding_physics import fixture
 
 
@@ -109,22 +107,3 @@ def test_invalid_preconditioning_flag_fails_before_work_or_optimizer(invalid):
             illumination_preconditioning=invalid,record_cost=lambda event,**kw:events.append(kw))
     assert not events and not optimizer.state
     assert all(torch.equal(value,before[key]) for key,value in model.state_dict().items())
-
-
-@pytest.mark.parametrize('fields',[2,4])
-def test_real_tiny_fd_shift_permutes_waveforms_and_preserves_gradient_and_illumination(fields):
-    problem,model,_ = fixture()
-    fixed = dense.DenseAcquisition(problem,batch_size=2,grouping='interleaved',fields=fields)
-    shifted = ShiftedInterleavedAcquisition(problem,batch_size=2,fields=fields)
-    update = next(update for update in range(32) if shifted.shift(update) != 0)
-    results=[]
-    for acquisition in (fixed,shifted):
-        batch, = acquisition.batches(update)
-        result = _solve(batch['propagators'][0]['solver'],model(),batch['wavelet'],batch['observed'],
-                        acquisition.reference_shots,_Costs(None),case='row_shift',implementation='tiny_cpu')
-        results.append(_decorate(result))
-    original,shifted_result = results
-    torch.testing.assert_close(shifted_result['prediction'],
-        torch.roll(original['prediction'],shifts=shifted.shift(update),dims=1),rtol=2e-6,atol=1e-12)
-    for name in ('loss','gradient','source','adjoint','H','direction'):
-        torch.testing.assert_close(original[name],shifted_result[name],rtol=2e-5,atol=1e-15)

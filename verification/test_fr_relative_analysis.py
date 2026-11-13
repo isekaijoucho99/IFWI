@@ -11,10 +11,13 @@ from experiments.fr_relative_analysis import (
 )
 
 
-def test_physical_budget_charges_one_shared_initial_and_all_work():
+def test_physical_budget_charges_one_shared_initial_and_supports_1000_resume():
     assert physical_budget('preflight') == dict(forward_fields=34, backward_fields=34, optimizer_updates=0)
-    assert physical_budget('timing') == dict(forward_fields=1380, backward_fields=1380, optimizer_updates=72)
-    assert physical_budget('formal') == dict(forward_fields=118632, backward_fields=115460, optimizer_updates=6024)
+    assert physical_budget('timing') == dict(forward_fields=1428, backward_fields=1428, optimizer_updates=84)
+    assert physical_budget('formal', target=500, resume=False) == dict(
+        forward_fields=123168, backward_fields=119476, optimizer_updates=7028)
+    assert physical_budget('formal', target=1000, resume=True) == dict(
+        forward_fields=122640, backward_fields=119000, optimizer_updates=7000)
 
 
 def test_crossings_report_observed_samples_and_unreached_without_interpolation():

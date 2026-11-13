@@ -14,7 +14,7 @@ import traceback
 import torch
 
 from core_speed import SourceEncoder
-from experiments.dense_encoding_physics import build_dense_problem
+from experiments.dense_encoding_physics import DenseAcquisition, build_dense_problem
 from experiments.encoding_batch_correctness import (
     CorrectnessError, TOLERANCES, _Costs, _combine, _decorate, _metric, _solve,
 )
@@ -150,27 +150,23 @@ def run_preflight(control, costs, assets, plan, device):
             raise CorrectnessError(report)
         del batch, serial, matrix, subset
 
-        # Import only after validation and the first check, so CPU-only planning
-        # never constructs an acquisition or needs this new implementation.
-        from experiments.shifted_interleaved import ShiftedInterleavedAcquisition
-        case = dict(name='shifted_interleaved4_vs_serial_rows', code_channels=4,
+        case = dict(name='interleaved4_vs_serial_rows', code_channels=4,
                     scope='all_52_sources_four_code_rows', passed=False,
                     objective_reference_shots=52)
         report['cases'].append(case)
         control.record('preflight_case_start', name=case['name'], scope=case['scope'])
-        acquisition = ShiftedInterleavedAcquisition(problem, batch_size=13, fields=4, seed=3)
+        acquisition = DenseAcquisition(problem, batch_size=13, grouping='interleaved', fields=4, seed=3)
         encoded, = acquisition.batches(1)
         matrix = encoded['encoding_matrix'].detach().clone()
         case['encoding_matrix'] = matrix.cpu().tolist()
         case['group_sizes'] = (matrix != 0).sum(dim=1).cpu().tolist()
-        case['cyclic_shift_changes_membership'] = False
         solver = encoded['propagators'][0]['solver']
         if not torch.equal(solver.fd.weights, matrix):
-            raise ValueError('Reported shifted code differs from the FD injection matrix')
+            raise ValueError('Reported interleaved code differs from the FD injection matrix')
         explicit_target = torch.einsum('ks,mstr->mktr', matrix.to(problem['observed'].dtype),
                                        problem['observed'])
         if not torch.equal(encoded['observed'], explicit_target):
-            raise ValueError('Shifted encoded target and injection matrix disagree')
+            raise ValueError('Interleaved encoded target and injection matrix disagree')
         if not torch.equal(matrix.square().sum(0), torch.ones(52,device=device)):
             raise ValueError('Each original shot must appear once with unit squared code weight')
         control.check_stop()

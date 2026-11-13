@@ -33,14 +33,14 @@ def test_launch_records_are_never_overwritten(tmp_path):
     assert json.loads(path.read_text())==dict(value=1)
 
 
-def test_estimate_uses_all_six_actual_medians_and_separates_validation(tmp_path):
-    save(tmp_path/'timing/result.json',dict(cases=[dict(arm=str(i),wall_seconds_median=float(i+1)) for i in range(6)]))
+def test_estimate_uses_all_actual_medians_and_separates_validation(tmp_path):
+    save(tmp_path/'timing/result.json',dict(cases=[dict(arm=str(i),wall_seconds_median=float(i+1)) for i in range(7)]))
     path=tmp_path/'preflight/ledger.jsonl';path.parent.mkdir(parents=True)
     path.write_text(json.dumps(dict(forward_fields_complete=13,wall_seconds=1.5))+'\n')
     report=estimate(tmp_path)
-    assert report['training_seconds']==21000
-    assert report['warmup_seconds']==84
-    assert report['evaluation_seconds_estimate']==366
+    assert report['training_seconds']==28000
+    assert report['warmup_seconds']==112
+    assert report['evaluation_seconds_estimate']==426
     assert 'equal-accuracy' in report['limitations']
 
 
