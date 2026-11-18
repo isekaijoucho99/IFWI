@@ -2,6 +2,8 @@
 
 基于 SIREN 隐式神经表示与有限差分波动方程的二维地震全波形反演代码。主要入口 `experiment.py` 用于随机初始化的 Marmousi 参数实验；另保留预训练、含噪观测、Dropout 不确定性、Overthrust 和传统 FWI 入口，以及独立的方法消融框架。
 
+方向 B 的频域实验使用项目的残差 SIREN，在每个候选参数方向上检查正演与伴随求解误差。运行 `python -m experiments.direction_b` 可在 Marmousi 和 Overthrust 上生成容差扫描报告。运行 `python -m experiments.direction_b --mode benchmark` 可比较四种方法首次达到相同数据失配阈值的成本。[方向 B 的公式、运行参数与结果解读](docs/direction_b.md)
+
 ## 目录
 
 - [项目结构](#项目结构)
