@@ -4,6 +4,8 @@
 
 方向 B 的频域实验使用项目的残差 SIREN，在每个候选参数方向上检查正演与伴随求解误差。运行 `python -m experiments.direction_b` 可在 Marmousi 和 Overthrust 上生成容差扫描报告。运行 `python -m experiments.direction_b --mode benchmark` 可比较四种方法首次达到相同数据失配阈值的成本。[方向 B 的公式、运行参数与结果解读](docs/direction_b.md)
 
+方向 C 研究同时震源编码对扩散 FWI 后验的影响。运行 `python -m experiments.direction_c` 可在解析高斯、分层反射和两个二维速度模型上比较七种采样设置，输出后验距离、模态概率、预测区间和实际求解成本。[方向 C 的实验与复现说明](docs/direction_c.md)
+
 ## 目录
 
 - [项目结构](#项目结构)
